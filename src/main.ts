@@ -1,11 +1,16 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '@/config';
-import { BootScene } from '@/game/scenes/BootScene';
-import { GameScene } from '@/game/scenes/GameScene';
-import { LevelSelectScene } from '@/game/scenes/LevelSelectScene';
-import { MenuScene } from '@/game/scenes/MenuScene';
-import { RankingScene } from '@/game/scenes/RankingScene';
-import { ResultScene } from '@/game/scenes/ResultScene';
+import { BlockBlastScene } from '@/games/blockblast/BlockBlastScene';
+import { GameScene as DogGameScene } from '@/games/doguinho/scenes/GameScene';
+import { LevelSelectScene as DogLevelsScene } from '@/games/doguinho/scenes/LevelSelectScene';
+import { ResultScene as DogResultScene } from '@/games/doguinho/scenes/ResultScene';
+import { RoadFighterScene } from '@/games/roadfighter/RoadFighterScene';
+import { SudokuMenuScene } from '@/games/sudoku/SudokuMenuScene';
+import { SudokuScene } from '@/games/sudoku/SudokuScene';
+import { BootScene } from '@/platform/scenes/BootScene';
+import { GameOverScene } from '@/platform/scenes/GameOverScene';
+import { HubScene } from '@/platform/scenes/HubScene';
+import { LeaderboardScene } from '@/platform/scenes/LeaderboardScene';
 import { createServices, provideServices } from '@/services';
 
 const services = createServices();
@@ -27,14 +32,27 @@ const game = new Phaser.Game({
     default: 'matter',
     matter: {
       gravity: { x: 0, y: 1 },
-      // Stepped manually with a fixed timestep in GameScene.
+      // Stepped manually with a fixed timestep in the Doguinho GameScene.
       autoUpdate: false,
       positionIterations: 10,
       velocityIterations: 8,
       debug: false,
     },
   },
-  scene: [BootScene, MenuScene, LevelSelectScene, GameScene, ResultScene, RankingScene],
+  scene: [
+    BootScene,
+    HubScene,
+    LeaderboardScene,
+    DogLevelsScene,
+    DogGameScene,
+    DogResultScene,
+    BlockBlastScene,
+    SudokuMenuScene,
+    SudokuScene,
+    RoadFighterScene,
+    // Overlays last so they render on top.
+    GameOverScene,
+  ],
 });
 
 provideServices(game, services);

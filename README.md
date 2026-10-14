@@ -1,22 +1,27 @@
-# 🐶 Salve o Doguinho
+# 🕹️ Fliperama
 
-Desenhe **uma linha** para proteger o doguinho das abelhas e aguente até o tempo acabar.
-Quanto menos tinta você usar, mais estrelas ganha.
+Coleção de jogos mobile-first no navegador, cada um com seu próprio ranking:
 
-- 20 fases com dificuldade crescente (buracos, pilares, espinhos, abelhas vindo de baixo…)
-- Feito para celular (toque, tela 9:16, vibração), funciona também no computador
-- Física real com Matter.js: a linha cai, as abelhas empurram, os espinhos furam
-- Ranking (local, ou global com um backend REST)
+| Jogo | Como funciona | Ranking por |
+|---|---|---|
+| 🐶 **Salve o Doguinho** | Desenhe uma linha para proteger o doguinho das abelhas (20 fases) | estrelas, mortes, tinta |
+| 🧱 **Block Blast** | Arraste peças para o tabuleiro 8×8 e complete linhas/colunas | pontos |
+| 🔢 **Sudoku** | Fácil, médio ou difícil, com notas e dicas | pontos (tempo, erros, dicas) |
+| 🏎️ **Road Fighter** | Corrida infinita: desvie dos carros e pegue gasolina | pontos (distância + ultrapassagens) |
+
+O jogador escolhe um apelido uma vez no menu e ele vale para todos os rankings.
 
 ## Stack
 
-Vite · TypeScript (strict) · Phaser 3 (Matter) · Vitest · ESLint · Prettier
+Vite · TypeScript (strict) · Phaser 3 (Matter) · Firebase (Auth anônimo + Firestore) · Vitest · ESLint · Prettier
+
+Requer **Node 22.13+** (veja `.nvmrc`).
 
 ## Rodando
 
 ```bash
 npm install
-npm run dev        # abre em http://localhost:5173 (e no IP da rede, para testar no celular)
+npm run dev        # http://localhost:5173 (e no IP da rede, para testar no celular)
 npm run check      # tipos + lint + testes
 npm run build      # gera dist/
 ```
@@ -24,15 +29,21 @@ npm run build      # gera dist/
 Para testar no celular: rode `npm run dev`, conecte o celular na mesma rede Wi-Fi e abra o endereço
 `Network:` exibido no terminal.
 
-## Ranking global
+## Ranking global (Firebase)
 
-Por padrão o ranking fica salvo no aparelho. Para um ranking global, defina `VITE_LEADERBOARD_URL`
-(veja `.env.example`) apontando para um endpoint que:
+Sem configuração, cada ranking fica salvo só no aparelho. Para ativar o ranking global:
 
-- `GET` → retorna `[{ id, name, stars, deaths, inkSaved, score, date }]` (ou `{ entries: [...] }`)
-- `POST` ← recebe uma entrada nesse mesmo formato
+1. No [console do Firebase](https://console.firebase.google.com), crie o projeto.
+2. **Firestore Database → Criar banco** (modo produção, região `southamerica-east1`).
+3. **Authentication → Sign-in method → Anônimo → Ativar.**
+4. **Configurações do projeto → Seus apps → Web**: registre o app e copie o `firebaseConfig`.
+5. Copie `.env.example` para `.env.local` e preencha os valores `VITE_FIREBASE_*`.
+6. Publique as regras de segurança: cole o conteúdo de [`firestore.rules`](firestore.rules) em
+   **Firestore → Regras → Publicar** (ou `npx firebase-tools deploy --only firestore:rules`).
 
-Se o servidor estiver fora do ar, o jogo usa o ranking local automaticamente.
+Os dados ficam em `leaderboards/{jogo}/entries/{uid}`. Cada jogador só consegue gravar o próprio
+documento, e as regras validam nome, faixa de pontos e campos. Se o Firebase estiver fora do ar, o
+jogo usa o ranking local automaticamente.
 
 ## Arquitetura
 

@@ -1,28 +1,39 @@
 import type Phaser from 'phaser';
-import { LocalLeaderboard, RemoteLeaderboard, ResilientLeaderboard } from '@/core/leaderboard';
-import { ProgressRepository } from '@/core/progress';
-import { BrowserStore } from '@/core/storage';
-import { SEED_LEADERBOARD } from '@/data/seedLeaderboard';
-import { Sfx } from '@/game/audio/Sfx';
+import { ProgressRepository } from '@/games/doguinho/core/progress';
+import { Sfx } from '@/platform/audio/Sfx';
+import { BestScores } from '@/platform/bestScores';
+import { FirebaseLeaderboard, readFirebaseSettings } from '@/platform/firebaseLeaderboard';
+import { LocalLeaderboard, ResilientLeaderboard } from '@/platform/leaderboard';
+import { ProfileRepository } from '@/platform/profile';
+import { BrowserStore } from '@/platform/storage';
 
 /** Everything scenes need from the outside world, injected once through the game registry. */
 export interface Services {
-  readonly progress: ProgressRepository;
+  readonly profile: ProfileRepository;
+  readonly best: BestScores;
   readonly leaderboard: ResilientLeaderboard;
   readonly sfx: Sfx;
+  readonly dogProgress: ProgressRepository;
 }
 
-export function createServices(): Services {
+export function createServices(env: Record<string, unknown> = import.meta.env): Services {
   const store = new BrowserStore();
-  const progress = new ProgressRepository(store);
-  const remoteUrl = (import.meta.env.VITE_LEADERBOARD_URL as string | undefined)?.trim();
+  const profile = new ProfileRepository(store);
+  const firebase = readFirebaseSettings(env);
   const leaderboard = new ResilientLeaderboard(
-    new LocalLeaderboard(store, SEED_LEADERBOARD),
-    remoteUrl ? new RemoteLeaderboard(remoteUrl) : null,
+    new LocalLeaderboard(store),
+    firebase ? new FirebaseLeaderboard(firebase) : null,
+    profile.get().playerId,
   );
   const sfx = new Sfx();
-  sfx.muted = progress.get().muted;
-  return { progress, leaderboard, sfx };
+  sfx.muted = profile.get().muted;
+  return {
+    profile,
+    best: new BestScores(store),
+    leaderboard,
+    sfx,
+    dogProgress: new ProgressRepository(store),
+  };
 }
 
 const REGISTRY_KEY = 'services';
