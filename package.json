@@ -1,0 +1,38 @@
+{
+  "name": "salve-o-doguinho",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Jogo mobile-first estilo Draw to Save: desenhe uma barreira para proteger o doguinho das abelhas.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run lint && npm run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DouglasFroes/AI-game-save-ddg.git"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.5",
+    "eslint": "^10.12.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  }
+}

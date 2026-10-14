@@ -1,155 +1,53 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#6ec6ff">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="description" content="Desenhe barreiras para salvar o doguinho das abelhas! Jogo de física leve para mobile.">
-<title>Salve o Doguinho</title>
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div id="app">
-
-  <!-- ===== Trilha de Fases (Level Map) ===== -->
-  <section id="screen-map" class="screen">
-    <header class="map-header">
-      <h1 class="logo">Salve o <span>Doguinho</span></h1>
-      <div class="map-stats">
-        <div class="pill" id="mapStars">★ 0/12</div>
-        <div class="pill" id="mapDeaths">💀 0</div>
-        <div class="pill hearts" id="mapHearts"></div>
-      </div>
-    </header>
-    <div class="trail" id="trail">
-      <svg class="trail-path" id="trailPath" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
-      <!-- level nodes are injected by ui.js -->
-    </div>
-    <footer class="map-footer">
-      <button type="button" class="btn btn-secondary" id="btnRanking">🏆 Ranking</button>
-      <button type="button" class="btn btn-ghost" id="btnNewCampaign">↺ Nova campanha</button>
-    </footer>
-  </section>
-
-  <!-- ===== Jogo (Canvas + HUD) ===== -->
-  <section id="screen-game" class="screen hidden">
-    <canvas id="c"></canvas>
-    <div id="hud">
-      <div class="bar">
-        <button type="button" class="pill btn-icon" id="btnBack" aria-label="Voltar ao mapa">‹</button>
-        <div class="pill" id="hudLevel">Fase 1/4</div>
-        <div class="pill hearts" id="hudHearts"></div>
-        <div class="pill" id="hudTimer">⏱ 7.0</div>
-      </div>
-      <div class="ink">
-        <span class="ink-label">TINTA</span>
-        <div class="ink-track">
-          <div id="inkFill"></div>
-          <i class="ink-mark" id="mark3" title="Limite para 3 estrelas"></i>
-          <i class="ink-mark" id="mark2" title="Limite para 2 estrelas"></i>
-        </div>
-        <span class="ink-stars" id="hudStars"></span>
-      </div>
-    </div>
-    <div id="hint" class="hide"></div>
-  </section>
-
-  <!-- ===== Ranking Global ===== -->
-  <section id="screen-ranking" class="screen hidden">
-    <h2>🏆 Ranking Global</h2>
-    <p class="rank-sub">Estrelas › menos mortes › mais tinta economizada</p>
-    <div class="table-wrap scrollable">
-      <table id="rankTable">
-        <thead>
-          <tr><th>#</th><th>Jogador</th><th>★</th><th>💀</th><th>Tinta</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-    <p id="rankYou" hidden></p>
-    <div class="rank-actions">
-      <button type="button" class="btn btn-ghost" id="btnRankBack">‹ Mapa</button>
-      <button type="button" class="btn btn-primary" id="btnRankNew">Nova campanha</button>
-    </div>
-  </section>
-
-  <!-- ===== Modal: Vitória ===== -->
-  <div class="modal" id="modal-win" role="dialog" aria-modal="true" aria-labelledby="winTitle">
-    <div class="card">
-      <div class="emoji">🎉</div>
-      <h2 id="winTitle">Fase concluída!</h2>
-      <div class="big-stars" id="winStars"></div>
-      <p id="winText"></p>
-      <div class="actions">
-        <button type="button" class="btn btn-primary" id="btnWinNext">Próxima fase</button>
-        <div class="actions-row">
-          <button type="button" class="btn btn-ghost" id="btnWinRetry">↺ Repetir</button>
-          <button type="button" class="btn btn-ghost" id="btnWinMap">Mapa</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== Modal: Derrota (perdeu 1 vida) ===== -->
-  <div class="modal" id="modal-fail" role="dialog" aria-modal="true" aria-labelledby="failTitle">
-    <div class="card">
-      <div class="emoji">😵</div>
-      <h2 id="failTitle">Ai!</h2>
-      <p id="failText"></p>
-      <div class="actions">
-        <button type="button" class="btn btn-primary" id="btnFailRetry">Tentar de novo</button>
-        <button type="button" class="btn btn-ghost" id="btnFailMap">Mapa</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== Modal: Sem vidas (Game Over) ===== -->
-  <div class="modal" id="modal-gameover" role="dialog" aria-modal="true" aria-labelledby="gameoverTitle">
-    <div class="card">
-      <div class="emoji">💀</div>
-      <h2 id="gameoverTitle">Sem vidas!</h2>
-      <p id="gameoverText"></p>
-      <div class="actions">
-        <button type="button" class="btn btn-primary" id="btnGameoverRetry">Recomeçar fase</button>
-        <button type="button" class="btn btn-ghost" id="btnGameoverMap">Mapa</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== Modal: Campanha Finalizada ===== -->
-  <div class="modal" id="modal-finish" role="dialog" aria-modal="true" aria-labelledby="finishTitle">
-    <div class="card">
-      <div class="emoji">🏆</div>
-      <h2 id="finishTitle">Campanha finalizada!</h2>
-      <div class="summary">
-        <div class="stat"><b id="finStars">0/12</b><small>Estrelas</small></div>
-        <div class="stat"><b id="finDeaths">0</b><small>Mortes</small></div>
-        <div class="stat"><b id="finInk">0%</b><small>Tinta econ.</small></div>
-      </div>
-      <div class="score-line">Pontuação: <span id="finScore">0</span></div>
-      <div class="penalty" id="finPenalty" hidden></div>
-      <form id="finishForm" autocomplete="off">
-        <input id="playerName" name="playerName" type="text" maxlength="16" placeholder="Seu nome ou nickname" aria-label="Seu nome ou nickname" enterkeyhint="done">
-        <button type="submit" class="btn btn-primary" id="btnSubmitName">Salvar no ranking</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ===== Modal: Carregamento / erro ===== -->
-  <div class="modal show" id="modal-boot" role="alertdialog" aria-modal="true" aria-labelledby="bootTitle">
-    <div class="card">
-      <div class="emoji">🐶</div>
-      <h2 id="bootTitle">Salve o Doguinho</h2>
-      <div class="spinner" id="bootSpinner"></div>
-      <p id="bootText">Carregando…</p>
-    </div>
-  </div>
-
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-<script type="module" src="main.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#7cc8ff" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="description" content="Desenhe barreiras para salvar o doguinho das abelhas!" />
+    <title>Salve o Doguinho</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #1d2b53;
+        overflow: hidden;
+        overscroll-behavior: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      #game {
+        position: fixed;
+        inset: 0;
+        touch-action: none;
+      }
+      #game canvas {
+        touch-action: none;
+        display: block;
+      }
+      .name-input {
+        width: 440px;
+        font-size: 36px;
+        padding: 14px 20px;
+        border-radius: 18px;
+        border: 4px solid #1d2b53;
+        outline: none;
+        text-align: center;
+        font-family: inherit;
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>
