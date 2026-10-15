@@ -27,7 +27,10 @@ export type GameId =
   | 'alvo'
   | 'pula'
   | 'atravessa'
-  | 'fusao';
+  | 'fusao'
+  | 'tijolos'
+  | 'memoria'
+  | 'cores';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -375,6 +378,48 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'level', label: 'Nível', x: 660 },
     ],
     personalBest: storedBest('fusao'),
+  },
+  {
+    id: 'tijolos',
+    title: 'Quebra-Tijolos',
+    tagline: 'Rebata e quebre tudo',
+    icon: 'tijolos-icon',
+    color: 0x3a86ff,
+    shade: 0x1f5fc2,
+    entryScene: SceneKeys.Tijolos,
+    load: () => import('./tijolos/TijolosScene').then((m) => [m.TijolosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'level', label: 'Fase', x: 650 },
+    ],
+    personalBest: storedBest('tijolos'),
+  },
+  {
+    id: 'memoria',
+    title: 'Memória da Turma',
+    tagline: 'Ache os pares',
+    icon: 'memoria-icon',
+    color: 0xb5179e,
+    shade: 0x7a0f6b,
+    entryScene: SceneKeys.Memoria,
+    load: () => import('./memoria/MemoriaScene').then((m) => [m.MemoriaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'level', label: 'Fase', x: 650 },
+    ],
+    personalBest: storedBest('memoria'),
+  },
+  {
+    id: 'cores',
+    title: 'Pula Cor',
+    tagline: 'Passe pela sua cor',
+    icon: 'cores-icon',
+    color: 0x8c52ff,
+    shade: 0x5a2fc2,
+    entryScene: SceneKeys.Cores,
+    load: () => import('./cores/CoresScene').then((m) => [m.CoresScene]),
+    columns: [{ key: 'score', label: 'Estrelas', x: 600, format: formatNumber }],
+    personalBest: storedBest('cores'),
   },
 ];
 

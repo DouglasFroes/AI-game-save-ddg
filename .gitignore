@@ -1,4 +1,7 @@
 node_modules
 dist
-.env.local
 *.log
+# Local secrets (Firebase keys): never committed; .env.example documents them.
+.env
+.env.*
+!.env.example
