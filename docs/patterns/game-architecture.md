@@ -26,6 +26,7 @@ src/
     roadfighter/       core.ts (pure simulation) · art.ts · RoadFighterScene.ts
     game2048/ flappy/ snake/ stack/ fruitmerge/   core.ts (pure) · art.ts · <Name>Scene.ts
     grau/              core.ts (pure) · world3d.ts (Three.js view) · art.ts · GrauScene.ts
+    bomba/             core.ts (pure maze/bomb rules) · art.ts (kids, monsters, tiles) · BombaScene.ts
     luta/              core.ts (pure fight rules) · ai.ts (CPU) · ladder.ts · fighterView.ts · LutaScene.ts
 tests/               Vitest for every core + the platform
 firestore.rules      security rules for leaderboards/{gameId}/entries/{uid}

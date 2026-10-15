@@ -17,7 +17,8 @@ export type GameId =
   | 'stack'
   | 'fruitmerge'
   | 'grau'
-  | 'luta';
+  | 'luta'
+  | 'bomba';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -218,6 +219,22 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'maxCombo', label: 'Combo', x: 660 },
     ],
     personalBest: storedBest('luta'),
+  },
+  {
+    id: 'bomba',
+    title: 'Bombinhas',
+    tagline: 'Exploda e ache a saída',
+    icon: 'bomba-icon',
+    color: 0xff4f8b,
+    shade: 0xc22d63,
+    entryScene: SceneKeys.Bomba,
+    load: () => import('./bomba/BombaScene').then((m) => [m.BombaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'level', label: 'Fase', x: 575 },
+      { key: 'monsters', label: 'Monstros', x: 660 },
+    ],
+    personalBest: storedBest('bomba'),
   },
 ];
 

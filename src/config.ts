@@ -66,6 +66,7 @@ export const SceneKeys = {
   FruitMerge: 'FruitMerge',
   Grau: 'Grau',
   Luta: 'Luta',
+  Bomba: 'Bomba',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];
