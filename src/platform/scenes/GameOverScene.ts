@@ -57,7 +57,7 @@ export class GameOverScene extends Phaser.Scene {
           { color: newBest ? '#35a249' : COLORS.textMuted },
         ),
       );
-      const status = addText(this, 0, 160, '', 26, { color: COLORS.textMuted, wrapWidth: 560 });
+      const status = addText(this, 0, 40, '', 26, { color: COLORS.textMuted, wrapWidth: 560 });
       card.add(status);
       if (newBest) void this.sendToRanking(data, status, card);
     }
@@ -110,11 +110,11 @@ export class GameOverScene extends Phaser.Scene {
     const record = data.record;
     if (!record) return;
     if (!services.profile.get().name) {
-      status.setText('Escolha um nome para entrar no ranking:');
+      status.setText('Escolha um nome para o ranking:');
       const btn = new Button(
         this,
         0,
-        90,
+        112,
         '✎ Escolher nome',
         async () => {
           const name = await askName(this, '');

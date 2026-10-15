@@ -85,3 +85,18 @@ function drawHeart(g: Phaser.GameObjects.Graphics): void {
   g.fillTriangle(3, 19, 45, 19, 24, 42);
   g.fillStyle(0xffffff, 0.5).fillCircle(11, 10, 4);
 }
+
+/** Texture drawn with the Canvas 2D API (handy for icons with text). */
+export function canvasTexture(
+  scene: Phaser.Scene,
+  key: string,
+  w: number,
+  h: number,
+  draw: (ctx: CanvasRenderingContext2D) => void,
+): void {
+  if (scene.textures.exists(key)) return;
+  const tex = scene.textures.createCanvas(key, w, h);
+  if (!tex) return;
+  draw(tex.getContext());
+  tex.refresh();
+}

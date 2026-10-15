@@ -7,14 +7,19 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /leaderboards/{gameId}/entries/{uid} {
-      allow read: if gameId in ['doguinho', 'blockblast', 'sudoku', 'roadfighter'];
+      allow read: if gameId in gameIds();
 
       allow create, update: if request.auth != null
         && request.auth.uid == uid
-        && gameId in ['doguinho', 'blockblast', 'sudoku', 'roadfighter']
+        && gameId in gameIds()
         && validEntry(request.resource.data);
 
       allow delete: if false;
+    }
+
+    function gameIds() {
+      return ['doguinho', 'blockblast', 'sudoku', 'roadfighter',
+              'game2048', 'flappybee', 'snake', 'stack', 'fruitmerge'];
     }
 
     function validEntry(d) {

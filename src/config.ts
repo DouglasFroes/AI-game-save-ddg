@@ -42,6 +42,11 @@ export const SceneKeys = {
   SudokuMenu: 'SudokuMenu',
   Sudoku: 'Sudoku',
   RoadFighter: 'RoadFighter',
+  Game2048: 'Game2048',
+  FlappyBee: 'FlappyBee',
+  Snake: 'Snake',
+  Stack: 'Stack',
+  FruitMerge: 'FruitMerge',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

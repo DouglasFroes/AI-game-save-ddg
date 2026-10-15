@@ -1,6 +1,11 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '@/config';
 import { BlockBlastScene } from '@/games/blockblast/BlockBlastScene';
+import { FlappyScene } from '@/games/flappy/FlappyScene';
+import { FruitMergeScene } from '@/games/fruitmerge/FruitMergeScene';
+import { Game2048Scene } from '@/games/game2048/Game2048Scene';
+import { SnakeScene } from '@/games/snake/SnakeScene';
+import { StackScene } from '@/games/stack/StackScene';
 import { GameScene as DogGameScene } from '@/games/doguinho/scenes/GameScene';
 import { LevelSelectScene as DogLevelsScene } from '@/games/doguinho/scenes/LevelSelectScene';
 import { ResultScene as DogResultScene } from '@/games/doguinho/scenes/ResultScene';
@@ -50,6 +55,11 @@ const game = new Phaser.Game({
     SudokuMenuScene,
     SudokuScene,
     RoadFighterScene,
+    Game2048Scene,
+    FlappyScene,
+    SnakeScene,
+    StackScene,
+    FruitMergeScene,
     // Overlays last so they render on top.
     GameOverScene,
   ],

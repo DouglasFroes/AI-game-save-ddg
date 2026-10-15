@@ -1,6 +1,6 @@
 # 🕹️ Fliperama
 
-Coleção de jogos mobile-first no navegador, cada um com seu próprio ranking:
+Coleção de 9 jogos mobile-first no navegador, cada um com seu próprio ranking:
 
 | Jogo | Como funciona | Ranking por |
 |---|---|---|
@@ -8,6 +8,11 @@ Coleção de jogos mobile-first no navegador, cada um com seu próprio ranking:
 | 🧱 **Block Blast** | Arraste peças para o tabuleiro 8×8 e complete linhas/colunas | pontos |
 | 🔢 **Sudoku** | Fácil, médio ou difícil, com notas e dicas | pontos (tempo, erros, dicas) |
 | 🏎️ **Road Fighter** | Corrida infinita: desvie dos carros e pegue gasolina | pontos (distância + ultrapassagens) |
+| 🔢 **2048** | Deslize para juntar números iguais até chegar a 2048 | pontos, maior peça |
+| 🐝 **Flappy Bee** | Toque para a abelha voar entre os canos | canos ultrapassados |
+| 🐍 **Snake** | Deslize para guiar a cobrinha; maçãs e bônus dourado | pontos, tamanho |
+| 🧱 **Stack** | Toque para soltar o bloco; o que sobrar é cortado | andares, encaixes perfeitos |
+| 🍉 **Fruit Merge** | Solte frutas; iguais se juntam numa maior (física real) | pontos, maior fruta |
 
 O jogador escolhe um apelido uma vez no menu e ele vale para todos os rankings.
 

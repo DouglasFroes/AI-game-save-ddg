@@ -23,6 +23,7 @@ src/
     blockblast/        core.ts (pure rules) · art.ts · BlockBlastScene.ts
     sudoku/            core.ts (generator/solver) · SudokuMenuScene.ts · SudokuScene.ts
     roadfighter/       core.ts (pure simulation) · art.ts · RoadFighterScene.ts
+    game2048/ flappy/ snake/ stack/ fruitmerge/   core.ts (pure) + <Name>Scene.ts (art inside)
 tests/               Vitest for every core + the platform
 firestore.rules      security rules for leaderboards/{gameId}/entries/{uid}
 ```

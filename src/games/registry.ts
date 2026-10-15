@@ -1,10 +1,20 @@
 import { COLORS, SceneKeys, type SceneKey } from '@/config';
 import { summarize } from '@/games/doguinho/core/progress';
+import { FRUITS } from '@/games/fruitmerge/core';
 import type { ScoreRecord } from '@/platform/bestScores';
 import { formatNumber, formatTime } from '@/platform/ranking';
 import type { Services } from '@/services';
 
-export type GameId = 'doguinho' | 'blockblast' | 'sudoku' | 'roadfighter';
+export type GameId =
+  | 'doguinho'
+  | 'blockblast'
+  | 'sudoku'
+  | 'roadfighter'
+  | 'game2048'
+  | 'flappybee'
+  | 'snake'
+  | 'stack'
+  | 'fruitmerge';
 
 /** A ranking column: 'score' or a key of the entry's details. */
 export interface RankColumn {
@@ -93,6 +103,73 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'meters', label: 'Distância', x: 620, format: (v) => `${(v / 1000).toFixed(1)} km` },
     ],
     personalBest: storedBest('roadfighter'),
+  },
+  {
+    id: 'game2048',
+    title: '2048',
+    tagline: 'Junte os números',
+    icon: 'g2048-icon',
+    color: 0xedc22e,
+    shade: 0xb8941c,
+    entryScene: SceneKeys.Game2048,
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      { key: 'maxTile', label: 'Maior', x: 630 },
+    ],
+    personalBest: storedBest('game2048'),
+  },
+  {
+    id: 'flappybee',
+    title: 'Flappy Bee',
+    tagline: 'Toque para voar',
+    icon: 'bee',
+    color: 0x2ec4b6,
+    shade: 0x1f8a80,
+    entryScene: SceneKeys.FlappyBee,
+    columns: [{ key: 'score', label: 'Colmeias', x: 600, format: formatNumber }],
+    personalBest: storedBest('flappybee'),
+  },
+  {
+    id: 'snake',
+    title: 'Snake',
+    tagline: 'Coma e cresça',
+    icon: 'snake-icon',
+    color: 0x40916c,
+    shade: 0x1b4332,
+    entryScene: SceneKeys.Snake,
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      { key: 'length', label: 'Tamanho', x: 630 },
+    ],
+    personalBest: storedBest('snake'),
+  },
+  {
+    id: 'stack',
+    title: 'Stack',
+    tagline: 'Empilhe sem errar',
+    icon: 'stack-icon',
+    color: 0xf15bb5,
+    shade: 0xb23a85,
+    entryScene: SceneKeys.Stack,
+    columns: [
+      { key: 'score', label: 'Andares', x: 480, format: formatNumber },
+      { key: 'perfects', label: 'Perfeitos', x: 630 },
+    ],
+    personalBest: storedBest('stack'),
+  },
+  {
+    id: 'fruitmerge',
+    title: 'Fruit Merge',
+    tagline: 'Junte as frutas',
+    icon: 'fruit-5',
+    color: 0xff7b25,
+    shade: 0xc4561a,
+    entryScene: SceneKeys.FruitMerge,
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'biggest', label: 'Maior fruta', x: 625, format: (v) => FRUITS[v]?.name ?? '-' },
+    ],
+    personalBest: storedBest('fruitmerge'),
   },
 ];
 

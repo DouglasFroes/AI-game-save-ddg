@@ -6,8 +6,11 @@ import { askName } from '@/platform/ui/nameDialog';
 import { addBackground, addText, Button, iconButton } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 
-const CARD_W = 316;
-const CARD_H = 380;
+const COLS = 3;
+const CARD_W = 214;
+const CARD_H = 300;
+const GAP = 16;
+const GRID_TOP = 290;
 
 /** Main menu: pick a game, set your nickname, toggle sound. */
 export class HubScene extends Phaser.Scene {
@@ -20,7 +23,7 @@ export class HubScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2;
     addBackground(this);
 
-    const title = addText(this, cx, 110, 'Fliperama', 92, {
+    const title = addText(this, cx, 90, 'Fliperama', 84, {
       color: '#ffd23f',
       stroke: '#1d2b53',
       strokeThickness: 16,
@@ -44,7 +47,7 @@ export class HubScene extends Phaser.Scene {
     const nameButton = new Button(
       this,
       cx,
-      232,
+      200,
       nameLabel(),
       async () => {
         const name = await askName(this, profile.get().name);
@@ -55,26 +58,27 @@ export class HubScene extends Phaser.Scene {
       },
       {
         width: 520,
-        height: 84,
-        fontSize: 32,
+        height: 80,
+        fontSize: 30,
         color: COLORS.panel,
         shade: 0xc7cfdc,
         textColor: COLORS.text,
       },
     );
 
+    const gridW = COLS * CARD_W + (COLS - 1) * GAP;
     GAMES.forEach((game, i) => {
-      const x = cx + (i % 2 === 0 ? -1 : 1) * (CARD_W / 2 + 12);
-      const y = 520 + Math.floor(i / 2) * (CARD_H + 28);
+      const x = (GAME_WIDTH - gridW) / 2 + CARD_W / 2 + (i % COLS) * (CARD_W + GAP);
+      const y = GRID_TOP + CARD_H / 2 + Math.floor(i / COLS) * (CARD_H + GAP);
       this.buildCard(game, x, y);
     });
 
     addText(
       this,
       cx,
-      1250,
+      1255,
       leaderboard.hasRemote ? '🌎 Ranking global ativo' : '📱 Ranking salvo neste aparelho',
-      24,
+      22,
       { color: COLORS.textLight, stroke: '#1d2b53', strokeThickness: 5 },
     );
   }
@@ -84,47 +88,46 @@ export class HubScene extends Phaser.Scene {
     const card = this.add.container(x, y);
     const g = this.add.graphics();
     g.fillStyle(0x000000, 0.2).fillRoundedRect(
-      -CARD_W / 2 + 5,
-      -CARD_H / 2 + 10,
+      -CARD_W / 2 + 4,
+      -CARD_H / 2 + 8,
       CARD_W,
       CARD_H,
-      34,
+      28,
     );
-    g.fillStyle(game.shade).fillRoundedRect(-CARD_W / 2, -CARD_H / 2 + 6, CARD_W, CARD_H, 34);
-    g.fillStyle(game.color).fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 34);
+    g.fillStyle(game.shade).fillRoundedRect(-CARD_W / 2, -CARD_H / 2 + 6, CARD_W, CARD_H, 28);
+    g.fillStyle(game.color).fillRoundedRect(-CARD_W / 2, -CARD_H / 2, CARD_W, CARD_H, 28);
     g.fillStyle(0xffffff, 0.92).fillRoundedRect(
-      -CARD_W / 2 + 16,
-      -CARD_H / 2 + 16,
-      CARD_W - 32,
-      178,
-      24,
+      -CARD_W / 2 + 12,
+      -CARD_H / 2 + 12,
+      CARD_W - 24,
+      150,
+      20,
     );
     card.add(g);
 
-    const icon = this.add.image(0, -CARD_H / 2 + 105, game.icon);
-    icon.setScale(Math.min(150 / icon.width, 140 / icon.height));
+    const icon = this.add.image(0, -CARD_H / 2 + 87, game.icon);
+    icon.setScale(Math.min(116 / icon.width, 116 / icon.height));
     card.add(icon);
     this.tweens.add({
       targets: icon,
-      y: icon.y - 8,
-      duration: 900 + Math.random() * 300,
+      y: icon.y - 6,
+      duration: 900 + Math.random() * 400,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
 
     card.add(
-      addText(this, 0, 40, game.title, 30, {
+      addText(this, 0, 42, game.title, game.title.length > 12 ? 21 : 27, {
         color: COLORS.textLight,
         stroke: '#00000055',
-        strokeThickness: 6,
-        wrapWidth: CARD_W - 20,
+        strokeThickness: 5,
       }),
     );
-    card.add(addText(this, 0, 86, game.tagline, 22, { color: '#ffffffdd', weight: 'normal' }));
+    card.add(addText(this, 0, 80, game.tagline, 18, { color: '#ffffffdd', weight: 'normal' }));
     const best = game.personalBest(services);
     card.add(
-      addText(this, 0, 128, best ? `Recorde: ${formatNumber(best.score)}` : 'Sem recorde', 24, {
+      addText(this, 0, 116, best ? `👑 ${formatNumber(best.score)}` : 'Sem recorde', 21, {
         color: COLORS.textLight,
       }),
     );
@@ -142,11 +145,11 @@ export class HubScene extends Phaser.Scene {
     // Separate object (not a child) so its tap is not also a card tap.
     new Button(
       this,
-      x + CARD_W / 2 - 44,
-      y - CARD_H / 2 + 42,
+      x + CARD_W / 2 - 36,
+      y - CARD_H / 2 + 34,
       '🏆',
       () => this.scene.start(SceneKeys.Leaderboard, { gameId: game.id }),
-      { width: 72, height: 64, fontSize: 32, color: COLORS.panel, shade: 0xc7cfdc },
+      { width: 58, height: 52, fontSize: 26, color: COLORS.panel, shade: 0xc7cfdc },
     );
   }
 }
