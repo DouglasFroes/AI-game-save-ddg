@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import { ProgressRepository } from '@/games/doguinho/core/progress';
+import { MemoProgressRepository } from '@/games/memofases/progress';
 import { Sfx } from '@/platform/audio/Sfx';
 import { BestScores } from '@/platform/bestScores';
 import { Favorites } from '@/platform/favorites';
@@ -23,6 +24,8 @@ export interface Services {
   readonly rankWatch: RankWatch;
   readonly sfx: Sfx;
   readonly dogProgress: ProgressRepository;
+  /** Stars of "Memória: Aventura". */
+  readonly memoProgress: MemoProgressRepository;
 }
 
 export function createServices(env: Record<string, unknown> = import.meta.env): Services {
@@ -45,6 +48,7 @@ export function createServices(env: Record<string, unknown> = import.meta.env): 
     rankWatch: new RankWatch(store),
     sfx,
     dogProgress: new ProgressRepository(store),
+    memoProgress: new MemoProgressRepository(store),
   };
 }
 

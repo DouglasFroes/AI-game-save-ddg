@@ -16,6 +16,8 @@ import { generateFusaoTextures } from '@/games/fusao/art';
 import { generateTijolosTextures } from '@/games/tijolos/art';
 import { generateMemoriaTextures } from '@/games/memoria/art';
 import { generateCoresTextures } from '@/games/cores/art';
+import { generateMilhaoTextures } from '@/games/milhao/art';
+import { generateBolhaTextures } from '@/games/bolha/art';
 import { generate2048Textures } from '@/games/game2048/art';
 import { generateSnakeTextures } from '@/games/snake/art';
 import { generateStackTextures } from '@/games/stack/art';
@@ -54,6 +56,8 @@ export class BootScene extends Phaser.Scene {
     generateTijolosTextures(this);
     generateMemoriaTextures(this);
     generateCoresTextures(this);
+    generateMilhaoTextures(this);
+    generateBolhaTextures(this);
     this.scene.start(SceneKeys.Hub);
   }
 }

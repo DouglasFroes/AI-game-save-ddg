@@ -3,6 +3,8 @@ import { COLORS, SceneKeys, type SceneKey } from '@/config';
 import { summarize } from '@/games/doguinho/core/progress';
 import { FRUITS } from '@/games/fruitmerge/core';
 import type { ScoreRecord } from '@/platform/bestScores';
+import { formatPrize } from '@/games/milhao/art';
+import { memoBest } from '@/games/memofases/best';
 import { formatNumber, formatTime } from '@/platform/ranking';
 import type { Services } from '@/services';
 
@@ -30,7 +32,10 @@ export type GameId =
   | 'fusao'
   | 'tijolos'
   | 'memoria'
-  | 'cores';
+  | 'cores'
+  | 'milhao'
+  | 'memofases'
+  | 'bolha';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -420,6 +425,53 @@ export const GAMES: readonly GameDefinition[] = [
     load: () => import('./cores/CoresScene').then((m) => [m.CoresScene]),
     columns: [{ key: 'score', label: 'Estrelas', x: 600, format: formatNumber }],
     personalBest: storedBest('cores'),
+  },
+  {
+    id: 'milhao',
+    title: 'Jogo do Milhão',
+    tagline: 'Rumo ao milhão!',
+    icon: 'milhao-icon',
+    color: 0x1d3fa8,
+    shade: 0x0b1a4a,
+    entryScene: SceneKeys.Milhao,
+    load: () => import('./milhao/MilhaoScene').then((m) => [m.MilhaoScene]),
+    columns: [
+      { key: 'score', label: 'Prêmio', x: 520, format: formatPrize },
+      { key: 'hits', label: 'Acertos', x: 650 },
+    ],
+    personalBest: storedBest('milhao'),
+  },
+  {
+    id: 'memofases',
+    title: 'Memória: Aventura',
+    tagline: '30 fases com estrelas',
+    icon: 'memoria-icon',
+    color: 0xd63384,
+    shade: 0x9c1f5e,
+    entryScene: SceneKeys.MemoLevels,
+    load: () => import('./memofases/scenes').then((m) => m.scenes),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'stars', label: '★', x: 575 },
+      { key: 'levels', label: 'Fases', x: 655 },
+    ],
+    personalBest: (s) => memoBest(s),
+  },
+  {
+    id: 'bolha',
+    title: 'Bolha Gulosa',
+    tagline: 'Coma e cresça',
+    icon: 'bolha-icon',
+    color: 0x00a6c7,
+    shade: 0x00708a,
+    entryScene: SceneKeys.Bolha,
+    load: () => import('./bolha/BolhaScene').then((m) => [m.BolhaScene]),
+    columns: [
+      { key: 'score', label: 'Tamanho', x: 470, format: formatNumber },
+      { key: 'kills', label: 'Abates', x: 575 },
+      { key: 'rank', label: 'Posição', x: 660, format: (v) => `${v}º` },
+    ],
+    personalBest: storedBest('bolha'),
   },
 ];
 

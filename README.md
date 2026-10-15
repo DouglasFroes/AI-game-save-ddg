@@ -1,18 +1,38 @@
 # 🕹️ Fliperama
 
-Coleção de 9 jogos mobile-first no navegador, cada um com seu próprio ranking:
+Coleção de 27 jogos mobile-first no navegador, cada um com seu próprio ranking (top 20 global
+com envio automático, mais os seus 10 melhores no aparelho). Marque os favoritos com ⭐ e receba um aviso
+quando alguém passar o seu recorde.
 
-| Jogo | Como funciona | Ranking por |
-|---|---|---|
-| 🐶 **Salve o Doguinho** | Desenhe uma linha para proteger o doguinho das abelhas (20 fases) | estrelas, mortes, tinta |
-| 🧱 **Block Blast** | Arraste peças para o tabuleiro 8×8 e complete linhas/colunas | pontos |
-| 🔢 **Sudoku** | Fácil, médio ou difícil, com notas e dicas | pontos (tempo, erros, dicas) |
-| 🏎️ **Road Fighter** | Corrida infinita: desvie dos carros e pegue gasolina | pontos (distância + ultrapassagens) |
-| 🔢 **2048** | Deslize para juntar números iguais até chegar a 2048 | pontos, maior peça |
-| 🐝 **Flappy Bee** | Toque para a abelha voar entre os canos | canos ultrapassados |
-| 🐍 **Snake** | Deslize para guiar a cobrinha; maçãs e bônus dourado | pontos, tamanho |
-| 🧱 **Stack** | Toque para soltar o bloco; o que sobrar é cortado | andares, encaixes perfeitos |
-| 🍉 **Fruit Merge** | Solte frutas; iguais se juntam numa maior (física real) | pontos, maior fruta |
+| Jogo | Em uma frase |
+|---|---|
+| **Salve o Doguinho** | Desenhe e proteja |
+| **Block Blast** | Encaixe e limpe linhas |
+| **Sudoku** | Lógica com números |
+| **Road Fighter** | Corrida sem fim |
+| **2048** | Junte os números |
+| **Flappy Bee** | Toque para voar |
+| **Snake** | Coma e cresça |
+| **Stack** | Empilhe sem errar |
+| **Fruit Merge** | Junte as frutas |
+| **Grau 3D** | Empine e não caia |
+| **Luta de Rua** | Vença todos os rivais |
+| **Bombinhas** | Exploda e ache a saída |
+| **Turma da Luta** | Cada um com seu poder |
+| **Corre Turma** | Corra, pule e desvie |
+| **Turma Crush** | Junte 3 iguais |
+| **Lenhador** | Corte sem levar galhada |
+| **Toque Rápido** | Não erre a peça |
+| **Acerta o Alvo** | Lápis no biscoito |
+| **Pula Pula** | Suba cada vez mais |
+| **Atravessa** | Rua, rio e águia |
+| **Fusão Infinita** | Sobreviva e funda poderes |
+| **Quebra-Tijolos** | Rebata e quebre tudo |
+| **Memória da Turma** | Ache os pares |
+| **Pula Cor** | Passe pela sua cor |
+| **Jogo do Milhão** | Rumo ao milhão! |
+| **Memória: Aventura** | 30 fases com estrelas |
+| **Bolha Gulosa** | Coma e cresça |
 
 O jogador escolhe um apelido uma vez no menu e ele vale para todos os rankings.
 

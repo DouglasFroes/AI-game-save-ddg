@@ -81,6 +81,10 @@ export const SceneKeys = {
   Tijolos: 'Tijolos',
   Memoria: 'Memoria',
   Cores: 'Cores',
+  Milhao: 'Milhao',
+  MemoLevels: 'MemoLevels',
+  MemoGame: 'MemoGame',
+  Bolha: 'Bolha',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

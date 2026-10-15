@@ -107,16 +107,21 @@ export class FirebaseLeaderboard implements RemoteLeaderboard {
       .filter((e): e is LeaderboardEntry => e !== null);
   }
 
-  async submit(gameId: string, entry: LeaderboardEntry): Promise<void> {
+  async submit(gameId: string, entry: LeaderboardEntry, replace = false): Promise<void> {
     const { fs, db, uid } = await this.connect();
+    const data = {
+      player: uid,
+      name: entry.name,
+      score: Math.round(entry.score),
+      details: entry.details,
+      date: fs.serverTimestamp(),
+    };
+    const entries = fs.collection(db, 'leaderboards', gameId, 'entries');
+    // Campaign games keep one document per player, named after their uid.
     await withTimeout(
-      fs.addDoc(fs.collection(db, 'leaderboards', gameId, 'entries'), {
-        player: uid,
-        name: entry.name,
-        score: Math.round(entry.score),
-        details: entry.details,
-        date: fs.serverTimestamp(),
-      }),
+      replace
+        ? fs.setDoc(fs.doc(entries, uid), data)
+        : fs.addDoc(entries, data).then(() => undefined),
       this.timeoutMs,
     );
   }

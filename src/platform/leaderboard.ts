@@ -17,8 +17,15 @@ export interface LeaderboardEntry {
 /** Port: any ranking backend (local, Firebase…) implements this. One board per game. */
 export interface LeaderboardRepository {
   list(gameId: string, max: number): Promise<LeaderboardEntry[]>;
-  submit(gameId: string, entry: LeaderboardEntry): Promise<void>;
+  /** `replace`: the player's previous entry is replaced (campaign games keep one per player). */
+  submit(gameId: string, entry: LeaderboardEntry, replace?: boolean): Promise<void>;
 }
+
+/**
+ * Campaign games rank a running total (all levels together), so each player keeps a single
+ * entry that grows; every other game ranks each run on its own.
+ */
+export const CAMPAIGN_GAMES: ReadonlySet<string> = new Set(['doguinho', 'memofases']);
 
 /** A remote board that assigns its own player id (e.g. Firebase anonymous uid). */
 export interface RemoteLeaderboard extends LeaderboardRepository {
@@ -99,8 +106,9 @@ export class LocalLeaderboard implements LeaderboardRepository {
   }
 
   /** Every run is its own row; only the best GLOBAL_TOP are kept (the rest is dropped). */
-  async submit(gameId: string, entry: LeaderboardEntry): Promise<void> {
-    const kept = rankEntries([...this.read(gameId), entry]).slice(0, GLOBAL_TOP);
+  async submit(gameId: string, entry: LeaderboardEntry, replace = false): Promise<void> {
+    const others = this.read(gameId).filter((e) => !replace || e.player !== entry.player);
+    const kept = rankEntries([...others, entry]).slice(0, GLOBAL_TOP);
     writeJson(this.store, boardKey(gameId), kept);
   }
 }
@@ -177,7 +185,7 @@ export class ResilientLeaderboard {
     const prev = this.pending.get(gameId) ?? Promise.resolve();
     const next = prev
       .catch(() => undefined)
-      .then(async () => placementFor(await this.list(gameId, GLOBAL_TOP), score));
+      .then(async () => this.placement(gameId, await this.list(gameId, GLOBAL_TOP), score));
     this.pending.set(gameId, next);
     return next;
   }
@@ -187,12 +195,24 @@ export class ResilientLeaderboard {
     s: Submission,
   ): Promise<{ rank: number; result: SubmitResult } | null> {
     const entries = await this.list(gameId, GLOBAL_TOP);
-    const rank = placementFor(entries, s.score);
+    const rank = this.placement(gameId, entries, s.score);
     if (rank === null) return null;
     return { rank, result: await this.submit(gameId, s) };
   }
 
+  /** Campaign games: the player's own entry doesn't count, and a lower total is never sent. */
+  private placement(gameId: string, entries: LeaderboardEntry[], score: number): number | null {
+    if (!CAMPAIGN_GAMES.has(gameId)) return placementFor(entries, score);
+    const mine = entries.find((e) => this.isMine(e));
+    if (mine && mine.score >= score) return null;
+    return placementFor(
+      entries.filter((e) => !this.isMine(e)),
+      score,
+    );
+  }
+
   async submit(gameId: string, s: Submission): Promise<SubmitResult> {
+    const replace = CAMPAIGN_GAMES.has(gameId);
     const base = {
       name: sanitizeName(s.name),
       score: s.score,
@@ -200,11 +220,11 @@ export class ResilientLeaderboard {
       date: this.now().toISOString(),
     };
     const id = `${base.date}-${Math.random().toString(36).slice(2, 8)}`;
-    await this.local.submit(gameId, { ...base, id, player: this.localId });
+    await this.local.submit(gameId, { ...base, id, player: this.localId }, replace);
     if (!this.remote) return 'local';
     try {
       this.remoteId = await this.remote.playerId();
-      await this.remote.submit(gameId, { ...base, id, player: this.remoteId });
+      await this.remote.submit(gameId, { ...base, id, player: this.remoteId }, replace);
       return 'global';
     } catch (err) {
       console.warn('Não foi possível enviar ao ranking global.', err);

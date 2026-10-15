@@ -1,7 +1,8 @@
 rules_version = '2';
 
 // Ranking: leaderboards/{gameId}/entries/{entryId} — one document per run, so the same player
-// can hold several places (the game shows only the top 20).
+// can hold several places (the game shows only the top 20). Campaign games (a running total of
+// all levels) keep one document per player instead, named after their uid, which they update.
 // - anyone can read the rankings
 // - a signed-in (anonymous) player can only create entries in their own name (`player` = uid)
 // - entries are never changed or deleted by the game
@@ -16,14 +17,24 @@ service cloud.firestore {
         && gameId in gameIds()
         && validEntry(request.resource.data);
 
-      allow update, delete: if false;
+      allow update: if request.auth != null
+        && entryId == request.auth.uid
+        && request.resource.data.player == request.auth.uid
+        && gameId in campaignIds()
+        && validEntry(request.resource.data);
+
+      allow delete: if false;
     }
 
     function gameIds() {
       return ['doguinho', 'blockblast', 'sudoku', 'roadfighter',
               'game2048', 'flappybee', 'snake', 'stack', 'fruitmerge', 'grau', 'luta', 'bomba', 'turma', 'corre', 'crush',
               'lenha', 'piano', 'alvo', 'pula', 'atravessa', 'fusao',
-              'tijolos', 'memoria', 'cores'];
+              'tijolos', 'memoria', 'cores', 'milhao', 'memofases', 'bolha'];
+    }
+
+    function campaignIds() {
+      return ['doguinho', 'memofases'];
     }
 
     function validEntry(d) {
