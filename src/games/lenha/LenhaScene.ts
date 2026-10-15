@@ -14,6 +14,10 @@ const TRUNK_W = 130;
 const BASE_Y = 1010; // bottom of segment 0
 const CX = GAME_WIDTH / 2;
 const BRANCH_LEN = 175;
+const BTN_Y = 1170;
+const BTN_R = 92;
+const BTN_LEFT = 170;
+const BTN_RIGHT = GAME_WIDTH - 170;
 
 /** "Lenhador": chop left/right, dodge the branches, beat the clock. */
 export class LenhaScene extends Phaser.Scene {
@@ -25,6 +29,8 @@ export class LenhaScene extends Phaser.Scene {
   private bar!: Phaser.GameObjects.Graphics;
   private scoreText!: Phaser.GameObjects.Text;
   private hint?: Phaser.GameObjects.Text;
+  private buttons!: Phaser.GameObjects.Graphics;
+  private pressed: Side | null = null;
   private ended = false;
 
   constructor() {
@@ -75,6 +81,14 @@ export class LenhaScene extends Phaser.Scene {
       },
     ).setDepth(10);
 
+    // Two big buttons; tapping anywhere on that half of the screen works too.
+    this.buttons = this.add.graphics().setDepth(9);
+    for (const [x, label] of [
+      [BTN_LEFT, '◀'],
+      [BTN_RIGHT, '▶'],
+    ] as const)
+      addText(this, x, BTN_Y, label, 64, { color: COLORS.textLight }).setDepth(10);
+    this.drawButtons();
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
       if (p.y < 130) return;
       this.chop(p.x < CX ? 'left' : 'right');
@@ -89,9 +103,28 @@ export class LenhaScene extends Phaser.Scene {
     if (this.ended) return;
     this.hint?.destroy();
     this.hint = undefined;
+    this.pressed = side;
+    this.drawButtons();
+    this.time.delayedCall(110, () => {
+      this.pressed = null;
+      this.drawButtons();
+    });
     const events = this.sim.chop(side);
     for (const e of events) this.onEvent(e);
     this.draw();
+  }
+
+  private drawButtons(): void {
+    const g = this.buttons.clear();
+    for (const [x, side] of [
+      [BTN_LEFT, 'left'],
+      [BTN_RIGHT, 'right'],
+    ] as const) {
+      const on = this.pressed === side;
+      g.fillStyle(0x3d2c22, 0.35).fillCircle(x, BTN_Y + 8, BTN_R);
+      g.fillStyle(on ? 0xffd23f : 0x8d5524, 0.95).fillCircle(x, BTN_Y, on ? BTN_R - 6 : BTN_R);
+      g.lineStyle(6, 0xffffff, 0.9).strokeCircle(x, BTN_Y, on ? BTN_R - 6 : BTN_R);
+    }
   }
 
   private onEvent(e: LenhaEvent): void {

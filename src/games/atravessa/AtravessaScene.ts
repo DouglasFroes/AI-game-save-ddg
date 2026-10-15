@@ -10,7 +10,15 @@ import { getServices } from '@/services';
 import { COLS, CrossSim, type CrossEvent, type Hop } from './core';
 
 const CELL = GAME_WIDTH / COLS;
-const KID_Y = 980;
+const KID_Y = 820;
+/** On-screen arrows below the play field. */
+const PAD_TOP = 1010;
+const PAD: Record<Hop, { x: number; y: number; r: number; label: string }> = {
+  up: { x: GAME_WIDTH / 2, y: 1085, r: 70, label: '▲' },
+  down: { x: GAME_WIDTH / 2, y: 1215, r: 50, label: '▼' },
+  left: { x: 150, y: 1150, r: 70, label: '◀' },
+  right: { x: GAME_WIDTH - 150, y: 1150, r: 70, label: '▶' },
+};
 const CAR_COLORS = [0xe63946, 0x3a86ff, 0xffd23f, 0x8338ec, 0x06d6a0, 0xff9a2e];
 
 /** "Atravessa": hop across roads and rivers without stopping for too long. */
@@ -24,6 +32,7 @@ export class AtravessaScene extends Phaser.Scene {
   private ended = false;
   private hopT = 1;
   private down: { x: number; y: number } | null = null;
+  private padGfx!: Phaser.GameObjects.Graphics;
 
   constructor() {
     super(SceneKeys.Atravessa);
@@ -54,16 +63,36 @@ export class AtravessaScene extends Phaser.Scene {
       stroke: '#1d2b53',
       strokeThickness: 10,
     }).setDepth(10);
-    const hint = addText(
-      this,
-      GAME_WIDTH / 2,
-      560,
-      'Toque para pular pra frente\nDeslize para os lados',
-      36,
-      { color: COLORS.textLight, stroke: '#1d2b53', strokeThickness: 8 },
-    ).setDepth(10);
+    const hint = addText(this, GAME_WIDTH / 2, 560, 'Use as setas (ou toque e deslize)', 36, {
+      color: COLORS.textLight,
+      stroke: '#1d2b53',
+      strokeThickness: 8,
+    }).setDepth(10);
+
+    const panel = this.add.graphics().setDepth(8);
+    panel.fillStyle(0x1d2b53, 0.92).fillRect(0, PAD_TOP, GAME_WIDTH, 1280 - PAD_TOP);
+    this.padGfx = this.add.graphics().setDepth(9);
+    for (const d of Object.keys(PAD) as Hop[])
+      addText(this, PAD[d].x, PAD[d].y, PAD[d].label, PAD[d].r > 60 ? 54 : 40, {
+        color: COLORS.textLight,
+      }).setDepth(10);
+    this.drawPad(null);
 
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
+      if (p.y >= PAD_TOP) {
+        // Arrow buttons: the nearest one to the finger.
+        const dir = (Object.keys(PAD) as Hop[]).reduce((best, d) =>
+          Phaser.Math.Distance.Between(p.x, p.y, PAD[d].x, PAD[d].y) <
+          Phaser.Math.Distance.Between(p.x, p.y, PAD[best].x, PAD[best].y)
+            ? d
+            : best,
+        );
+        hint.destroy();
+        this.drawPad(dir);
+        this.time.delayedCall(110, () => this.drawPad(null));
+        this.hop(dir);
+        return;
+      }
       if (p.y > 130) this.down = { x: p.x, y: p.y };
     });
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer) => {
@@ -84,6 +113,15 @@ export class AtravessaScene extends Phaser.Scene {
     kb?.on('keydown-RIGHT', () => this.hop('right'));
     if (import.meta.env.DEV)
       (window as unknown as { __atravessa?: AtravessaScene }).__atravessa = this;
+  }
+
+  private drawPad(on: Hop | null): void {
+    const g = this.padGfx.clear();
+    for (const d of Object.keys(PAD) as Hop[]) {
+      const b = PAD[d];
+      g.fillStyle(d === on ? 0x06d6a0 : 0x3a4a7a).fillCircle(b.x, b.y, d === on ? b.r - 4 : b.r);
+      g.lineStyle(5, 0xffffff, 0.85).strokeCircle(b.x, b.y, d === on ? b.r - 4 : b.r);
+    }
   }
 
   private hop(dir: Hop): void {

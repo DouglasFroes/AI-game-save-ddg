@@ -7,7 +7,7 @@ import { formatNumber } from '@/platform/ranking';
 import type { GameOverData } from '@/platform/scenes/GameOverScene';
 import { addText, iconButton } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
-import { drawPencil } from './art';
+import { drawPencil, targetFor } from './art';
 import { AlvoSim, FLIGHT_S, IMPACT, type AlvoEvent } from './core';
 
 const CX = GAME_WIDTH / 2;
@@ -20,6 +20,8 @@ export class AlvoScene extends Phaser.Scene {
   private sim = new AlvoSim();
   private target!: Phaser.GameObjects.Container;
   private cookie!: Phaser.GameObjects.Graphics;
+  private face!: Phaser.GameObjects.Image;
+  private kid = 0;
   private pins!: Phaser.GameObjects.Graphics;
   private hud!: { score: Phaser.GameObjects.Text; level: Phaser.GameObjects.Text };
   private ended = false;
@@ -31,6 +33,7 @@ export class AlvoScene extends Phaser.Scene {
   init(): void {
     this.sim = new AlvoSim();
     this.ended = false;
+    this.kid = favoriteKid();
   }
 
   create(): void {
@@ -42,16 +45,9 @@ export class AlvoScene extends Phaser.Scene {
       1280,
     );
     this.cookie = this.add.graphics();
-    this.cookie.fillStyle(0x8d5524).fillCircle(0, 0, R + 6);
-    this.cookie.fillStyle(0xd9a066).fillCircle(0, 0, R);
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2;
-      const d = 60 + (i % 3) * 30;
-      this.cookie.fillStyle(0x3d2c22).fillCircle(Math.cos(a) * d, Math.sin(a) * d, 9);
-    }
-    this.cookie.fillStyle(0xffffff, 0.9).fillCircle(0, 0, 62);
-    const face = this.add.image(0, 4, headKey(favoriteKid() % 6)).setScale(1.05);
-    this.target = this.add.container(CX, CY, [this.cookie, face]).setDepth(3);
+    this.face = this.add.image(0, 4, headKey(0)).setScale(1.05);
+    this.dressTarget(1);
+    this.target = this.add.container(CX, CY, [this.cookie, this.face]).setDepth(3);
     this.pins = this.add.graphics().setDepth(2);
     iconButton(this, 60, 60, '‹', () => this.scene.start(SceneKeys.Hub)).setDepth(10);
     this.hud = {
@@ -114,12 +110,13 @@ export class AlvoScene extends Phaser.Scene {
           speed: { min: 200, max: 600 },
           lifespan: 600,
           scale: { start: 2, end: 0 },
-          tint: [0xd9a066, 0x8d5524, 0x3d2c22],
+          tint: [...targetFor(e.level - 1).crumbs],
           emitting: false,
         });
         burst.setDepth(6).explode(40);
         this.time.delayedCall(700, () => burst.destroy());
-        const t = addText(this, CX, CY, `FASE ${e.level}!`, 80, {
+        this.dressTarget(e.level);
+        const t = addText(this, CX, CY, `FASE ${e.level}!\n${targetFor(e.level).name}`, 70, {
           color: '#ffd23f',
           stroke: '#1d2b53',
           strokeThickness: 12,
@@ -139,6 +136,14 @@ export class AlvoScene extends Phaser.Scene {
         this.gameOver();
         break;
     }
+  }
+
+  /** Each level: a new target (cookie, pizza, orange…) and another kid of the turma in the middle. */
+  private dressTarget(level: number): void {
+    const g = this.cookie.clear();
+    targetFor(level).draw(g, R);
+    g.fillStyle(0xffffff, 0.92).fillCircle(0, 0, 62);
+    this.face.setTexture(headKey((this.kid + level - 1) % 6));
   }
 
   private gameOver(): void {
