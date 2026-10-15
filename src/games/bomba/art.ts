@@ -46,7 +46,7 @@ export const BTex = {
 export const OUTLINE = 0x1f1f2b;
 export const PANTS = 0x2b2b3a;
 
-function drawHair(
+export function drawHair(
   g: Phaser.GameObjects.Graphics,
   kid: Kid,
   layer: 'back' | 'front',

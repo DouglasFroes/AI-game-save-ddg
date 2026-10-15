@@ -97,6 +97,8 @@ export type BombEvent =
 export interface Input {
   /** Held direction (null = stand still). */
   dir: Dir | null;
+  /** Second direction of a diagonal input, tried when `dir` is blocked. */
+  alt?: Dir | null;
   /** Pressed this step. */
   bomb: boolean;
 }
@@ -360,7 +362,10 @@ export class BombGame {
       p.p = 1 - p.p;
       p.dir = input.dir;
     }
-    if (p.p > 0 || input.dir) this.walk(p, dt, () => input.dir, false, true);
+    if (p.p > 0 || input.dir) {
+      const moving = p.p > 0;
+      this.walk(p, dt, () => this.playerChoice(input, moving), false, true);
+    }
 
     // A bomb you were standing on becomes solid once you are fully off its tile.
     for (const id of this.standingOn) {
@@ -380,6 +385,23 @@ export class BombGame {
       this.score += 50;
       events.push({ type: 'item', item });
     }
+  }
+
+  /**
+   * Forgiving steering at a tile center: take the wanted direction if it's free, else the other
+   * axis of a diagonal, else keep going straight while the wanted turn is still blocked (so holding
+   * "up" in a corridor turns at the next opening instead of stopping).
+   */
+  private playerChoice(input: Input, wasMoving: boolean): Dir | null {
+    const p = this.player;
+    const free = (d: Dir) => this.open(p.tx + DIRS[d].dx, p.ty + DIRS[d].dy, false, true);
+    const want = input.dir;
+    if (!want) return null;
+    if (free(want)) return want;
+    if (input.alt && free(input.alt)) return input.alt;
+    const perpendicular = DIRS[want].dx !== 0 ? DIRS[p.dir].dx === 0 : DIRS[p.dir].dy === 0;
+    if (wasMoving && perpendicular && free(p.dir)) return p.dir;
+    return want; // blocked: stop and face it
   }
 
   private placeBomb(events: BombEvent[]): void {

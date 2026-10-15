@@ -166,4 +166,21 @@ describe('bomba', () => {
     expect(levelPlan(5).enemies).toContain('fantasma');
     expect(levelPlan(8).enemies.length).toBeGreaterThan(levelPlan(1).enemies.length);
   });
+
+  it('keeps walking while a wanted turn is blocked, and turns at the next opening', () => {
+    const g = emptyGame();
+    // Walking right along row 1; "down" is blocked by pillars at even columns.
+    run(g, 0.2, walk('right', 12));
+    const down = (): Input => ({ dir: 'down', bomb: false });
+    run(g, 1.2, down);
+    expect(g.player.ty).toBeGreaterThan(1); // turned down at an odd column
+    expect(g.player.tx % 2).toBe(1);
+  });
+
+  it('a diagonal input takes whichever direction is open', () => {
+    const g = emptyGame();
+    // At (1,1): up is a wall, right is free.
+    run(g, 0.5, () => ({ dir: 'up', alt: 'right', bomb: false }));
+    expect(g.player.tx).toBeGreaterThan(1);
+  });
 });

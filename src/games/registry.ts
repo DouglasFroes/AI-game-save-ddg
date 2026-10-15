@@ -19,7 +19,8 @@ export type GameId =
   | 'grau'
   | 'luta'
   | 'bomba'
-  | 'turma';
+  | 'turma'
+  | 'corre';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -252,6 +253,22 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'maxCombo', label: 'Combo', x: 660 },
     ],
     personalBest: storedBest('turma'),
+  },
+  {
+    id: 'corre',
+    title: 'Corre Turma',
+    tagline: 'Corra, pule e desvie',
+    icon: 'corre-icon',
+    color: 0x2ec4b6,
+    shade: 0x1b8a80,
+    entryScene: SceneKeys.Corre,
+    load: () => import('./corre/CorreScene').then((m) => [m.CorreScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'meters', label: 'Metros', x: 580, format: formatNumber },
+      { key: 'coins', label: 'Moedas', x: 660 },
+    ],
+    personalBest: storedBest('corre'),
   },
 ];
 

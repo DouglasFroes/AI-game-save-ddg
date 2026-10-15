@@ -68,6 +68,7 @@ export const SceneKeys = {
   Luta: 'Luta',
   Bomba: 'Bomba',
   Turma: 'Turma',
+  Corre: 'Corre',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

@@ -26,6 +26,7 @@ src/
     roadfighter/       core.ts (pure simulation) · art.ts · RoadFighterScene.ts
     game2048/ flappy/ snake/ stack/ fruitmerge/   core.ts (pure) · art.ts · <Name>Scene.ts
     grau/              core.ts (pure) · world3d.ts (Three.js view) · art.ts · GrauScene.ts
+    corre/             core.ts (pure lane runner) · art.ts (kids seen from behind) · CorreScene.ts
     bomba/             core.ts (pure maze/bomb rules) · art.ts (kids, monsters, tiles) · BombaScene.ts
     luta/              core.ts (pure fight rules + powers) · ai.ts (CPU) · ladder.ts · fighterView.ts · LutaScene.ts
                        TurmaScene.ts (subclass: the kids, each with a power) · kidView.ts · turma.ts

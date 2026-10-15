@@ -54,7 +54,7 @@ export class BombaScene extends Phaser.Scene {
   private game_!: BombGame;
   private kid = 0;
   private running = false;
-  private stick: { id: number; ox: number; oy: number; dir: Dir | null } | null = null;
+  private stick: { id: number; dir: Dir | null; alt: Dir | null } | null = null;
   private bombPressed = false;
   private keys?: Record<Dir | 'bomb', Phaser.Input.Keyboard.Key[]>;
 
@@ -190,24 +190,15 @@ export class BombaScene extends Phaser.Scene {
       .setScale(1.1)
       .setDepth(41);
 
+    // Below the board: the left half is the stick, the right half the bomb button.
+    const controls = (p: Phaser.Input.Pointer) => p.y > BOARD_Y + ROWS * CELL + 10;
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
-      if (!this.running) return;
-      if (Phaser.Math.Distance.Between(p.x, p.y, BOMB_BTN.x, BOMB_BTN.y) < BOMB_BTN.r + 20) {
-        this.bombPressed = true;
-        return;
-      }
-      // Floating stick: anywhere on the lower-left part of the screen.
-      if (p.y > BOARD_Y + ROWS * CELL && p.x < 400 && !this.stick)
-        this.stick = { id: p.id, ox: p.x, oy: p.y, dir: null };
+      if (!this.running || !controls(p)) return;
+      if (p.x >= GAME_WIDTH / 2 + 20) this.bombPressed = true;
+      else if (!this.stick) this.stick = { id: p.id, ...this.aim(p) };
     });
     this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
-      const s = this.stick;
-      if (!s || s.id !== p.id) return;
-      const dx = p.x - s.ox;
-      const dy = p.y - s.oy;
-      if (Math.hypot(dx, dy) < 18) s.dir = null;
-      else
-        s.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
+      if (this.stick?.id === p.id) Object.assign(this.stick, this.aim(p));
     });
     const release = (p: Phaser.Input.Pointer) => {
       if (this.stick?.id === p.id) this.stick = null;
@@ -229,18 +220,36 @@ export class BombaScene extends Phaser.Scene {
     }
   }
 
-  private readDir(): Dir | null {
-    if (this.stick?.dir) return this.stick.dir;
-    for (const d of ['up', 'down', 'left', 'right'] as const)
-      if (this.keys?.[d].some((k) => k.isDown)) return d;
-    return null;
+  /**
+   * Direction from the (fixed) stick center: the dominant axis, plus the other axis when the
+   * finger is clearly diagonal, so the kid takes whichever way is open.
+   */
+  private aim(p: Phaser.Input.Pointer): { dir: Dir | null; alt: Dir | null } {
+    const dx = p.x - STICK.x;
+    const dy = p.y - STICK.y;
+    if (Math.hypot(dx, dy) < 16) return { dir: null, alt: null };
+    const h: Dir = dx > 0 ? 'right' : 'left';
+    const v: Dir = dy > 0 ? 'down' : 'up';
+    const horizontal = Math.abs(dx) > Math.abs(dy);
+    const minor = horizontal ? Math.abs(dy) : Math.abs(dx);
+    const major = horizontal ? Math.abs(dx) : Math.abs(dy);
+    const alt = minor > major * 0.35 ? (horizontal ? v : h) : null;
+    return { dir: horizontal ? h : v, alt };
+  }
+
+  private readInput(): { dir: Dir | null; alt: Dir | null } {
+    if (this.stick?.dir) return { dir: this.stick.dir, alt: this.stick.alt };
+    const held = (['up', 'down', 'left', 'right'] as const).filter((d) =>
+      this.keys?.[d].some((k) => k.isDown),
+    );
+    return { dir: held[0] ?? null, alt: held[1] ?? null };
   }
 
   private drawControls(): void {
     const g = this.stickGfx.clear();
     const s = this.stick;
-    const ox = s?.ox ?? STICK.x;
-    const oy = s?.oy ?? STICK.y;
+    const ox = STICK.x;
+    const oy = STICK.y;
     g.fillStyle(0x2b2b3a, 0.18).fillCircle(ox, oy, STICK.r);
     g.lineStyle(5, 0x2b2b3a, 0.35).strokeCircle(ox, oy, STICK.r);
     const p = s ? this.input.manager.pointers.find((pp) => pp.id === s.id) : undefined;
@@ -365,7 +374,7 @@ export class BombaScene extends Phaser.Scene {
       const bombInput =
         this.bombPressed || !!this.keys?.bomb.some((k) => Phaser.Input.Keyboard.JustDown(k));
       this.bombPressed = false;
-      for (const e of this.game_.step(dt, { dir: this.readDir(), bomb: bombInput }))
+      for (const e of this.game_.step(dt, { ...this.readInput(), bomb: bombInput }))
         this.onEvent(e);
     }
     this.render();

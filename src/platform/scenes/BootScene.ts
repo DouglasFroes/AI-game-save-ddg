@@ -5,6 +5,7 @@ import { generateFruitTextures } from '@/games/fruitmerge/art';
 import { generateGrauTextures } from '@/games/grau/art';
 import { generateLutaTextures } from '@/games/luta/art';
 import { generateBombaTextures } from '@/games/bomba/art';
+import { generateCorreTextures } from '@/games/corre/art';
 import { generate2048Textures } from '@/games/game2048/art';
 import { generateSnakeTextures } from '@/games/snake/art';
 import { generateStackTextures } from '@/games/stack/art';
@@ -32,6 +33,7 @@ export class BootScene extends Phaser.Scene {
     generateGrauTextures(this);
     generateLutaTextures(this);
     generateBombaTextures(this);
+    generateCorreTextures(this);
     this.scene.start(SceneKeys.Hub);
   }
 }

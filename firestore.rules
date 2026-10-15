@@ -19,7 +19,7 @@ service cloud.firestore {
 
     function gameIds() {
       return ['doguinho', 'blockblast', 'sudoku', 'roadfighter',
-              'game2048', 'flappybee', 'snake', 'stack', 'fruitmerge', 'grau', 'luta', 'bomba', 'turma'];
+              'game2048', 'flappybee', 'snake', 'stack', 'fruitmerge', 'grau', 'luta', 'bomba', 'turma', 'corre'];
     }
 
     function validEntry(d) {
