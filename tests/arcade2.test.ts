@@ -3,7 +3,15 @@ import { AlvoSim, FLIGHT_S, IMPACT, levelInfo } from '@/games/alvo/core';
 import { COLS as CROSS_COLS, CrossSim } from '@/games/atravessa/core';
 import { LenhaSim } from '@/games/lenha/core';
 import { PianoSim, VISIBLE } from '@/games/piano/core';
-import { MAX_GAP, PulaSim } from '@/games/pula/core';
+import {
+  HARDEST_AT,
+  MAX_GAP,
+  MONSTER_R,
+  MONSTERS_FROM,
+  PLATFORM_W,
+  PulaSim,
+  difficultyAt,
+} from '@/games/pula/core';
 
 function seeded(seed: number) {
   return () => {
@@ -161,6 +169,53 @@ describe('pula pula', () => {
     g.x = 5;
     g.step(1 / 60, 0, -60);
     expect(g.x).toBeGreaterThan(600);
+  });
+
+  it('gets hard quickly: wider gaps, smaller and faster platforms, monsters', () => {
+    expect(difficultyAt(0)).toBe(0);
+    expect(difficultyAt(HARDEST_AT)).toBe(1);
+    const g = new PulaSim(seeded(5));
+    // Climb straight up to well past full difficulty, recording what the course generates
+    // (monsters are taken out of the way so this climb can't die).
+    const seen = new Map<number, (typeof g.platforms)[number]>();
+    const monsterYs: number[] = [];
+    for (let h = 0; h <= HARDEST_AT + 4000; h += 500) {
+      g.top = h;
+      g.y = h;
+      g.vy = 0;
+      g.step(1 / 1000, 0);
+      for (const p of g.platforms) seen.set(p.id, p);
+      monsterYs.push(...g.monsters.map((m) => m.y));
+      g.monsters.length = 0;
+    }
+    expect(g.over).toBe(false);
+    const all = [...seen.values()].filter((p) => p.kind !== 'fragile').sort((a, b) => a.y - b.y);
+    const hard = all.filter((p) => p.y > HARDEST_AT);
+    expect(hard.length).toBeGreaterThan(10);
+    expect(Math.max(...hard.map((p) => p.w))).toBeLessThan(PLATFORM_W - 30);
+    const gaps = hard.slice(1).map((p, i) => p.y - hard[i]!.y);
+    expect(gaps.reduce((a, b) => a + b, 0) / gaps.length).toBeGreaterThan(MAX_GAP * 0.6);
+    for (let i = 1; i < all.length; i++)
+      expect(all[i]!.y - all[i - 1]!.y).toBeLessThanOrEqual(MAX_GAP + 1);
+    expect(monsterYs.length).toBeGreaterThan(3);
+    expect(monsterYs.every((y) => y > MONSTERS_FROM)).toBe(true);
+  });
+
+  it('landing on a monster squashes it, touching it from below ends the run', () => {
+    const g = new PulaSim(seeded(6));
+    g.monsters.push({ id: 999, x: g.x, y: g.y - 60, vx: 0, alive: true });
+    g.vy = -600;
+    g.y = g.y - 60 + MONSTER_R + 4;
+    const scoreBefore = g.score;
+    const events = g.step(1 / 60, 0);
+    expect(events).toContainEqual({ type: 'stomp' });
+    expect(g.vy).toBeGreaterThan(0);
+    expect(g.score).toBeGreaterThanOrEqual(scoreBefore + 50);
+
+    const h = new PulaSim(seeded(7));
+    h.monsters.push({ id: 999, x: h.x, y: h.y + 40, vx: 0, alive: true });
+    expect(h.step(1 / 60, 0)).toContainEqual({ type: 'over', reason: 'monster' });
+    expect(h.over).toBe(true);
   });
 
   it('falling off the bottom ends the run', () => {

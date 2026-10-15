@@ -19,17 +19,43 @@ export const MAX_GAP = Math.floor(((JUMP_VY * JUMP_VY) / (2 * GRAVITY)) * 0.82);
 
 export type PlatformKind = 'normal' | 'moving' | 'fragile' | 'spring';
 
+/** Height (world px) at which the game reaches full difficulty (≈ 800 points). */
+export const HARDEST_AT = 8000;
+/** Monsters show up from this height (≈ 150 points). */
+export const MONSTERS_FROM = 1500;
+
+/** 0 at the start → 1 at full difficulty. */
+export const difficultyAt = (height: number): number =>
+  Math.min(1, Math.max(0, height / HARDEST_AT));
+
 export interface Platform {
   readonly id: number;
   x: number;
   readonly y: number;
+  /** Width: platforms shrink as it gets harder. */
+  readonly w: number;
   readonly kind: PlatformKind;
   vx: number;
   broken: boolean;
 }
 
+/** Floating monster: touching it ends the run, landing on top of it bounces (and scores). */
+export interface Monster {
+  readonly id: number;
+  x: number;
+  readonly y: number;
+  vx: number;
+  alive: boolean;
+}
+
+export const MONSTER_R = 34;
+const STOMP_BONUS = 50;
+
 export type PulaEvent =
-  { type: 'bounce'; kind: PlatformKind } | { type: 'break' } | { type: 'over' };
+  | { type: 'bounce'; kind: PlatformKind }
+  | { type: 'break' }
+  | { type: 'stomp' }
+  | { type: 'over'; reason: 'fall' | 'monster' };
 
 export class PulaSim {
   x = WIDTH / 2;
@@ -38,7 +64,10 @@ export class PulaSim {
   /** Best height reached; the camera bottom follows it. */
   top = 0;
   over = false;
+  /** Points from stomping monsters (on top of the height). */
+  bonus = 0;
   readonly platforms: Platform[] = [];
+  readonly monsters: Monster[] = [];
   private ids = 0;
   private highest = 0;
 
@@ -47,6 +76,7 @@ export class PulaSim {
       id: ++this.ids,
       x: WIDTH / 2,
       y: 0,
+      w: PLATFORM_W,
       kind: 'normal',
       vx: 0,
       broken: false,
@@ -55,7 +85,7 @@ export class PulaSim {
   }
 
   get score(): number {
-    return Math.floor(this.top / 10);
+    return Math.floor(this.top / 10) + this.bonus;
   }
 
   /** Visible window: [camera, camera + 1280). */
@@ -63,33 +93,52 @@ export class PulaSim {
     return Math.max(0, this.top - 700);
   }
 
+  /**
+   * Builds the course upwards. As the height grows: wider gaps (never beyond a jump), narrower
+   * platforms, more and faster moving ones, more breakable decoys and, later, monsters.
+   */
   private fill(upTo: number): void {
     while (this.highest < upTo) {
-      const difficulty = Math.min(1, this.highest / 30000);
-      const y = this.highest + 70 + this.rng() * (MAX_GAP * (0.45 + difficulty * 0.55) - 70);
+      const d = difficultyAt(this.highest);
+      const minGap = 60 + d * 90;
+      const maxGap = MAX_GAP * (0.5 + 0.5 * d);
+      const y = this.highest + minGap + this.rng() * (maxGap - minGap);
+      const w = Math.round(PLATFORM_W - d * 44);
       const r = this.rng();
       const kind: PlatformKind =
-        r < 0.08 ? 'spring' : r < 0.08 + difficulty * 0.35 + 0.08 ? 'moving' : 'normal';
-      const x = 70 + this.rng() * (WIDTH - 140);
+        r < 0.07 ? 'spring' : r < 0.07 + 0.08 + d * 0.4 ? 'moving' : 'normal';
+      const x = w / 2 + 20 + this.rng() * (WIDTH - w - 40);
+      const speed = 90 + d * 230;
       this.platforms.push({
         id: ++this.ids,
         x,
         y,
+        w,
         kind,
-        vx: kind === 'moving' ? (this.rng() < 0.5 ? -1 : 1) * (90 + difficulty * 160) : 0,
+        vx: kind === 'moving' ? (this.rng() < 0.5 ? -1 : 1) * speed : 0,
         broken: false,
       });
-      this.highest = y;
       // Fragile decoys between the real ones (they never are the only way up).
-      if (this.rng() < 0.15 + difficulty * 0.25)
+      if (this.rng() < 0.15 + d * 0.35)
         this.platforms.push({
           id: ++this.ids,
           x: 70 + this.rng() * (WIDTH - 140),
           y: y - 30 - this.rng() * 40,
+          w,
           kind: 'fragile',
           vx: 0,
           broken: false,
         });
+      // Monsters float between platforms, drifting sideways (steer around, or land on them).
+      if (this.highest > MONSTERS_FROM && this.rng() < 0.07 + d * 0.13)
+        this.monsters.push({
+          id: ++this.ids,
+          x: 80 + this.rng() * (WIDTH - 160),
+          y: y + (this.highest - y) * 0.5 + 40,
+          vx: (this.rng() < 0.5 ? -1 : 1) * (50 + d * 110),
+          alive: true,
+        });
+      this.highest = y;
     }
   }
 
@@ -107,7 +156,11 @@ export class PulaSim {
     for (const p of this.platforms) {
       if (p.kind !== 'moving') continue;
       p.x += p.vx * dt;
-      if (p.x < PLATFORM_W / 2 || p.x > WIDTH - PLATFORM_W / 2) p.vx *= -1;
+      if (p.x < p.w / 2 || p.x > WIDTH - p.w / 2) p.vx *= -1;
+    }
+    for (const m of this.monsters) {
+      m.x += m.vx * dt;
+      if (m.x < MONSTER_R || m.x > WIDTH - MONSTER_R) m.vx *= -1;
     }
 
     const prevY = this.y;
@@ -117,7 +170,7 @@ export class PulaSim {
       // Landing: feet crossed a platform top this step.
       for (const p of this.platforms) {
         if (p.broken || prevY < p.y || this.y > p.y) continue;
-        if (Math.abs(this.x - p.x) > PLATFORM_W / 2 + KID_HALF * 0.6) continue;
+        if (Math.abs(this.x - p.x) > p.w / 2 + KID_HALF * 0.6) continue;
         if (p.kind === 'fragile') {
           p.broken = true;
           events.push({ type: 'break' });
@@ -129,14 +182,32 @@ export class PulaSim {
         break;
       }
     }
+    // Monsters: land on top to squash one, touch it any other way and it's over.
+    for (const m of this.monsters) {
+      if (!m.alive || Math.abs(this.x - m.x) > MONSTER_R + KID_HALF * 0.7) continue;
+      if (this.y > m.y + MONSTER_R || this.y + 70 < m.y - MONSTER_R) continue;
+      if (this.vy < 0 && prevY >= m.y + MONSTER_R * 0.4) {
+        m.alive = false;
+        this.vy = JUMP_VY * 1.15;
+        this.bonus += STOMP_BONUS;
+        events.push({ type: 'stomp' });
+      } else {
+        this.over = true;
+        events.push({ type: 'over', reason: 'monster' });
+        return events;
+      }
+    }
     this.top = Math.max(this.top, this.y);
     this.fill(this.top + 1600);
     const bottom = this.camera - 120;
     for (let i = this.platforms.length - 1; i >= 0; i--)
       if (this.platforms[i]!.y < bottom - 200) this.platforms.splice(i, 1);
+    for (let i = this.monsters.length - 1; i >= 0; i--)
+      if (this.monsters[i]!.y < bottom - 200 || !this.monsters[i]!.alive)
+        this.monsters.splice(i, 1);
     if (this.y < bottom) {
       this.over = true;
-      events.push({ type: 'over' });
+      events.push({ type: 'over', reason: 'fall' });
     }
     return events;
   }

@@ -6,7 +6,7 @@ import { formatNumber } from '@/platform/ranking';
 import type { GameOverData } from '@/platform/scenes/GameOverScene';
 import { addText, iconButton } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
-import { PLATFORM_W, PulaSim, type PulaEvent } from './core';
+import { MONSTER_R, PulaSim, type PulaEvent } from './core';
 
 const GROUND = 1180;
 /** Kid pixels moved per finger pixel. */
@@ -120,8 +120,8 @@ export class PulaScene extends Phaser.Scene {
       const color = { normal: 0x5bd46f, moving: 0x4cc9f0, fragile: 0xb08968, spring: 0x5bd46f }[
         pl.kind
       ];
-      p.fillStyle(0x1f1f2b, 0.85).fillRoundedRect(pl.x - PLATFORM_W / 2, y - 2, PLATFORM_W, 28, 14);
-      p.fillStyle(color).fillRoundedRect(pl.x - PLATFORM_W / 2 + 3, y, PLATFORM_W - 6, 22, 11);
+      p.fillStyle(0x1f1f2b, 0.85).fillRoundedRect(pl.x - pl.w / 2, y - 2, pl.w, 28, 14);
+      p.fillStyle(color).fillRoundedRect(pl.x - pl.w / 2 + 3, y, pl.w - 6, 22, 11);
       if (pl.kind === 'fragile')
         p.lineStyle(3, 0x6d4c41).lineBetween(pl.x - 10, y, pl.x + 6, y + 22);
       if (pl.kind === 'spring') {
@@ -130,6 +130,29 @@ export class PulaScene extends Phaser.Scene {
           p.lineBetween(pl.x - 12, y - 6 - i * 8, pl.x + 12, y - 10 - i * 8);
         p.fillStyle(0xe63946).fillRoundedRect(pl.x - 16, y - 32, 32, 8, 4);
       }
+    }
+    // Monsters: a purple scribble blob with eyes looking at the kid.
+    for (const m of this.sim.monsters) {
+      const y = this.sy(m.y);
+      if (y < -60 || y > 1340) continue;
+      const wob = Math.sin(_t / 120 + m.id) * 4;
+      p.fillStyle(0x1f1f2b, 0.85).fillCircle(m.x, y, MONSTER_R + 3);
+      p.fillStyle(0x9b5de5).fillCircle(m.x, y + wob * 0.3, MONSTER_R);
+      for (let i = -2; i <= 2; i++)
+        p.fillStyle(0x9b5de5).fillTriangle(
+          m.x + i * 13 - 7,
+          y + MONSTER_R - 6,
+          m.x + i * 13 + 7,
+          y + MONSTER_R - 6,
+          m.x + i * 13,
+          y + MONSTER_R + 10 + wob,
+        );
+      const look = Math.sign(this.sim.x - m.x) * 4;
+      for (const ex of [-12, 12]) {
+        p.fillStyle(0xffffff).fillCircle(m.x + ex, y - 6, 10);
+        p.fillStyle(0x1f1f2b).fillCircle(m.x + ex + look, y - 4, 5);
+      }
+      p.lineStyle(3, 0x1f1f2b).lineBetween(m.x - 10, y + 14, m.x + 10, y + 14);
     }
     const kx = this.sim.x;
     this.kidImg
@@ -150,15 +173,30 @@ export class PulaScene extends Phaser.Scene {
         duration: 160,
       });
     } else if (e.type === 'break') sfx.play('click');
-    else this.gameOver();
+    else if (e.type === 'stomp') {
+      sfx.play('star', 2);
+      const t = addText(this, this.sim.x, this.sy(this.sim.y) - 90, '+50', 40, {
+        color: '#9b5de5',
+        stroke: '#ffffff',
+        strokeThickness: 8,
+      }).setDepth(9);
+      this.tweens.add({
+        targets: t,
+        y: t.y - 80,
+        alpha: 0,
+        duration: 700,
+        onComplete: () => t.destroy(),
+      });
+    } else this.gameOver(e.reason);
   }
 
-  private gameOver(): void {
+  private gameOver(reason: 'fall' | 'monster'): void {
     this.ended = true;
     getServices(this).sfx.play('hit');
+    if (reason === 'monster') this.cameras.main.shake(200, 0.01);
     const data: GameOverData = {
       gameId: 'pula',
-      title: 'Caiu da folha!',
+      title: reason === 'monster' ? 'Pegou o monstrinho!' : 'Caiu da folha!',
       lines: [`Altura: ${formatNumber(this.sim.score)}`],
       record: { score: this.sim.score, details: {} },
       parent: SceneKeys.Pula,
