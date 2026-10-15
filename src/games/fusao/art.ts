@@ -313,32 +313,86 @@ export function generateFusaoTextures(scene: Phaser.Scene): void {
     );
   });
 
-  // Players: a glowing core with each character's emblem.
-  const players: Record<CharacterId, number> = {
-    condutor: 0x4cc9f0,
-    incendiario: 0xff7b00,
-    guardiao: 0x5bd46f,
+  // Players: neon spaceships pointing up (rotated in game to face where they fly).
+  const ships: Record<
+    CharacterId,
+    { color: number; hull: { x: number; y: number }[]; wing: { x: number; y: number }[] }
+  > = {
+    // Condutor: a slim dart.
+    condutor: {
+      color: 0x4cc9f0,
+      hull: [
+        { x: 40, y: 4 },
+        { x: 52, y: 40 },
+        { x: 46, y: 66 },
+        { x: 34, y: 66 },
+        { x: 28, y: 40 },
+      ],
+      wing: [
+        { x: 40, y: 30 },
+        { x: 74, y: 62 },
+        { x: 52, y: 58 },
+        { x: 40, y: 50 },
+        { x: 28, y: 58 },
+        { x: 6, y: 62 },
+      ],
+    },
+    // Incendiário: swept, aggressive wings.
+    incendiario: {
+      color: 0xff7b00,
+      hull: [
+        { x: 40, y: 6 },
+        { x: 50, y: 34 },
+        { x: 48, y: 68 },
+        { x: 32, y: 68 },
+        { x: 30, y: 34 },
+      ],
+      wing: [
+        { x: 40, y: 24 },
+        { x: 76, y: 44 },
+        { x: 66, y: 70 },
+        { x: 48, y: 52 },
+        { x: 32, y: 52 },
+        { x: 14, y: 70 },
+        { x: 4, y: 44 },
+      ],
+    },
+    // Guardião: wide and armored.
+    guardiao: {
+      color: 0x5bd46f,
+      hull: [
+        { x: 40, y: 8 },
+        { x: 56, y: 26 },
+        { x: 56, y: 64 },
+        { x: 24, y: 64 },
+        { x: 24, y: 26 },
+      ],
+      wing: [
+        { x: 24, y: 30 },
+        { x: 4, y: 40 },
+        { x: 4, y: 66 },
+        { x: 24, y: 58 },
+        { x: 56, y: 58 },
+        { x: 76, y: 66 },
+        { x: 76, y: 40 },
+        { x: 56, y: 30 },
+      ],
+    },
   };
-  for (const [id, c] of Object.entries(players) as [CharacterId, number][]) {
-    bake(scene, playerKey(id), 72, 72, (g) => {
-      g.fillStyle(c, 0.25).fillCircle(36, 36, 34);
-      g.lineStyle(4, c, 1).strokeCircle(36, 36, 26);
-      g.fillStyle(0xffffff).fillCircle(36, 36, 14);
-      g.fillStyle(c, 1);
-      if (id === 'condutor')
-        g.fillPoints(
-          [
-            { x: 40, y: 22 },
-            { x: 30, y: 38 },
-            { x: 37, y: 38 },
-            { x: 32, y: 50 },
-            { x: 44, y: 33 },
-            { x: 37, y: 33 },
-          ],
-          true,
-        );
-      else if (id === 'incendiario') g.fillTriangle(36, 22, 27, 46, 45, 46);
-      else g.fillPoints(poly(36, 36, 11, 6, Math.PI / 6), true);
+  for (const [id, ship] of Object.entries(ships) as [CharacterId, (typeof ships)[CharacterId]][]) {
+    bake(scene, playerKey(id), 80, 80, (g) => {
+      const c = ship.color;
+      // Engine glow, wings, hull, cockpit.
+      g.fillStyle(c, 0.35).fillEllipse(40, 72, 26, 14);
+      g.fillStyle(0xffffff, 0.9).fillEllipse(40, 70, 12, 7);
+      neon(g, ship.wing, c, 0.35);
+      g.fillStyle(0x0b0e24).fillPoints(ship.hull, true);
+      g.lineStyle(4, c).strokePoints(ship.hull, true);
+      g.fillStyle(0xffffff, 0.95).fillEllipse(40, 28, 10, 18);
+      g.fillStyle(c, 0.8).fillEllipse(40, 30, 6, 10);
+      if (id === 'incendiario') g.fillStyle(0xffd166).fillTriangle(34, 46, 40, 36, 46, 46);
+      if (id === 'guardiao') g.lineStyle(3, 0xffffff, 0.7).strokeRect(30, 40, 20, 14);
+      if (id === 'condutor') g.lineStyle(3, 0xffffff, 0.8).lineBetween(36, 44, 44, 52);
     });
   }
 
@@ -410,10 +464,17 @@ export function generateFusaoTextures(scene: Phaser.Scene): void {
   });
   bake(scene, FT.icon, 150, 150, (g) => {
     g.fillStyle(0x05060f).fillRoundedRect(0, 0, 150, 150, 22);
-    g.fillStyle(0xff3df2, 0.2).fillCircle(75, 75, 60);
-    g.lineStyle(5, 0x4cc9f0).strokeCircle(75, 75, 44);
-    g.lineStyle(5, 0xff7b00).strokeEllipse(75, 75, 130, 44);
-    g.lineStyle(5, 0x5bd46f).strokeEllipse(75, 75, 44, 130);
-    g.fillStyle(0xffffff).fillCircle(75, 75, 14);
+    g.fillStyle(0xff3df2, 0.18).fillCircle(75, 75, 64);
+    g.lineStyle(4, 0xff7b00, 0.8).strokeEllipse(75, 75, 136, 46);
+    g.lineStyle(4, 0x5bd46f, 0.8).strokeEllipse(75, 75, 46, 136);
+    g.save();
+    g.translateCanvas(35, 30);
+    const c = 0x4cc9f0;
+    g.fillStyle(c, 0.35).fillEllipse(40, 72, 26, 14);
+    neon(g, ships.condutor.wing, c, 0.4);
+    g.fillStyle(0x0b0e24).fillPoints(ships.condutor.hull, true);
+    g.lineStyle(4, c).strokePoints(ships.condutor.hull, true);
+    g.fillStyle(0xffffff).fillEllipse(40, 28, 10, 18);
+    g.restore();
   });
 }

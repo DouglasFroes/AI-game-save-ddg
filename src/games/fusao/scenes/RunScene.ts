@@ -37,6 +37,16 @@ interface Chain {
   ttl: number;
 }
 
+/**
+ * Pins an overlay to the screen, children included. A container with scrollFactor 0 still lets
+ * its children hit-test in world space, so with the camera following the ship their touch areas
+ * drifted away from where the cards and buttons are drawn.
+ */
+function pin(o: Phaser.GameObjects.GameObject): void {
+  (o as unknown as Phaser.GameObjects.Components.ScrollFactor).setScrollFactor?.(0);
+  if (o instanceof Phaser.GameObjects.Container) o.list.forEach(pin);
+}
+
 const HUD_DEPTH = 100;
 const OVERLAY_DEPTH = 200;
 const STICK_R = 90;
@@ -51,6 +61,8 @@ export class FusaoRunScene extends Phaser.Scene {
   private ending = false;
   private slowmo = 0;
   private hudTimer = 0;
+  private lastX = 0;
+  private lastY = 0;
 
   private stars!: Phaser.GameObjects.TileSprite;
   private playerImg!: Phaser.GameObjects.Image;
@@ -302,10 +314,22 @@ export class FusaoRunScene extends Phaser.Scene {
 
     // Player.
     const blink = p.iframes > 0 && Math.floor(t * 20) % 2 === 0;
+    const heading = Math.atan2(p.facingY, p.facingX) + Math.PI / 2;
+    const turn = Phaser.Math.Angle.Wrap(heading - this.playerImg.rotation);
     this.playerImg
       .setPosition(p.x, p.y)
       .setAlpha(blink ? 0.45 : 1)
-      .setScale(1 + Math.sin(t * 6) * 0.04);
+      .setRotation(this.playerImg.rotation + turn * Math.min(1, dt * 14))
+      .setScale(1 + Math.sin(t * 6) * 0.03);
+    const moved = Math.hypot(p.x - this.lastX, p.y - this.lastY) > 0.5;
+    this.lastX = p.x;
+    this.lastY = p.y;
+    if (moved && Math.random() < 0.8 * this.particleScale) {
+      // Engine flame out of the tail.
+      const back = this.playerImg.rotation + Math.PI / 2;
+      this.sparks.setParticleTint(CHARACTERS[this.data_.character].color);
+      this.sparks.emitParticleAt(p.x + Math.cos(back) * 26, p.y + Math.sin(back) * 26, 1);
+    }
     this.playerGlow.setPosition(p.x, p.y).setScale(p.pulse > 0 ? 1.9 : 1.3);
     if (p.pulse > 0 && Math.random() < 0.6 * this.particleScale) {
       this.sparks.setParticleTint(0xffd23f);
@@ -652,8 +676,8 @@ export class FusaoRunScene extends Phaser.Scene {
     ) => o.setScrollFactor(0).setDepth(HUD_DEPTH);
     const bars = fixed(this.add.graphics());
     const level = fixed(txt(this, 70, 98, 'NV 1', 30, UI.text));
-    const time = fixed(txt(this, GAME_WIDTH / 2, 58, '0:00', 44, '#ffffff'));
-    const kills = fixed(txt(this, GAME_WIDTH / 2, 100, '0 abates', 22, UI.muted, 'normal'));
+    const time = fixed(txt(this, GAME_WIDTH / 2 + 90, 58, '0:00', 44, '#ffffff'));
+    const kills = fixed(txt(this, GAME_WIDTH / 2 + 90, 100, '0 abates', 22, UI.muted, 'normal'));
     const hp = fixed(txt(this, 170, 52, '', 18, '#ffffff'));
     const missions = [0, 1, 2].map((i) =>
       fixed(txt(this, 26, 140 + i * 28, '', 19, UI.muted, 'normal').setOrigin(0, 0.5)),
@@ -976,6 +1000,7 @@ export class FusaoRunScene extends Phaser.Scene {
     };
     kb.on('keydown', onKey);
     c.once(Phaser.GameObjects.Events.DESTROY, () => kb.off('keydown', onKey));
+    pin(c);
   }
 
   /** A fusion happened: a big reveal the first time it is ever discovered. */
@@ -1025,6 +1050,7 @@ export class FusaoRunScene extends Phaser.Scene {
       txt(this, 0, 130, f.desc, 26, UI.text, 'normal').setWordWrapWidth(580),
       txt(this, 0, 240, 'Toque para continuar', 24, UI.muted, 'normal'),
     ]);
+    pin(c);
     c.setScale(0.6).setAlpha(0);
     this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 350, ease: 'Back.easeOut' });
     this.tweens.add({ targets: rays, angle: 360, duration: 6000, repeat: -1 });
@@ -1156,6 +1182,7 @@ export class FusaoRunScene extends Phaser.Scene {
         30,
       ),
     ]);
+    pin(c);
   }
 
   private closePause(): void {
