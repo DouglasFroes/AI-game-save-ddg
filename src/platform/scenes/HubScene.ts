@@ -12,6 +12,7 @@ const CARD_W = 214;
 const CARD_H = 300;
 const GAP = 16;
 const GRID_TOP = 290;
+const GRID_BOTTOM = 1225;
 
 /** Main menu: pick a game, set your nickname, toggle sound. */
 export class HubScene extends Phaser.Scene {
@@ -70,11 +71,16 @@ export class HubScene extends Phaser.Scene {
       },
     );
 
-    const gridW = COLS * CARD_W + (COLS - 1) * GAP;
+    // Cards shrink to fit when there are more rows than the screen holds at full size.
+    const rows = Math.ceil(GAMES.length / COLS);
+    const scale = Math.min(1, (GRID_BOTTOM - GRID_TOP - (rows - 1) * GAP) / (rows * CARD_H));
+    const cardW = CARD_W * scale;
+    const cardH = CARD_H * scale;
+    const gridW = COLS * cardW + (COLS - 1) * GAP;
     GAMES.forEach((game, i) => {
-      const x = (GAME_WIDTH - gridW) / 2 + CARD_W / 2 + (i % COLS) * (CARD_W + GAP);
-      const y = GRID_TOP + CARD_H / 2 + Math.floor(i / COLS) * (CARD_H + GAP);
-      this.buildCard(game, x, y);
+      const x = (GAME_WIDTH - gridW) / 2 + cardW / 2 + (i % COLS) * (cardW + GAP);
+      const y = GRID_TOP + cardH / 2 + Math.floor(i / COLS) * (cardH + GAP);
+      this.buildCard(game, x, y, scale);
     });
 
     addText(
@@ -113,7 +119,7 @@ export class HubScene extends Phaser.Scene {
     );
   }
 
-  private buildCard(game: GameDefinition, x: number, y: number): void {
+  private buildCard(game: GameDefinition, x: number, y: number, scale: number): void {
     const services = getServices(this);
     const card = this.add.container(x, y);
     const g = this.add.graphics();
@@ -163,11 +169,12 @@ export class HubScene extends Phaser.Scene {
     );
 
     card.setSize(CARD_W, CARD_H);
+    card.setScale(scale);
     card.setInteractive({ useHandCursor: true });
-    card.on('pointerdown', () => card.setScale(0.96));
-    card.on('pointerout', () => card.setScale(1));
+    card.on('pointerdown', () => card.setScale(scale * 0.96));
+    card.on('pointerout', () => card.setScale(scale));
     card.on('pointerup', () => {
-      card.setScale(1);
+      card.setScale(scale);
       services.sfx.play('click');
       this.open(game);
     });
@@ -175,8 +182,8 @@ export class HubScene extends Phaser.Scene {
     // Separate object (not a child) so its tap is not also a card tap.
     new Button(
       this,
-      x + CARD_W / 2 - 36,
-      y - CARD_H / 2 + 34,
+      x + (CARD_W / 2 - 36) * scale,
+      y + (-CARD_H / 2 + 34) * scale,
       '🏆',
       () => this.scene.start(SceneKeys.Leaderboard, { gameId: game.id }),
       { width: 58, height: 52, fontSize: 26, color: COLORS.panel, shade: 0xc7cfdc },

@@ -13,7 +13,8 @@ const game = new Phaser.Game({
   parent: 'game',
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  backgroundColor: '#1d2b53',
+  // Transparent so Grau 3D's Three.js canvas shows through; the page behind is the same navy.
+  transparent: true,
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

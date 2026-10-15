@@ -51,6 +51,20 @@ firestore.rules      security rules for leaderboards/{gameId}/entries/{uid}
    on screen). Textures stay in `art.ts` so `BootScene` can draw the hub icons without pulling scenes in.
    Phaser goes into its own long-cached `phaser` chunk (`vite.config.ts`).
 
+## 3D games (Three.js inside the Phaser arcade)
+
+`grau/` renders its world with Three.js and keeps everything else in Phaser:
+
+- `world3d.ts` owns **one** `WebGLRenderer` for the whole session (`GrauWorld.get`), drawing on its own
+  `<canvas>` inside `#game` with `z-index: -1`, kept aligned with Phaser's letterboxed canvas. The
+  Phaser game is `transparent: true` (the page behind is the same navy), so the Phaser HUD and the shared
+  GameOver overlay draw on top of the 3D view. `start()`/`stop()` build and free a run's meshes; the
+  renderer is reused because browsers cap live WebGL contexts.
+- The scene calls `world.update(sim, dt)` from its own `update()`, so both share Phaser's frame loop.
+- The simulation (`core.ts`) is still pure and unit-tested; it works in meters along street segments
+  and `worldPos()` maps them to world space for the renderer.
+- `three` is only imported from the game's own files, so it lands in the game's lazy chunk.
+
 ## Adding a new game
 
 1. Create `src/games/<id>/` with a pure `core.ts` (+ tests) and a scene.

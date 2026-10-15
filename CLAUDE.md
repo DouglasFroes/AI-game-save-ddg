@@ -1,7 +1,8 @@
 # Fliperama
 
-Mobile-first arcade of web games (Salve o Doguinho, Block Blast, Sudoku, Road Fighter), each with its
-own ranking. Vite + TypeScript (strict) + Phaser 3 + Firebase (anonymous auth + Firestore). Node 22.13+.
+Mobile-first arcade of web games (Salve o Doguinho, Block Blast, Sudoku, Road Fighter, 2048, Flappy Bee,
+Snake, Stack, Fruit Merge, Grau 3D), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
+(+ Three.js, only in Grau 3D) + Firebase (anonymous auth + Firestore). Node 22.13+.
 
 ## Commands
 

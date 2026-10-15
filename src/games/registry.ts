@@ -15,7 +15,8 @@ export type GameId =
   | 'flappybee'
   | 'snake'
   | 'stack'
-  | 'fruitmerge';
+  | 'fruitmerge'
+  | 'grau';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -184,6 +185,22 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'biggest', label: 'Maior fruta', x: 625, format: (v) => FRUITS[v]?.name ?? '-' },
     ],
     personalBest: storedBest('fruitmerge'),
+  },
+  {
+    id: 'grau',
+    title: 'Grau 3D',
+    tagline: 'Empine e não caia',
+    icon: 'grau-icon',
+    color: 0xff5400,
+    shade: 0xc23f00,
+    entryScene: SceneKeys.Grau,
+    load: () => import('./grau/GrauScene').then((m) => [m.GrauScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 455, format: formatNumber },
+      { key: 'meters', label: 'Dist.', x: 562, format: (v) => `${(v / 1000).toFixed(1)} km` },
+      { key: 'bestWheelie', label: 'Grau', x: 655, format: (v) => `${v} m` },
+    ],
+    personalBest: storedBest('grau'),
   },
 ];
 
