@@ -151,6 +151,18 @@ describe('pula pula', () => {
       expect(ys[i]! - ys[i - 1]!).toBeLessThanOrEqual(MAX_GAP + 1);
   });
 
+  it('a finger drag moves the kid directly, capped, and wraps around the edges', () => {
+    const g = new PulaSim(seeded(4));
+    const x0 = g.x;
+    g.step(1 / 60, 0, 40);
+    expect(g.x).toBeCloseTo(x0 + 40, 5);
+    g.step(1 / 60, 0, 5000);
+    expect(g.x - (x0 + 40)).toBeLessThanOrEqual(90);
+    g.x = 5;
+    g.step(1 / 60, 0, -60);
+    expect(g.x).toBeGreaterThan(600);
+  });
+
   it('falling off the bottom ends the run', () => {
     const g = new PulaSim(seeded(3));
     g.platforms.length = 0;

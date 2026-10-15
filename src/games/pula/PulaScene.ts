@@ -9,6 +9,8 @@ import { getServices } from '@/services';
 import { PLATFORM_W, PulaSim, type PulaEvent } from './core';
 
 const GROUND = 1180;
+/** Kid pixels moved per finger pixel. */
+const DRAG_GAIN = 1.4;
 
 /** "Pula Pula": bounce up the notebook page, steering left and right. */
 export class PulaScene extends Phaser.Scene {
@@ -21,6 +23,9 @@ export class PulaScene extends Phaser.Scene {
   private ended = false;
   private started = false;
   private facing = 1;
+  private drag: { id: number; lastX: number } | null = null;
+  /** Finger movement not applied yet (pixels). */
+  private pending = 0;
 
   constructor() {
     super(SceneKeys.Pula);
@@ -31,6 +36,8 @@ export class PulaScene extends Phaser.Scene {
     this.kid = favoriteKid();
     this.ended = false;
     this.started = false;
+    this.drag = null;
+    this.pending = 0;
   }
 
   private sy(y: number): number {
@@ -52,15 +59,29 @@ export class PulaScene extends Phaser.Scene {
       this,
       GAME_WIDTH / 2,
       560,
-      'Segure à esquerda ou à direita\npara guiar o pulo!',
+      'Arraste o dedo para os lados\npara guiar o pulo!',
       34,
       { color: '#3a5a9b', stroke: '#ffffff', strokeThickness: 8 },
     ).setDepth(10);
-    this.input.addPointer(1);
-    this.input.once(Phaser.Input.Events.POINTER_DOWN, () => {
-      hint.destroy();
-      this.started = true;
+    // Drag anywhere: the kid follows the finger's sideways movement (relative, like a trackpad).
+    this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
+      if (p.y < 130) return;
+      this.drag = { id: p.id, lastX: p.x };
+      if (!this.started) {
+        hint.destroy();
+        this.started = true;
+      }
     });
+    this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
+      if (this.drag?.id !== p.id) return;
+      this.pending += (p.x - this.drag.lastX) * DRAG_GAIN;
+      this.drag.lastX = p.x;
+    });
+    const release = (p: Phaser.Input.Pointer) => {
+      if (this.drag?.id === p.id) this.drag = null;
+    };
+    this.input.on(Phaser.Input.Events.POINTER_UP, release);
+    this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, release);
     this.input.keyboard?.once('keydown', () => {
       hint.destroy();
       this.started = true;
@@ -68,20 +89,21 @@ export class PulaScene extends Phaser.Scene {
     if (import.meta.env.DEV) (window as unknown as { __pula?: PulaScene }).__pula = this;
   }
 
-  private steer(): number {
+  private keyDir(): number {
     const kb = this.input.keyboard;
     if (kb?.checkDown(kb.addKey('LEFT'))) return -1;
     if (kb?.checkDown(kb.addKey('RIGHT'))) return 1;
-    const p = this.input.manager.pointers.find((pp) => pp.isDown && pp.y > 130);
-    return p ? (p.x < GAME_WIDTH / 2 ? -1 : 1) : 0;
+    return 0;
   }
 
   override update(_t: number, deltaMs: number): void {
     const dt = Math.min(deltaMs / 1000, 1 / 30);
     if (this.started && !this.ended) {
-      const dir = this.steer();
-      if (dir) this.facing = dir;
-      for (const e of this.sim.step(dt, dir)) this.onEvent(e);
+      const dir = this.keyDir();
+      const nudge = this.pending;
+      this.pending = 0;
+      if (dir || Math.abs(nudge) > 0.5) this.facing = dir || Math.sign(nudge);
+      for (const e of this.sim.step(dt, dir, nudge)) this.onEvent(e);
     }
     // Notebook lines scroll with the camera.
     const g = this.paper.clear();

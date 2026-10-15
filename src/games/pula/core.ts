@@ -11,6 +11,7 @@ const GRAVITY = 2300;
 const JUMP_VY = 1180;
 const SPRING_VY = 1950;
 const STEER = 560;
+const MAX_NUDGE = 90;
 export const PLATFORM_W = 124;
 const KID_HALF = 30;
 /** Highest gap the kid can jump: v²/2g, with a safety margin. */
@@ -92,11 +93,14 @@ export class PulaSim {
     }
   }
 
-  /** `dir`: -1 left, 0 none, 1 right. */
-  step(dt: number, dir: number): PulaEvent[] {
+  /**
+   * `dir`: held direction (-1 left, 0 none, 1 right; keyboard). `nudge`: pixels to move this step
+   * straight from a finger drag (capped so a wild swipe can't teleport the kid).
+   */
+  step(dt: number, dir: number, nudge = 0): PulaEvent[] {
     if (this.over) return [];
     const events: PulaEvent[] = [];
-    this.x += dir * STEER * dt;
+    this.x += dir * STEER * dt + Math.max(-MAX_NUDGE, Math.min(MAX_NUDGE, nudge));
     if (this.x < -KID_HALF) this.x += WIDTH + KID_HALF * 2;
     if (this.x > WIDTH + KID_HALF) this.x -= WIDTH + KID_HALF * 2;
 
