@@ -56,8 +56,7 @@ describe('bomba', () => {
   it('walks tile by tile and stops at walls', () => {
     const g = emptyGame();
     run(g, 1.5, walk('right', 60));
-    expect(g.player.p).toBe(0);
-    expect(g.player.tx).toBeGreaterThan(2);
+    expect(g.player.tx + g.player.p).toBeGreaterThan(2);
     run(g, 3, walk('up', 200));
     expect(g.player.ty).toBe(1); // row 0 is the border
   });
@@ -167,14 +166,30 @@ describe('bomba', () => {
     expect(levelPlan(8).enemies.length).toBeGreaterThan(levelPlan(1).enemies.length);
   });
 
-  it('keeps walking while a wanted turn is blocked, and turns at the next opening', () => {
+  it('stops right away when the arrows are released, even between tiles', () => {
     const g = emptyGame();
-    // Walking right along row 1; "down" is blocked by pillars at even columns.
-    run(g, 0.2, walk('right', 12));
-    const down = (): Input => ({ dir: 'down', bomb: false });
-    run(g, 1.2, down);
-    expect(g.player.ty).toBeGreaterThan(1); // turned down at an odd column
-    expect(g.player.tx % 2).toBe(1);
+    run(g, 0.15, walk('right', 9));
+    const stopped = g.player.p;
+    expect(stopped).toBeGreaterThan(0);
+    run(g, 0.5);
+    expect(g.player.p).toBe(stopped);
+  });
+
+  it('never walks on its own when the wanted direction is blocked', () => {
+    const g = emptyGame();
+    g.player.tx = g.player.nx = 2; // column 2: "down" is a pillar
+    run(g, 0.6, () => ({ dir: 'down', bomb: false }));
+    expect([g.player.tx, g.player.ty, g.player.p]).toEqual([2, 1, 0]);
+  });
+
+  it('a sideways turn mid-tile snaps to the nearest tile center first', () => {
+    const g = emptyGame();
+    g.player.tx = g.player.nx = 3;
+    run(g, 0.08, walk('right', 5)); // a little past column 3, towards 4
+    expect(g.player.p).toBeLessThan(0.5);
+    run(g, 0.6, () => ({ dir: 'down', bomb: false }));
+    expect(g.player.tx === 3 || g.player.nx === 3).toBe(true);
+    expect(g.player.ty + g.player.ny).toBeGreaterThan(2);
   });
 
   it('a diagonal input takes whichever direction is open', () => {

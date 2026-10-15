@@ -26,7 +26,18 @@ export interface BombaData {
 const CELL = 50;
 const BOARD_X = (GAME_WIDTH - COLS * CELL) / 2;
 const BOARD_Y = 200;
-const STICK = { x: 175, y: 1110, r: 110 };
+/** Arrow pad: four buttons around a center point. */
+const PAD = { x: 180, y: 1110, gap: 92, r: 54 };
+const ARROWS: Record<Dir, { dx: number; dy: number; label: string }> = {
+  up: { dx: 0, dy: -1, label: '▲' },
+  down: { dx: 0, dy: 1, label: '▼' },
+  left: { dx: -1, dy: 0, label: '◀' },
+  right: { dx: 1, dy: 0, label: '▶' },
+};
+const arrowAt = (d: Dir) => ({
+  x: PAD.x + ARROWS[d].dx * PAD.gap,
+  y: PAD.y + ARROWS[d].dy * PAD.gap,
+});
 const BOMB_BTN = { x: 572, y: 1105, r: 100 };
 const KID_STORE = 'bombinhas-kid';
 
@@ -54,7 +65,8 @@ export class BombaScene extends Phaser.Scene {
   private game_!: BombGame;
   private kid = 0;
   private running = false;
-  private stick: { id: number; dir: Dir | null; alt: Dir | null } | null = null;
+  /** Arrows held on screen, in the order they were pressed (last one wins). */
+  private held: Dir[] = [];
   private bombPressed = false;
   private keys?: Record<Dir | 'bomb', Phaser.Input.Keyboard.Key[]>;
 
@@ -65,7 +77,7 @@ export class BombaScene extends Phaser.Scene {
   private itemViews = new Map<string, Phaser.GameObjects.Image>();
   private doorView!: Phaser.GameObjects.Image;
   private flameGfx!: Phaser.GameObjects.Graphics;
-  private stickGfx!: Phaser.GameObjects.Graphics;
+  private padGfx!: Phaser.GameObjects.Graphics;
   private bombBtn!: Phaser.GameObjects.Graphics;
   private hud!: {
     score: Phaser.GameObjects.Text;
@@ -81,7 +93,7 @@ export class BombaScene extends Phaser.Scene {
   init(data: BombaData): void {
     this.game_ = new BombGame(data.level ?? 1, Math.random, data.carry);
     this.running = false;
-    this.stick = null;
+    this.held = [];
     this.bombPressed = false;
     this.tiles = [];
     this.enemyViews = new Map();
@@ -183,28 +195,22 @@ export class BombaScene extends Phaser.Scene {
 
   private buildControls(): void {
     this.input.addPointer(2);
-    this.stickGfx = this.add.graphics().setDepth(40);
+    this.padGfx = this.add.graphics().setDepth(40);
+    for (const d of Object.keys(ARROWS) as Dir[]) {
+      const at = arrowAt(d);
+      addText(this, at.x, at.y, ARROWS[d].label, 44, { color: COLORS.textLight }).setDepth(41);
+    }
     this.bombBtn = this.add.graphics().setDepth(40).setPosition(BOMB_BTN.x, BOMB_BTN.y);
     this.add
       .image(BOMB_BTN.x, BOMB_BTN.y + 4, BTex.bomb)
       .setScale(1.1)
       .setDepth(41);
 
-    // Below the board: the left half is the stick, the right half the bomb button.
-    const controls = (p: Phaser.Input.Pointer) => p.y > BOARD_Y + ROWS * CELL + 10;
+    // Below the board, the right half is the bomb button.
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
-      if (!this.running || !controls(p)) return;
+      if (!this.running || p.y < BOARD_Y + ROWS * CELL + 10) return;
       if (p.x >= GAME_WIDTH / 2 + 20) this.bombPressed = true;
-      else if (!this.stick) this.stick = { id: p.id, ...this.aim(p) };
     });
-    this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
-      if (this.stick?.id === p.id) Object.assign(this.stick, this.aim(p));
-    });
-    const release = (p: Phaser.Input.Pointer) => {
-      if (this.stick?.id === p.id) this.stick = null;
-    };
-    this.input.on(Phaser.Input.Events.POINTER_UP, release);
-    this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, release);
 
     const kb = this.input.keyboard;
     if (kb) {
@@ -220,58 +226,49 @@ export class BombaScene extends Phaser.Scene {
     }
   }
 
-  /**
-   * Direction from the (fixed) stick center: the dominant axis, plus the other axis when the
-   * finger is clearly diagonal, so the kid takes whichever way is open.
-   */
-  private aim(p: Phaser.Input.Pointer): { dir: Dir | null; alt: Dir | null } {
-    const dx = p.x - STICK.x;
-    const dy = p.y - STICK.y;
-    if (Math.hypot(dx, dy) < 16) return { dir: null, alt: null };
-    const h: Dir = dx > 0 ? 'right' : 'left';
-    const v: Dir = dy > 0 ? 'down' : 'up';
-    const horizontal = Math.abs(dx) > Math.abs(dy);
-    const minor = horizontal ? Math.abs(dy) : Math.abs(dx);
-    const major = horizontal ? Math.abs(dx) : Math.abs(dy);
-    const alt = minor > major * 0.35 ? (horizontal ? v : h) : null;
-    return { dir: horizontal ? h : v, alt };
+  /** Which arrow a finger is on (generous hit area around each button). */
+  private arrowUnder(p: Phaser.Input.Pointer): Dir | null {
+    let best: Dir | null = null;
+    let bestD = PAD.r + 30;
+    for (const d of Object.keys(ARROWS) as Dir[]) {
+      const at = arrowAt(d);
+      const dist = Phaser.Math.Distance.Between(p.x, p.y, at.x, at.y);
+      if (dist < bestD) {
+        bestD = dist;
+        best = d;
+      }
+    }
+    return best;
   }
 
+  /** Held arrows: the newest one leads, an older one still held is the fallback. */
   private readInput(): { dir: Dir | null; alt: Dir | null } {
-    if (this.stick?.dir) return { dir: this.stick.dir, alt: this.stick.alt };
-    const held = (['up', 'down', 'left', 'right'] as const).filter((d) =>
-      this.keys?.[d].some((k) => k.isDown),
-    );
-    return { dir: held[0] ?? null, alt: held[1] ?? null };
+    const now = new Set<Dir>();
+    for (const p of this.input.manager.pointers) {
+      if (!p.isDown) continue;
+      const d = this.arrowUnder(p);
+      if (d) now.add(d);
+    }
+    for (const d of ['up', 'down', 'left', 'right'] as const)
+      if (this.keys?.[d].some((k) => k.isDown)) now.add(d);
+    this.held = this.held.filter((d) => now.has(d));
+    for (const d of now) if (!this.held.includes(d)) this.held.push(d);
+    const n = this.held.length;
+    return { dir: this.held[n - 1] ?? null, alt: this.held[n - 2] ?? null };
   }
 
   private drawControls(): void {
-    const g = this.stickGfx.clear();
-    const s = this.stick;
-    const ox = STICK.x;
-    const oy = STICK.y;
-    g.fillStyle(0x2b2b3a, 0.18).fillCircle(ox, oy, STICK.r);
-    g.lineStyle(5, 0x2b2b3a, 0.35).strokeCircle(ox, oy, STICK.r);
-    const p = s ? this.input.manager.pointers.find((pp) => pp.id === s.id) : undefined;
-    let kx = ox;
-    let ky = oy;
-    if (p) {
-      const a = Math.atan2(p.y - oy, p.x - ox);
-      const d = Math.min(STICK.r * 0.6, Math.hypot(p.x - ox, p.y - oy));
-      kx = ox + Math.cos(a) * d;
-      ky = oy + Math.sin(a) * d;
-    }
-    g.fillStyle(0xffffff, 0.9).fillCircle(kx, ky, 46);
-    g.lineStyle(5, 0x2b2b3a, 0.6).strokeCircle(kx, ky, 46);
-    if (!s) {
-      for (const [dx, dy] of [
-        [0, -1],
-        [0, 1],
-        [-1, 0],
-        [1, 0],
-      ] as const) {
-        g.fillStyle(0x2b2b3a, 0.35).fillCircle(ox + dx * 78, oy + dy * 78, 8);
-      }
+    const g = this.padGfx.clear();
+    g.fillStyle(0x2b2b3a, 0.12).fillCircle(PAD.x, PAD.y, PAD.gap + PAD.r + 6);
+    for (const d of Object.keys(ARROWS) as Dir[]) {
+      const at = arrowAt(d);
+      const on = this.held.includes(d);
+      g.fillStyle(on ? 0x3a86ff : 0x2b2b3a, on ? 0.95 : 0.55).fillCircle(
+        at.x,
+        at.y,
+        on ? PAD.r - 3 : PAD.r,
+      );
+      g.lineStyle(5, 0xffffff, 0.85).strokeCircle(at.x, at.y, on ? PAD.r - 3 : PAD.r);
     }
     const canBomb = this.game_.bombs.length < this.game_.player.bombs;
     this.bombBtn.clear();
@@ -337,18 +334,11 @@ export class BombaScene extends Phaser.Scene {
       layer.push(card, img, label, zone);
     });
     layer.push(
-      addText(
-        this,
-        GAME_WIDTH / 2,
-        1060,
-        'Joystick à esquerda para andar\n💣 para soltar a bomba',
-        30,
-        {
-          color: COLORS.textLight,
-          stroke: '#1d2b53',
-          strokeThickness: 8,
-        },
-      ).setDepth(61),
+      addText(this, GAME_WIDTH / 2, 1060, 'Setas para andar\n💣 para soltar a bomba', 30, {
+        color: COLORS.textLight,
+        stroke: '#1d2b53',
+        strokeThickness: 8,
+      }).setDepth(61),
     );
   }
 

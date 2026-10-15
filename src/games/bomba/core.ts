@@ -355,16 +355,11 @@ export class BombGame {
 
     if (input.bomb) this.placeBomb(events);
 
-    // Turning back mid-way is instant; other turns wait for the next tile center.
-    if (input.dir && p.p > 0 && input.dir === OPPOSITE[p.dir]) {
-      [p.tx, p.nx] = [p.nx, p.tx];
-      [p.ty, p.ny] = [p.ny, p.ty];
-      p.p = 1 - p.p;
-      p.dir = input.dir;
-    }
-    if (p.p > 0 || input.dir) {
-      const moving = p.p > 0;
-      this.walk(p, dt, () => this.playerChoice(input, moving), false, true);
+    // Releasing the arrows stops the kid right where they are (no sliding to the next tile).
+    const want = input.dir;
+    if (want) {
+      if (p.p > 0 && !this.steerMidTile(input)) return;
+      this.walk(p, dt, () => this.playerChoice(input), false, true);
     }
 
     // A bomb you were standing on becomes solid once you are fully off its tile.
@@ -388,19 +383,46 @@ export class BombGame {
   }
 
   /**
-   * Forgiving steering at a tile center: take the wanted direction if it's free, else the other
-   * axis of a diagonal, else keep going straight while the wanted turn is still blocked (so holding
-   * "up" in a corridor turns at the next opening instead of stopping).
+   * Input between two tiles. Back = instant turn. A sideways turn heads for whichever of the two
+   * tile centers (nearest first) actually opens that way; if neither does the kid stays put.
+   * Returns false when the kid should not move this step.
    */
-  private playerChoice(input: Input, wasMoving: boolean): Dir | null {
+  private steerMidTile(input: Input): boolean {
+    const p = this.player;
+    const want = input.dir!;
+    const reverse = () => {
+      [p.tx, p.nx] = [p.nx, p.tx];
+      [p.ty, p.ny] = [p.ny, p.ty];
+      p.p = 1 - p.p;
+      p.dir = OPPOSITE[p.dir];
+    };
+    if (want === p.dir) return true;
+    if (want === OPPOSITE[p.dir]) {
+      reverse();
+      return true;
+    }
+    const opensAt = (x: number, y: number) =>
+      this.open(x + DIRS[want].dx, y + DIRS[want].dy, false, true);
+    const near = p.p < 0.5 ? { x: p.tx, y: p.ty } : { x: p.nx, y: p.ny };
+    const far = p.p < 0.5 ? { x: p.nx, y: p.ny } : { x: p.tx, y: p.ty };
+    const goTo = opensAt(near.x, near.y) ? near : opensAt(far.x, far.y) ? far : null;
+    // Diagonal input whose other key is where we're already going: keep going.
+    if (!goTo) return input.alt === p.dir;
+    if (goTo.x === p.tx && goTo.y === p.ty) reverse();
+    return true;
+  }
+
+  /**
+   * Direction taken at a tile center: the wanted one if it's free, else the other key of a
+   * diagonal; when blocked the kid just stops and faces it (never walks off on their own).
+   */
+  private playerChoice(input: Input): Dir | null {
     const p = this.player;
     const free = (d: Dir) => this.open(p.tx + DIRS[d].dx, p.ty + DIRS[d].dy, false, true);
     const want = input.dir;
     if (!want) return null;
     if (free(want)) return want;
     if (input.alt && free(input.alt)) return input.alt;
-    const perpendicular = DIRS[want].dx !== 0 ? DIRS[p.dir].dx === 0 : DIRS[p.dir].dy === 0;
-    if (wasMoving && perpendicular && free(p.dir)) return p.dir;
     return want; // blocked: stop and face it
   }
 

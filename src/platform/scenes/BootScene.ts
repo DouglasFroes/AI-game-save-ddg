@@ -6,6 +6,12 @@ import { generateGrauTextures } from '@/games/grau/art';
 import { generateLutaTextures } from '@/games/luta/art';
 import { generateBombaTextures } from '@/games/bomba/art';
 import { generateCorreTextures } from '@/games/corre/art';
+import { generateCrushTextures } from '@/games/crush/art';
+import { generateAlvoTextures } from '@/games/alvo/art';
+import { generateAtravessaTextures } from '@/games/atravessa/art';
+import { generateLenhaTextures } from '@/games/lenha/art';
+import { generatePianoTextures } from '@/games/piano/art';
+import { generatePulaTextures } from '@/games/pula/art';
 import { generate2048Textures } from '@/games/game2048/art';
 import { generateSnakeTextures } from '@/games/snake/art';
 import { generateStackTextures } from '@/games/stack/art';
@@ -34,6 +40,12 @@ export class BootScene extends Phaser.Scene {
     generateLutaTextures(this);
     generateBombaTextures(this);
     generateCorreTextures(this);
+    generateCrushTextures(this);
+    generateLenhaTextures(this);
+    generatePianoTextures(this);
+    generateAlvoTextures(this);
+    generatePulaTextures(this);
+    generateAtravessaTextures(this);
     this.scene.start(SceneKeys.Hub);
   }
 }

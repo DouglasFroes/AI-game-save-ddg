@@ -20,7 +20,13 @@ export type GameId =
   | 'luta'
   | 'bomba'
   | 'turma'
-  | 'corre';
+  | 'corre'
+  | 'crush'
+  | 'lenha'
+  | 'piano'
+  | 'alvo'
+  | 'pula'
+  | 'atravessa';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -269,6 +275,84 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'coins', label: 'Moedas', x: 660 },
     ],
     personalBest: storedBest('corre'),
+  },
+  {
+    id: 'crush',
+    title: 'Turma Crush',
+    tagline: 'Junte 3 iguais',
+    icon: 'crush-icon',
+    color: 0xff4f8b,
+    shade: 0xc22d63,
+    entryScene: SceneKeys.Crush,
+    load: () => import('./crush/CrushScene').then((m) => [m.CrushScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'level', label: 'Fase', x: 650 },
+    ],
+    personalBest: storedBest('crush'),
+  },
+  {
+    id: 'lenha',
+    title: 'Lenhador',
+    tagline: 'Corte sem levar galhada',
+    icon: 'lenha-icon',
+    color: 0x6d4c41,
+    shade: 0x4e342e,
+    entryScene: SceneKeys.Lenha,
+    load: () => import('./lenha/LenhaScene').then((m) => [m.LenhaScene]),
+    columns: [{ key: 'score', label: 'Cortes', x: 600, format: formatNumber }],
+    personalBest: storedBest('lenha'),
+  },
+  {
+    id: 'piano',
+    title: 'Toque Rápido',
+    tagline: 'Não erre a peça',
+    icon: 'piano-icon',
+    color: 0x7209b7,
+    shade: 0x4a0080,
+    entryScene: SceneKeys.Piano,
+    load: () => import('./piano/PianoScene').then((m) => [m.PianoScene]),
+    columns: [{ key: 'score', label: 'Peças', x: 600, format: formatNumber }],
+    personalBest: storedBest('piano'),
+  },
+  {
+    id: 'alvo',
+    title: 'Acerta o Alvo',
+    tagline: 'Lápis no biscoito',
+    icon: 'alvo-icon',
+    color: 0x3a0ca3,
+    shade: 0x240873,
+    entryScene: SceneKeys.Alvo,
+    load: () => import('./alvo/AlvoScene').then((m) => [m.AlvoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'level', label: 'Fase', x: 650 },
+    ],
+    personalBest: storedBest('alvo'),
+  },
+  {
+    id: 'pula',
+    title: 'Pula Pula',
+    tagline: 'Suba cada vez mais',
+    icon: 'pula-icon',
+    color: 0x5bd46f,
+    shade: 0x35a249,
+    entryScene: SceneKeys.Pula,
+    load: () => import('./pula/PulaScene').then((m) => [m.PulaScene]),
+    columns: [{ key: 'score', label: 'Altura', x: 600, format: formatNumber }],
+    personalBest: storedBest('pula'),
+  },
+  {
+    id: 'atravessa',
+    title: 'Atravessa',
+    tagline: 'Rua, rio e águia',
+    icon: 'atravessa-icon',
+    color: 0x06d6a0,
+    shade: 0x04976f,
+    entryScene: SceneKeys.Atravessa,
+    load: () => import('./atravessa/AtravessaScene').then((m) => [m.AtravessaScene]),
+    columns: [{ key: 'score', label: 'Pulos', x: 600, format: formatNumber }],
+    personalBest: storedBest('atravessa'),
   },
 ];
 
