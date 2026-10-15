@@ -3,7 +3,7 @@
 Mobile-first arcade of web games (Salve o Doguinho, Block Blast, Sudoku, Road Fighter, 2048, Flappy Bee,
 Snake, Stack, Fruit Merge, Grau 3D, Luta de Rua, Bombinhas, Turma da Luta, Corre Turma, Turma Crush, Lenhador,
 Toque Rápido, Acerta o Alvo, Pula Pula, Atravessa, Fusão Infinita, Quebra-Tijolos,
-Memória da Turma, Pula Cor, Jogo do Milhão, Memória: Aventura, Bolha Gulosa), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
+Memória da Turma, Pula Cor, Jogo do Milhão, Memória: Aventura, Bolha Gulosa, Paciência, Última Carta, Território), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
 (+ Three.js, only in Grau 3D) + Firebase (anonymous auth + Firestore). Node 22.13+.
 
 ## Commands

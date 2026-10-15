@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_WIDTH, SceneKeys } from '@/config';
 import { GAMES, type GameDefinition } from '@/games/registry';
+import { canFullscreen, isFullscreen, isStandalone, toggleFullscreen } from '@/platform/fullscreen';
 import { loadGame } from '@/platform/gameLoader';
 import { GLOBAL_TOP } from '@/platform/leaderboard';
 import { formatNumber } from '@/platform/ranking';
@@ -23,6 +24,8 @@ const DRAG_SLOP = 12;
 
 /** Scroll position survives trips into a game and back. */
 let savedScroll = 0;
+/** The "what's your name?" modal opens by itself at most once per session. */
+let askedName = false;
 /** When the boards were last checked for overtakes (at most once a minute). */
 let lastRivalCheck = -Infinity;
 const RIVAL_CHECK_MS = 60_000;
@@ -97,6 +100,19 @@ export class HubScene extends Phaser.Scene {
     // Header stays above the scrolling grid (also for input: hidden cards must not steal taps).
     nameButton.setDepth(10);
     sound.setDepth(10);
+    this.addFullscreenButton();
+
+    // First visit without a nickname: ask for it right away (only once, and only then).
+    if (!profile.get().name && !askedName) {
+      askedName = true;
+      this.time.delayedCall(400, async () => {
+        const name = await askName(this, '');
+        if (name && this.sys.isActive()) {
+          profile.update({ name });
+          nameButton.label.setText(nameLabel());
+        }
+      });
+    }
 
     this.buildGrid();
 
@@ -114,6 +130,41 @@ export class HubScene extends Phaser.Scene {
     // The hub is already on screen: warm the game chunks in the background so taps feel instant.
     this.time.delayedCall(1500, () => {
       for (const game of GAMES) loadGame(this.game, game).catch(() => undefined);
+    });
+  }
+
+  /** Top-left: full screen on/off (or, on iPhone, how to get it). */
+  private addFullscreenButton(): void {
+    if (isStandalone()) return;
+    const icon = () => (isFullscreen() ? '🗗' : '⛶');
+    const btn = iconButton(this, 66, 66, icon(), () => {
+      if (!canFullscreen()) {
+        this.toast(
+          'No iPhone: toque em Compartilhar ⬆️ e\n"Adicionar à Tela de Início" para tela cheia',
+        );
+        return;
+      }
+      void toggleFullscreen().then(() => btn.label.setText(icon()));
+    }).setDepth(10);
+    const sync = () => btn.active && btn.label.setText(icon());
+    document.addEventListener('fullscreenchange', sync);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+      document.removeEventListener('fullscreenchange', sync),
+    );
+  }
+
+  private toast(text: string): void {
+    const t = addText(this, GAME_WIDTH / 2, 1150, text, 26, {
+      color: COLORS.textLight,
+      stroke: '#1d2b53',
+      strokeThickness: 6,
+    }).setDepth(40);
+    this.tweens.add({
+      targets: t,
+      alpha: 0,
+      delay: 3500,
+      duration: 500,
+      onComplete: () => t.destroy(),
     });
   }
 

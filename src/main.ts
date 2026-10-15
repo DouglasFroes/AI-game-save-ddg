@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '@/config';
+import { fullscreenOnFirstTap } from '@/platform/fullscreen';
 import { BootScene } from '@/platform/scenes/BootScene';
 import { GameOverScene } from '@/platform/scenes/GameOverScene';
 import { HubScene } from '@/platform/scenes/HubScene';
@@ -27,6 +28,8 @@ const game = new Phaser.Game({
 });
 
 provideServices(game, services);
+
+fullscreenOnFirstTap();
 
 // Audio may only start after a user gesture.
 window.addEventListener('pointerdown', () => services.sfx.unlock(), { passive: true });

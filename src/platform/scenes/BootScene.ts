@@ -18,6 +18,9 @@ import { generateMemoriaTextures } from '@/games/memoria/art';
 import { generateCoresTextures } from '@/games/cores/art';
 import { generateMilhaoTextures } from '@/games/milhao/art';
 import { generateBolhaTextures } from '@/games/bolha/art';
+import { generatePacienciaTextures } from '@/games/paciencia/art';
+import { generateUltimaTextures } from '@/games/ultima/art';
+import { generateTerritorioTextures } from '@/games/territorio/art';
 import { generate2048Textures } from '@/games/game2048/art';
 import { generateSnakeTextures } from '@/games/snake/art';
 import { generateStackTextures } from '@/games/stack/art';
@@ -58,6 +61,9 @@ export class BootScene extends Phaser.Scene {
     generateCoresTextures(this);
     generateMilhaoTextures(this);
     generateBolhaTextures(this);
+    generatePacienciaTextures(this);
+    generateUltimaTextures(this);
+    generateTerritorioTextures(this);
     this.scene.start(SceneKeys.Hub);
   }
 }

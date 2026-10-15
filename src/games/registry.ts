@@ -5,6 +5,7 @@ import { FRUITS } from '@/games/fruitmerge/core';
 import type { ScoreRecord } from '@/platform/bestScores';
 import { formatPrize } from '@/games/milhao/art';
 import { memoBest } from '@/games/memofases/best';
+import { formatShare } from '@/games/territorio/art';
 import { formatNumber, formatTime } from '@/platform/ranking';
 import type { Services } from '@/services';
 
@@ -35,7 +36,10 @@ export type GameId =
   | 'cores'
   | 'milhao'
   | 'memofases'
-  | 'bolha';
+  | 'bolha'
+  | 'paciencia'
+  | 'ultima'
+  | 'territorio';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -472,6 +476,52 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'rank', label: 'Posição', x: 660, format: (v) => `${v}º` },
     ],
     personalBest: storedBest('bolha'),
+  },
+  {
+    id: 'paciencia',
+    title: 'Paciência',
+    tagline: 'O clássico das cartas',
+    icon: 'paciencia-icon',
+    color: 0x1f8a4c,
+    shade: 0x135e33,
+    entryScene: SceneKeys.Paciencia,
+    load: () => import('./paciencia/PacienciaScene').then((m) => [m.PacienciaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'cards', label: 'Cartas', x: 570 },
+      { key: 'time', label: 'Tempo', x: 655, format: formatTime },
+    ],
+    personalBest: storedBest('paciencia'),
+  },
+  {
+    id: 'ultima',
+    title: 'Última Carta',
+    tagline: 'Cores, +2 e coringas',
+    icon: 'ultima-icon',
+    color: 0x7b2cbf,
+    shade: 0x4a1a78,
+    entryScene: SceneKeys.Ultima,
+    load: () => import('./ultima/UltimaScene').then((m) => [m.UltimaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'wins', label: 'Rodadas', x: 650 },
+    ],
+    personalBest: storedBest('ultima'),
+  },
+  {
+    id: 'territorio',
+    title: 'Território',
+    tagline: 'Feche a volta e conquiste',
+    icon: 'territorio-icon',
+    color: 0xff4f8b,
+    shade: 0xc2185b,
+    entryScene: SceneKeys.Territorio,
+    load: () => import('./territorio/TerritorioScene').then((m) => [m.TerritorioScene]),
+    columns: [
+      { key: 'score', label: 'Área', x: 520, format: formatShare },
+      { key: 'kills', label: 'Cortes', x: 650 },
+    ],
+    personalBest: storedBest('territorio'),
   },
 ];
 

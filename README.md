@@ -1,6 +1,6 @@
 # 🕹️ Fliperama
 
-Coleção de 27 jogos mobile-first no navegador, cada um com seu próprio ranking (top 20 global
+Coleção de 30 jogos mobile-first no navegador, cada um com seu próprio ranking (top 20 global
 com envio automático, mais os seus 10 melhores no aparelho). Marque os favoritos com ⭐ e receba um aviso
 quando alguém passar o seu recorde.
 
@@ -33,6 +33,9 @@ quando alguém passar o seu recorde.
 | **Jogo do Milhão** | Rumo ao milhão! |
 | **Memória: Aventura** | 30 fases com estrelas |
 | **Bolha Gulosa** | Coma e cresça |
+| **Paciência** | O clássico das cartas |
+| **Última Carta** | Cores, +2 e coringas |
+| **Território** | Feche a volta e conquiste |
 
 O jogador escolhe um apelido uma vez no menu e ele vale para todos os rankings.
 
