@@ -67,6 +67,7 @@ export const SceneKeys = {
   Grau: 'Grau',
   Luta: 'Luta',
   Bomba: 'Bomba',
+  Turma: 'Turma',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

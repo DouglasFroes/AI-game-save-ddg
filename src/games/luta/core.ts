@@ -1,7 +1,7 @@
 /**
  * Street fight vs the CPU — pure simulation (no Phaser). Positions are in world pixels on a flat
  * stage; `y` is the height above the ground. Inputs carry held directions plus pressed-this-step
- * buttons, so the same rules drive the player and the CPU.
+ * buttons, so the same rules drive the player and the CPU. Each fighter has one special power.
  */
 
 export type Rng = () => number;
@@ -19,13 +19,14 @@ const WALK_FWD = 250;
 const WALK_BACK = 190;
 export const ROUND_TIME = 60;
 export const MAX_METER = 100;
-const PROJECTILE_SPEED = 620;
 const PROJECTILE_HALF = 26;
 /** Fireballs fly low: a fighter whose feet are above FIREBALL_CLEAR jumps over them. */
 export const FIREBALL_Y = 90;
-const FIREBALL_CLEAR = 70;
 
-export type AttackKind = 'punch' | 'kick' | 'airKick' | 'special';
+export type AttackKind = 'punch' | 'kick' | 'airKick' | 'special' | 'dash' | 'dive';
+/** Each fighter's power, used when the meter is full. */
+export type SpecialKind = 'fireball' | 'ice' | 'wave' | 'lightning' | 'heal' | 'dash' | 'dive';
+export type ProjectileKind = 'fireball' | 'ice' | 'wave';
 
 export interface AttackData {
   readonly startup: number;
@@ -70,6 +71,7 @@ export const ATTACKS: Record<AttackKind, AttackData> = {
     blockstun: 0.2,
     knockback: 220,
   },
+  /** The casting pose of every power (the effect fires at the end of the startup). */
   special: {
     startup: 0.28,
     active: 0.02,
@@ -80,7 +82,50 @@ export const ATTACKS: Record<AttackKind, AttackData> = {
     blockstun: 0.3,
     knockback: 320,
   },
+  /** Spinning rush across the stage. */
+  dash: {
+    startup: 0,
+    active: 0.36,
+    recovery: 0.22,
+    damage: 15,
+    range: 84,
+    hitstun: 0.55,
+    blockstun: 0.28,
+    knockback: 460,
+  },
+  /** Super jump that comes crashing down on the foe; active while falling. */
+  dive: {
+    startup: 0,
+    active: 9,
+    recovery: 0,
+    damage: 18,
+    range: 104,
+    hitstun: 0.55,
+    blockstun: 0.26,
+    knockback: 320,
+  },
 };
+
+interface ProjectileData {
+  readonly speed: number;
+  readonly y: number;
+  readonly damage: number;
+  readonly hitstun: number;
+  /** Feet higher than this dodge it (jumping over). */
+  readonly clear: number;
+  readonly freeze?: number;
+}
+
+export const PROJECTILES: Record<ProjectileKind, ProjectileData> = {
+  fireball: { speed: 620, y: FIREBALL_Y, damage: 20, hitstun: 0.55, clear: 70 },
+  ice: { speed: 430, y: FIREBALL_Y, damage: 10, hitstun: 1.3, clear: 70, freeze: 1.3 },
+  wave: { speed: 540, y: 10, damage: 18, hitstun: 0.6, clear: 26 },
+};
+
+const LIGHTNING_DELAY = 0.6;
+const LIGHTNING_HALF = 56;
+const LIGHTNING: AttackData = { ...ATTACKS.special, damage: 22, hitstun: 0.7 };
+const HEAL_RATIO = 0.25;
 
 export type FighterState = 'idle' | 'walk' | 'jump' | 'attack' | 'hit' | 'block' | 'ko';
 
@@ -88,6 +133,8 @@ export interface FighterStats {
   readonly maxHp: number;
   readonly power: number;
   readonly speed: number;
+  /** Power used with a full meter (fireball when not set). */
+  readonly special?: SpecialKind;
 }
 
 export interface Fighter {
@@ -105,12 +152,14 @@ export interface Fighter {
   /** For 'hit'/'block': how long it lasts. */
   stun: number;
   attack: AttackKind | null;
-  /** The current attack already connected (for the special: the fireball was thrown). */
+  /** The current attack already connected (for powers: the effect was released). */
   attackHit: boolean;
   /** Hits landed in a row while the opponent stayed in hitstun. */
   combo: number;
   /** Walking backwards (away from the opponent) blocks incoming attacks. */
   guarding: boolean;
+  /** Seconds left frozen in ice (for drawing; the stun keeps them still). */
+  frozen: number;
 }
 
 export interface FightInput {
@@ -135,10 +184,21 @@ export const NO_INPUT: FightInput = {
 export interface Projectile {
   readonly id: number;
   readonly owner: 0 | 1;
+  readonly kind: ProjectileKind;
   x: number;
   readonly y: number;
   readonly vx: number;
 }
+
+/** A lightning bolt about to fall on `x` (telegraphed so it can be dodged). */
+export interface Strike {
+  readonly id: number;
+  readonly owner: 0 | 1;
+  readonly x: number;
+  t: number;
+}
+
+export type HitKind = AttackKind | SpecialKind;
 
 export type FightEvent =
   | {
@@ -147,12 +207,14 @@ export type FightEvent =
       damage: number;
       blocked: boolean;
       combo: number;
-      kind: AttackKind;
+      kind: HitKind;
       x: number;
       y: number;
     }
   | { type: 'whiff'; attacker: 0 | 1; kind: AttackKind }
-  | { type: 'special'; owner: 0 | 1 }
+  | { type: 'special'; owner: 0 | 1; kind: SpecialKind }
+  | { type: 'heal'; owner: 0 | 1; amount: number }
+  | { type: 'strike'; owner: 0 | 1; x: number }
   | { type: 'clash'; x: number }
   | { type: 'ko'; winner: 0 | 1 }
   | { type: 'timeup'; winner: 0 | 1 | null };
@@ -174,6 +236,7 @@ export function makeFighter(stats: FighterStats, x: number, facing: 1 | -1): Fig
     attackHit: false,
     combo: 0,
     guarding: false,
+    frozen: 0,
   };
 }
 
@@ -182,9 +245,17 @@ export const comboScale = (combo: number) => Math.max(0.5, 1 - 0.1 * (combo - 1)
 
 const other = (i: 0 | 1): 0 | 1 => (i === 0 ? 1 : 0);
 
+interface HitSpec {
+  readonly kind: HitKind;
+  readonly data: AttackData;
+  readonly freeze?: number;
+  readonly unblockable?: boolean;
+}
+
 export class FightSim {
   readonly fighters: [Fighter, Fighter];
   readonly projectiles: Projectile[] = [];
+  readonly strikes: Strike[] = [];
   time = ROUND_TIME;
   winner: 0 | 1 | null = null;
   over = false;
@@ -208,6 +279,7 @@ export class FightSim {
     this.separate();
     for (const i of [0, 1] as const) this.resolveAttack(i, events);
     this.moveProjectiles(dt, events);
+    this.updateStrikes(dt, events);
 
     const [a, b] = this.fighters;
     if (a.hp <= 0 || b.hp <= 0) {
@@ -216,6 +288,7 @@ export class FightSim {
       const loser = this.fighters[other(this.winner)];
       loser.state = 'ko';
       loser.t = 0;
+      loser.frozen = 0;
       events.push({ type: 'ko', winner: this.winner });
     } else if (this.time <= 0) {
       this.over = true;
@@ -236,6 +309,7 @@ export class FightSim {
     const f = this.fighters[i];
     const opp = this.fighters[other(i)];
     f.t += dt;
+    f.frozen = Math.max(0, f.frozen - dt);
     if (f.state === 'ko') return;
 
     if (f.state === 'hit' || f.state === 'block') {
@@ -249,25 +323,22 @@ export class FightSim {
       const a = ATTACKS[f.attack!];
       if (f.attack === 'special' && f.t >= a.startup && !f.attackHit) {
         f.attackHit = true;
-        this.projectiles.push({
-          id: ++this.ids,
-          owner: i,
-          x: f.x + f.facing * 70,
-          y: FIREBALL_Y,
-          vx: f.facing * PROJECTILE_SPEED,
-        });
-        events.push({ type: 'special', owner: i });
+        this.releasePower(i, events);
+        if (f.state !== 'attack' || f.attack !== 'special') return; // turned into a dash/dive
       }
-      if (f.attack === 'airKick') {
-        if (f.y <= 0) {
+      if (f.attack === 'airKick' || f.attack === 'dive') {
+        if (f.y <= 0 && f.t > 0.05) {
           f.attack = null;
+          f.vx = 0;
           this.setState(f, 'idle');
         }
         return;
       }
+      if (f.attack === 'dash' && f.t >= a.active) f.vx = 0;
       if (f.t >= a.startup + a.active + a.recovery) {
         if (!f.attackHit) events.push({ type: 'whiff', attacker: i, kind: f.attack! });
         f.attack = null;
+        f.vx = 0;
         this.setState(f, 'idle');
       }
       return;
@@ -312,6 +383,55 @@ export class FightSim {
     if (f.state !== next) this.setState(f, next);
   }
 
+  /** End of the casting pose: the fighter's own power happens. */
+  private releasePower(i: 0 | 1, events: FightEvent[]): void {
+    const f = this.fighters[i];
+    const foe = this.fighters[other(i)];
+    const kind = f.stats.special ?? 'fireball';
+    events.push({ type: 'special', owner: i, kind });
+    switch (kind) {
+      case 'fireball':
+      case 'ice':
+      case 'wave': {
+        const data = PROJECTILES[kind];
+        this.projectiles.push({
+          id: ++this.ids,
+          owner: i,
+          kind,
+          x: f.x + f.facing * 70,
+          y: data.y,
+          vx: f.facing * data.speed,
+        });
+        break;
+      }
+      case 'lightning':
+        this.strikes.push({ id: ++this.ids, owner: i, x: foe.x, t: LIGHTNING_DELAY });
+        break;
+      case 'heal': {
+        const amount = Math.min(f.stats.maxHp - f.hp, Math.round(f.stats.maxHp * HEAL_RATIO));
+        f.hp += amount;
+        events.push({ type: 'heal', owner: i, amount });
+        break;
+      }
+      case 'dash':
+        f.attack = 'dash';
+        f.attackHit = false;
+        f.vx = f.facing * 980 * f.stats.speed;
+        this.setState(f, 'attack');
+        break;
+      case 'dive': {
+        f.attack = 'dive';
+        f.attackHit = false;
+        f.vy = 1250;
+        // Aim to land on the foe.
+        const dx = foe.x - f.x;
+        f.vx = Math.sign(dx || f.facing) * Math.min(620, Math.max(160, Math.abs(dx) * 0.9));
+        this.setState(f, 'attack');
+        break;
+      }
+    }
+  }
+
   private physics(f: Fighter, dt: number): void {
     if (f.y > 0 || f.vy > 0) {
       f.vy -= GRAVITY * dt;
@@ -351,22 +471,27 @@ export class FightSim {
     if (f.state !== 'attack' || f.attackHit || !f.attack || f.attack === 'special') return;
     const a = ATTACKS[f.attack];
     if (f.t < a.startup || f.t >= a.startup + a.active) return;
+    if (f.attack === 'dive' && f.vy > 0) return; // only on the way down
     const target = this.fighters[other(i)];
     if (target.state === 'ko') return;
     const dx = (target.x - f.x) * f.facing;
-    if (dx < -10 || dx > a.range + HURT_HALF) return;
+    const behindOk = f.attack === 'dive' ? -a.range : -10;
+    if (dx < behindOk || dx > a.range + HURT_HALF) return;
+    if (f.attack === 'dive' && f.y - target.y > 170) return;
     // A grounded punch passes under someone high in the air.
     if (f.attack === 'punch' && target.y > 120) return;
     f.attackHit = true;
+    if (f.attack === 'dash') f.vx = 0;
     const reach = Math.min(a.range, Math.abs(target.x - f.x) - 10);
-    this.applyHit(i, f.attack, f.x + f.facing * reach, events);
+    this.applyHit(i, { kind: f.attack, data: a }, f.x + f.facing * Math.max(0, reach), events);
   }
 
   private moveProjectiles(dt: number, events: FightEvent[]): void {
     for (const p of this.projectiles) p.x += p.vx * dt;
-    // Two fireballs cancel each other out.
-    const p0 = this.projectiles.find((p) => p.owner === 0);
-    const p1 = this.projectiles.find((p) => p.owner === 1);
+    // Opposing projectiles cancel each other out (a ground wave passes under the others).
+    const flying = (o: 0 | 1) => this.projectiles.find((p) => p.owner === o && p.kind !== 'wave');
+    const p0 = flying(0);
+    const p1 = flying(1);
     if (p0 && p1 && Math.abs(p0.x - p1.x) < PROJECTILE_HALF * 2) {
       events.push({ type: 'clash', x: (p0.x + p1.x) / 2 });
       this.projectiles.splice(this.projectiles.indexOf(p0), 1);
@@ -374,27 +499,56 @@ export class FightSim {
     }
     for (let k = this.projectiles.length - 1; k >= 0; k--) {
       const p = this.projectiles[k]!;
+      const data = PROJECTILES[p.kind];
       const target = this.fighters[other(p.owner)];
       const hits =
         target.state !== 'ko' &&
         Math.abs(target.x - p.x) < HURT_HALF + PROJECTILE_HALF &&
-        target.y < FIREBALL_CLEAR;
+        target.y < data.clear;
       if (hits) {
         this.projectiles.splice(k, 1);
-        this.applyHit(p.owner, 'special', p.x, events);
+        this.applyHit(
+          p.owner,
+          {
+            kind: p.kind,
+            data: { ...ATTACKS.special, damage: data.damage, hitstun: data.hitstun },
+            freeze: data.freeze,
+          },
+          p.x,
+          events,
+        );
       } else if (p.x < STAGE_LEFT - 80 || p.x > STAGE_RIGHT + 80) {
         this.projectiles.splice(k, 1);
       }
     }
   }
 
-  private applyHit(i: 0 | 1, kind: AttackKind, x: number, events: FightEvent[]): void {
+  private updateStrikes(dt: number, events: FightEvent[]): void {
+    for (let k = this.strikes.length - 1; k >= 0; k--) {
+      const s = this.strikes[k]!;
+      s.t -= dt;
+      if (s.t > 0) continue;
+      this.strikes.splice(k, 1);
+      events.push({ type: 'strike', owner: s.owner, x: s.x });
+      const target = this.fighters[other(s.owner)];
+      if (target.state !== 'ko' && Math.abs(target.x - s.x) < LIGHTNING_HALF)
+        this.applyHit(
+          s.owner,
+          { kind: 'lightning', data: LIGHTNING, unblockable: true },
+          target.x,
+          events,
+        );
+    }
+  }
+
+  private applyHit(i: 0 | 1, hit: HitSpec, x: number, events: FightEvent[]): void {
     const attacker = this.fighters[i];
     const target = this.fighters[other(i)];
-    const a = ATTACKS[kind];
+    const { kind, data: a } = hit;
     const power = attacker.stats.power;
     const push = Math.sign(target.x - x) || attacker.facing;
     const canBlock =
+      !hit.unblockable &&
       target.guarding &&
       target.y === 0 &&
       (target.state === 'idle' || target.state === 'walk' || target.state === 'block');
@@ -425,7 +579,8 @@ export class FightSim {
     const damage = Math.max(1, Math.round(a.damage * power * comboScale(attacker.combo)));
     target.hp = Math.max(0, target.hp - damage);
     target.stun = a.hitstun;
-    target.vx = push * a.knockback;
+    target.vx = hit.freeze ? 0 : push * a.knockback;
+    target.frozen = hit.freeze ?? 0;
     if (target.y > 0) target.vy = Math.max(target.vy, 300);
     target.attack = null;
     target.guarding = false;
@@ -440,7 +595,14 @@ export class FightSim {
       combo: attacker.combo,
       kind,
       x,
-      y: kind === 'airKick' ? 150 : kind === 'kick' ? 95 : 125,
+      y:
+        kind === 'airKick' || kind === 'dive'
+          ? 150
+          : kind === 'kick'
+            ? 95
+            : kind === 'wave'
+              ? 30
+              : 125,
     });
   }
 }

@@ -3,7 +3,7 @@ import { ATTACKS, type Fighter } from './core';
 import type { FighterLook } from './ladder';
 
 /** Angles in degrees: 0 points straight down, positive swings forward (towards `facing`). */
-interface Pose {
+export interface Pose {
   lean: number;
   crouch: number;
   frontArm: [number, number];
@@ -28,7 +28,7 @@ function strike(f: Fighter): number {
   return 1 - clamp01((f.t - a.startup - a.active) / Math.max(0.01, a.recovery));
 }
 
-function poseFor(f: Fighter, time: number): Pose {
+export function poseFor(f: Fighter, time: number): Pose {
   const bob = Math.sin(time * 6) * 3;
   const guard: Pose = {
     lean: 4,
@@ -92,6 +92,36 @@ function poseFor(f: Fighter, time: number): Pose {
             backLeg: [20, -110],
             frontArm: [100, 90],
           };
+        case 'dash':
+          // Arms wide, spinning (the view rotates the whole body).
+          return {
+            ...guard,
+            lean: 18,
+            frontArm: [92, 0],
+            backArm: [88, 0],
+            frontLeg: [30, -30],
+            backLeg: [-30, -30],
+          };
+        case 'dive':
+          return f.vy > 0
+            ? {
+                ...guard,
+                crouch: 0,
+                lean: -6,
+                frontArm: [175, 0],
+                backArm: [170, 0],
+                frontLeg: [20, -60],
+                backLeg: [-20, -60],
+              }
+            : {
+                ...guard,
+                crouch: 0,
+                lean: 16,
+                frontArm: [140, 20],
+                backArm: [120, 20],
+                frontLeg: [35, 0],
+                backLeg: [10, 0],
+              };
         case 'special':
           return {
             ...guard,

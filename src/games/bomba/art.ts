@@ -43,8 +43,8 @@ export const BTex = {
   icon: 'bomba-icon',
 } as const;
 
-const OUTLINE = 0x1f1f2b;
-const PANTS = 0x2b2b3a;
+export const OUTLINE = 0x1f1f2b;
+export const PANTS = 0x2b2b3a;
 
 function drawHair(
   g: Phaser.GameObjects.Graphics,
@@ -209,8 +209,20 @@ function drawKid(g: Phaser.GameObjects.Graphics, kid: Kid, frame: 0 | 1): void {
   g.fillStyle(OUTLINE).fillRoundedRect(cx - 19, 78, 38, 26, 8);
   g.fillStyle(kid.shirt).fillRoundedRect(cx - 16, 80, 32, 22, 6);
 
+  drawKidHead(g, kid, cx, cy);
+}
+
+export type Mood = 'happy' | 'hurt' | 'ko';
+
+/** The kid's head (hair, ears, face) centered on (cx, cy); radius 31 plus hair. */
+export function drawKidHead(
+  g: Phaser.GameObjects.Graphics,
+  kid: Kid,
+  cx: number,
+  cy: number,
+  mood: Mood = 'happy',
+): void {
   drawHair(g, kid, 'back', cx, cy);
-  // Head, ears.
   for (const s of [-1, 1]) {
     g.fillStyle(OUTLINE).fillCircle(cx + s * 31, cy + 4, 8);
     g.fillStyle(kid.skin).fillCircle(cx + s * 31, cy + 4, 5.5);
@@ -221,17 +233,32 @@ function drawKid(g: Phaser.GameObjects.Graphics, kid: Kid, frame: 0 | 1): void {
 
   // Face: dot eyes with a shine, open smile with tongue, rosy cheeks.
   for (const s of [-1, 1]) {
-    g.fillStyle(OUTLINE).fillEllipse(cx + s * 10, cy + 6, 9, 13);
-    g.fillStyle(0xffffff).fillCircle(cx + s * 10 + 1.5, cy + 2.5, 2);
+    if (mood === 'ko') {
+      g.lineStyle(3.5, OUTLINE)
+        .lineBetween(cx + s * 10 - 5, cy + 1, cx + s * 10 + 5, cy + 11)
+        .lineBetween(cx + s * 10 + 5, cy + 1, cx + s * 10 - 5, cy + 11);
+    } else if (mood === 'hurt') {
+      g.lineStyle(3.5, OUTLINE)
+        .lineBetween(cx + s * 10 - 5, cy + 3 - s * 3, cx + s * 10 + 5, cy + 6)
+        .lineBetween(cx + s * 10 - 5, cy + 9 + s * 3, cx + s * 10 + 5, cy + 6);
+    } else {
+      g.fillStyle(OUTLINE).fillEllipse(cx + s * 10, cy + 6, 9, 13);
+      g.fillStyle(0xffffff).fillCircle(cx + s * 10 + 1.5, cy + 2.5, 2);
+    }
     g.fillStyle(0xff8fa3, 0.55).fillEllipse(cx + s * 20, cy + 16, 10, 6);
   }
-  g.fillStyle(OUTLINE)
-    .slice(cx, cy + 15, 10, 0, Math.PI, false)
-    .fillPath();
-  g.fillStyle(0xb3122e)
-    .slice(cx, cy + 15, 7.5, 0, Math.PI, false)
-    .fillPath();
-  g.fillStyle(0xff6b8b).fillEllipse(cx, cy + 20, 9, 5);
+  if (mood === 'happy') {
+    g.fillStyle(OUTLINE)
+      .slice(cx, cy + 15, 10, 0, Math.PI, false)
+      .fillPath();
+    g.fillStyle(0xb3122e)
+      .slice(cx, cy + 15, 7.5, 0, Math.PI, false)
+      .fillPath();
+    g.fillStyle(0xff6b8b).fillEllipse(cx, cy + 20, 9, 5);
+  } else {
+    g.fillStyle(OUTLINE).fillEllipse(cx, cy + 21, 12, 13);
+    g.fillStyle(0xb3122e).fillEllipse(cx, cy + 21, 7, 8);
+  }
 }
 
 function drawEnemy(g: Phaser.GameObjects.Graphics, kind: EnemyKind): void {
@@ -361,6 +388,22 @@ export function generateBombaTextures(scene: Phaser.Scene): void {
   bake(scene, BTex.door, 100, 100, door(false));
   bake(scene, BTex.doorOpen, 100, 100, door(true));
 
+  bake(scene, 'turma-icon', 150, 150, (g) => {
+    g.fillStyle(0xffd166).fillRoundedRect(0, 0, 150, 150, 22);
+    g.fillStyle(0xff4f8b)
+      .fillTriangle(75, 20, 60, 75, 90, 75)
+      .fillTriangle(75, 130, 60, 75, 90, 75);
+    for (const [i, x, flip] of [
+      [3, -2, 1],
+      [1, 72, -1],
+    ] as const) {
+      g.save();
+      g.translateCanvas(flip > 0 ? x : x + 80, 22);
+      g.scaleCanvas(0.8 * flip, 0.8);
+      drawKid(g, KIDS[i]!, 0);
+      g.restore();
+    }
+  });
   bake(scene, BTex.icon, 150, 150, (g) => {
     g.fillStyle(0xb5e48c).fillRoundedRect(0, 0, 150, 150, 22);
     g.fillStyle(0x6b80b3).fillRect(0, 118, 150, 32);

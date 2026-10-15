@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, GAME_WIDTH, SceneKeys } from '@/config';
+import { COLORS, GAME_WIDTH, SceneKeys, type SceneKey } from '@/config';
 import { Tex } from '@/platform/art/textures';
 import { formatNumber } from '@/platform/ranking';
 import type { GameOverData } from '@/platform/scenes/GameOverScene';
@@ -11,8 +11,11 @@ import {
   FightSim,
   MAX_METER,
   NO_INPUT,
+  PROJECTILES,
   type FightEvent,
+  type FighterStats,
   type FightInput,
+  type Fighter,
 } from './core';
 import { FighterView } from './fighterView';
 import {
@@ -32,9 +35,22 @@ export interface LutaData {
   hp?: number;
   maxCombo?: number;
   perfects?: number;
+  /** Turma: the kid the player chose. */
+  kid?: number;
 }
 
-const GROUND_Y = 860;
+/** Anything that can draw a fighter every frame. */
+export interface FightView {
+  draw(f: Fighter, time: number, flash: boolean): void;
+}
+
+export interface FightSetup {
+  readonly names: [string, string];
+  readonly player: FighterStats;
+  readonly rival: FighterStats;
+}
+
+export const GROUND_Y = 860;
 const STEP = 1 / 120;
 const MAX_DT = 1 / 20;
 
@@ -46,13 +62,19 @@ interface PadButton {
   readonly color: number;
 }
 
-/** "Luta de Rua": survive a ladder of CPU rivals, one fight after another. */
+/**
+ * "Luta de Rua": survive a ladder of CPU rivals, one fight after another. Subclasses (the kids'
+ * "Turma") swap the cast, the stage and the powers through the protected hooks.
+ */
 export class LutaScene extends Phaser.Scene {
-  private sim!: FightSim;
+  protected sim!: FightSim;
   private cpu!: CpuBrain;
   private rivalLook!: FighterLook;
-  private views!: [FighterView, FighterView];
-  private level = 1;
+  protected names: [string, string] = ['', ''];
+  private views!: [FightView, FightView];
+  protected level = 1;
+  protected gameId = 'luta';
+  protected sceneKey: SceneKey = SceneKeys.Luta;
   private score = 0;
   private maxCombo = 0;
   private perfects = 0;
@@ -64,6 +86,7 @@ export class LutaScene extends Phaser.Scene {
   private trail: [number, number] = [1, 1];
   private pressed: FightInput = { ...NO_INPUT };
   private fireballs = new Map<number, Phaser.GameObjects.Container>();
+  private strikeGfx!: Phaser.GameObjects.Graphics;
 
   private hud!: {
     bars: Phaser.GameObjects.Graphics;
@@ -77,8 +100,8 @@ export class LutaScene extends Phaser.Scene {
     Phaser.Input.Keyboard.Key[]
   >;
 
-  constructor() {
-    super(SceneKeys.Luta);
+  constructor(key: SceneKey = SceneKeys.Luta) {
+    super(key);
   }
 
   init(data: LutaData): void {
@@ -86,9 +109,9 @@ export class LutaScene extends Phaser.Scene {
     this.score = data.score ?? 0;
     this.maxCombo = data.maxCombo ?? 0;
     this.perfects = data.perfects ?? 0;
-    const rival = rivalFor(this.level);
-    this.rivalLook = rival.look;
-    this.sim = new FightSim(PLAYER_STATS, rival.stats);
+    const setup = this.setupFight();
+    this.names = setup.names;
+    this.sim = new FightSim(setup.player, setup.rival);
     if (data.hp !== undefined) this.sim.fighters[0].hp = data.hp;
     this.cpu = new CpuBrain(this.level);
     this.running = false;
@@ -96,17 +119,51 @@ export class LutaScene extends Phaser.Scene {
     this.acc = 0;
     this.hitstop = 0;
     this.flash = [0, 0];
-    this.trail = [this.sim.fighters[0].hp / PLAYER_STATS.maxHp, 1];
+    this.trail = [this.sim.fighters[0].hp / setup.player.maxHp, 1];
     this.pressed = { ...NO_INPUT };
     this.fireballs = new Map();
   }
 
-  create(): void {
-    this.drawStage();
-    this.views = [
+  // ── Hooks ───────────────────────────────────────────────────────────────
+
+  /** Who fights this level: names and stats. */
+  protected setupFight(): FightSetup {
+    const rival = rivalFor(this.level);
+    this.rivalLook = rival.look;
+    return { names: [PLAYER_LOOK.name, rival.look.name], player: PLAYER_STATS, rival: rival.stats };
+  }
+
+  protected makeViews(): [FightView, FightView] {
+    return [
       new FighterView(this, PLAYER_LOOK, GROUND_Y),
       new FighterView(this, this.rivalLook, GROUND_Y),
     ];
+  }
+
+  /** Label of the power button. */
+  protected powerLabel(): string {
+    return 'PODER';
+  }
+
+  /** Name shown when fighter `owner` uses their power ('' = none). */
+  protected powerName(_owner: 0 | 1): string {
+    return '';
+  }
+
+  /** First-fight tips. */
+  protected helpText(): string {
+    return 'Segure para trás para defender\nEncha a barra azul e solte o PODER';
+  }
+
+  /** Extra data kept between fights and on "play again". */
+  protected carryData(): LutaData {
+    return {};
+  }
+
+  create(): void {
+    this.drawStage();
+    this.views = this.makeViews();
+    this.strikeGfx = this.add.graphics().setDepth(7);
     this.buildHud();
     this.buildPad();
     this.intro();
@@ -115,7 +172,7 @@ export class LutaScene extends Phaser.Scene {
 
   // ── Stage ───────────────────────────────────────────────────────────────
 
-  private drawStage(): void {
+  protected drawStage(): void {
     const g = this.add.graphics().setDepth(0);
     g.fillGradientStyle(0x1b1238, 0x1b1238, 0x7b2d5b, 0x7b2d5b, 1).fillRect(
       0,
@@ -171,8 +228,8 @@ export class LutaScene extends Phaser.Scene {
   private buildHud(): void {
     iconButton(this, 60, 60, '‹', () => this.scene.start(SceneKeys.Hub)).setDepth(31);
     const light = { color: COLORS.textLight, stroke: '#0b1430', strokeThickness: 6 };
-    addText(this, 118, 150, PLAYER_LOOK.name, 24, light).setOrigin(0, 0.5).setDepth(30);
-    addText(this, GAME_WIDTH - 24, 150, this.rivalLook.name, 24, light)
+    addText(this, 118, 150, this.names[0], 24, light).setOrigin(0, 0.5).setDepth(30);
+    addText(this, GAME_WIDTH - 24, 150, this.names[1], 24, light)
       .setOrigin(1, 0.5)
       .setDepth(30);
     const timer = addText(this, GAME_WIDTH / 2, 72, '60', 46, {
@@ -254,7 +311,14 @@ export class LutaScene extends Phaser.Scene {
       jump: make(156, 1010, 62, '▲', 0x0b1430, 44),
       punch: make(470, 1170, 70, 'SOCO', 0xe63946, 26),
       kick: make(632, 1110, 70, 'CHUTE', 0x3a86ff, 26),
-      special: make(560, 975, 60, 'PODER', 0x7209b7, 24),
+      special: make(
+        560,
+        975,
+        60,
+        this.powerLabel(),
+        0x7209b7,
+        this.powerLabel().length > 6 ? 18 : 24,
+      ),
     };
     const inside = (b: PadButton, p: Phaser.Input.Pointer) =>
       Phaser.Math.Distance.Between(p.x, p.y, b.x, b.y) <= b.r + 12;
@@ -340,6 +404,7 @@ export class LutaScene extends Phaser.Scene {
     this.views[0].draw(this.sim.fighters[0], this.time.now / 1000, this.flash[0] > 0);
     this.views[1].draw(this.sim.fighters[1], this.time.now / 1000, this.flash[1] > 0);
     this.syncFireballs();
+    this.drawStrikes();
     this.updateHud(dt);
     this.drawPad(input);
   }
@@ -358,7 +423,8 @@ export class LutaScene extends Phaser.Scene {
         this.flash[target] = 0.08;
         this.hitstop = e.kind === 'punch' ? 0.045 : 0.08;
         sfx.play(e.kind === 'punch' ? 'pop' : 'hit');
-        if (e.kind !== 'punch') this.cameras.main.shake(e.kind === 'special' ? 220 : 120, 0.008);
+        if (e.kind !== 'punch')
+          this.cameras.main.shake(e.kind === 'kick' || e.kind === 'airKick' ? 120 : 220, 0.008);
         if (target === 1) sfx.vibrate(20);
         else sfx.vibrate([40, 20, 40]);
         this.damageNumber(e.x, y - 40, e.damage, target === 1);
@@ -369,8 +435,33 @@ export class LutaScene extends Phaser.Scene {
         }
         break;
       }
-      case 'special':
+      case 'special': {
         sfx.play('start');
+        const name = this.powerName(e.owner);
+        if (name) this.callout(this.sim.fighters[e.owner].x, name);
+        break;
+      }
+      case 'heal': {
+        sfx.play('star', 4);
+        const f = this.sim.fighters[e.owner];
+        this.spark(f.x, GROUND_Y - 160, 0x5bd46f, 18);
+        const t = addText(this, f.x, GROUND_Y - 260, `+${e.amount} ❤`, 40, {
+          color: '#5bd46f',
+          stroke: '#0b1430',
+          strokeThickness: 8,
+        }).setDepth(25);
+        this.tweens.add({
+          targets: t,
+          y: t.y - 80,
+          alpha: 0,
+          duration: 900,
+          onComplete: () => t.destroy(),
+        });
+        break;
+      }
+      case 'strike':
+        sfx.play('hit');
+        this.lightningBolt(e.x);
         break;
       case 'clash':
         sfx.play('star', 3);
@@ -390,21 +481,92 @@ export class LutaScene extends Phaser.Scene {
     for (const p of this.sim.projectiles) {
       alive.add(p.id);
       let view = this.fireballs.get(p.id);
+      const y = GROUND_Y - PROJECTILES[p.kind].y;
       if (!view) {
-        const color = p.owner === 0 ? 0x7df9ff : 0xff7b00;
-        const glow = this.add.circle(0, 0, 38, color, 0.35);
-        const core = this.add.circle(0, 0, 22, 0xffffff, 0.95);
-        view = this.add.container(p.x, GROUND_Y - FIREBALL_Y, [glow, core]).setDepth(6);
-        this.tweens.add({ targets: glow, scale: 1.25, duration: 120, yoyo: true, repeat: -1 });
+        if (p.kind === 'wave') {
+          // Ground shockwave: a bump of dirt and rocks rolling along the floor.
+          const dirt = this.add.ellipse(0, 0, 110, 70, 0x8d6e63).setStrokeStyle(5, 0x4e342e);
+          const rocks = [-30, 0, 30].map((dx) =>
+            this.add.circle(dx, -26 - Math.abs(dx) * 0.3, 9, 0x6d4c41),
+          );
+          view = this.add.container(p.x, y, [dirt, ...rocks]).setDepth(6);
+          this.tweens.add({ targets: view, scaleY: 1.3, duration: 90, yoyo: true, repeat: -1 });
+        } else {
+          const color = p.kind === 'ice' ? 0x9be7ff : 0xff7b00;
+          const glow = this.add.circle(0, 0, 38, color, 0.4);
+          const core = this.add.circle(0, 0, 22, p.kind === 'ice' ? 0xe0f7ff : 0xffffff, 0.95);
+          const parts: Phaser.GameObjects.GameObject[] = [glow, core];
+          if (p.kind === 'ice')
+            for (let i = 0; i < 3; i++)
+              parts.push(this.add.rectangle(0, 0, 44, 5, 0xffffff).setAngle(i * 60));
+          view = this.add.container(p.x, y, parts).setDepth(6);
+          this.tweens.add({ targets: glow, scale: 1.25, duration: 120, yoyo: true, repeat: -1 });
+          if (p.kind === 'ice')
+            this.tweens.add({ targets: view, angle: 360, duration: 900, repeat: -1 });
+        }
         this.fireballs.set(p.id, view);
       }
-      view.setPosition(p.x, GROUND_Y - FIREBALL_Y);
+      view.setPosition(p.x, y);
     }
     for (const [id, view] of this.fireballs) {
       if (alive.has(id)) continue;
       view.destroy();
       this.fireballs.delete(id);
     }
+  }
+
+  /** Lightning warnings: a flashing mark on the floor where the bolt will fall. */
+  private drawStrikes(): void {
+    const g = this.strikeGfx.clear();
+    for (const s of this.sim.strikes) {
+      const blink = Math.floor(this.time.now / 90) % 2 ? 0.9 : 0.4;
+      g.fillStyle(0xffd23f, blink * 0.5).fillEllipse(s.x, GROUND_Y + 4, 130, 30);
+      g.lineStyle(4, 0xffd23f, blink).strokeEllipse(s.x, GROUND_Y + 4, 130, 30);
+      g.fillStyle(0x5c5f73, 0.85)
+        .fillEllipse(s.x, 300, 170, 60)
+        .fillEllipse(s.x - 40, 285, 90, 50);
+    }
+  }
+
+  private lightningBolt(x: number): void {
+    const g = this.add.graphics().setDepth(19);
+    const pts: Phaser.Types.Math.Vector2Like[] = [{ x, y: 300 }];
+    for (let y = 300; y < GROUND_Y; y += 70)
+      pts.push({ x: x + Phaser.Math.Between(-30, 30), y: y + 70 });
+    pts[pts.length - 1] = { x, y: GROUND_Y };
+    g.lineStyle(18, 0xfff3b0, 0.5).strokePoints(pts);
+    g.lineStyle(7, 0xffffff).strokePoints(pts);
+    this.cameras.main.flash(120, 255, 255, 220);
+    this.cameras.main.shake(200, 0.01);
+    this.spark(x, GROUND_Y - 10, 0xffd23f, 20);
+    this.tweens.add({ targets: g, alpha: 0, duration: 380, onComplete: () => g.destroy() });
+  }
+
+  /** Big floating name of the power being used. */
+  private callout(x: number, name: string): void {
+    const t = addText(
+      this,
+      Phaser.Math.Clamp(x, 140, GAME_WIDTH - 140),
+      GROUND_Y - 330,
+      `${name}!`,
+      44,
+      {
+        color: '#ffd23f',
+        stroke: '#0b1430',
+        strokeThickness: 10,
+      },
+    )
+      .setDepth(26)
+      .setScale(0.5);
+    this.tweens.add({ targets: t, scale: 1, duration: 160, ease: 'Back.easeOut' });
+    this.tweens.add({
+      targets: t,
+      alpha: 0,
+      y: t.y - 50,
+      delay: 650,
+      duration: 400,
+      onComplete: () => t.destroy(),
+    });
   }
 
   // ── Effects ─────────────────────────────────────────────────────────────
@@ -459,28 +621,21 @@ export class LutaScene extends Phaser.Scene {
 
   // ── Flow ────────────────────────────────────────────────────────────────
 
-  private intro(): void {
+  protected intro(): void {
     const { sfx } = getServices(this);
     const vs = this.bigText(`LUTA ${this.level}`, '#ffffff', 80);
-    const name = addText(this, GAME_WIDTH / 2, 620, `vs ${this.rivalLook.name}`, 40, {
+    const name = addText(this, GAME_WIDTH / 2, 620, `vs ${this.names[1]}`, 40, {
       color: '#ffd23f',
       stroke: '#0b1430',
       strokeThickness: 8,
     }).setDepth(50);
     sfx.play('click');
     if (this.level === 1) {
-      const help = addText(
-        this,
-        GAME_WIDTH / 2,
-        720,
-        'Segure para trás para defender\nEncha a barra azul e solte o PODER',
-        26,
-        {
-          color: COLORS.textLight,
-          stroke: '#0b1430',
-          strokeThickness: 6,
-        },
-      ).setDepth(50);
+      const help = addText(this, GAME_WIDTH / 2, 400, this.helpText(), 26, {
+        color: COLORS.textLight,
+        stroke: '#0b1430',
+        strokeThickness: 6,
+      }).setDepth(50);
       this.time.delayedCall(3200, () => help.destroy());
     }
     this.time.delayedCall(1300, () => {
@@ -529,6 +684,7 @@ export class LutaScene extends Phaser.Scene {
           hp: healBetweenFights(player.hp, player.stats.maxHp),
           maxCombo: this.maxCombo,
           perfects: this.perfects,
+          ...this.carryData(),
         } satisfies LutaData),
       );
       return;
@@ -538,18 +694,18 @@ export class LutaScene extends Phaser.Scene {
     this.bigText(ko ? 'K.O.' : 'TEMPO!', '#ff5d5d');
     const wins = this.level - 1;
     const data: GameOverData = {
-      gameId: 'luta',
+      gameId: this.gameId,
       title: wins === 0 ? 'Você apanhou!' : `${wins} ${wins === 1 ? 'vitória' : 'vitórias'}!`,
       lines: [
-        `Derrotado por ${this.rivalLook.name}`,
+        `Derrotado por ${this.names[1]}`,
         `Maior combo: ${this.maxCombo} ${this.maxCombo === 1 ? 'hit' : 'hits'}`,
       ],
       record: {
         score: this.score,
         details: { wins, maxCombo: this.maxCombo, perfects: this.perfects },
       },
-      parent: SceneKeys.Luta,
-      retry: { scene: SceneKeys.Luta, data: {} },
+      parent: this.sceneKey,
+      retry: { scene: this.sceneKey, data: this.carryData() },
     };
     this.time.delayedCall(1600, () => this.scene.launch(SceneKeys.GameOver, data));
   }

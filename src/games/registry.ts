@@ -18,7 +18,8 @@ export type GameId =
   | 'fruitmerge'
   | 'grau'
   | 'luta'
-  | 'bomba';
+  | 'bomba'
+  | 'turma';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -235,6 +236,22 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'monsters', label: 'Monstros', x: 660 },
     ],
     personalBest: storedBest('bomba'),
+  },
+  {
+    id: 'turma',
+    title: 'Turma da Luta',
+    tagline: 'Cada um com seu poder',
+    icon: 'turma-icon',
+    color: 0x00b4d8,
+    shade: 0x0077b6,
+    entryScene: SceneKeys.Turma,
+    load: () => import('./luta/TurmaScene').then((m) => [m.TurmaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 580 },
+      { key: 'maxCombo', label: 'Combo', x: 660 },
+    ],
+    personalBest: storedBest('turma'),
   },
 ];
 

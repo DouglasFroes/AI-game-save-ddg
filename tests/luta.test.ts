@@ -7,7 +7,9 @@ import {
   MAX_METER,
   NO_INPUT,
   STAGE_LEFT,
+  STAGE_RIGHT,
   type FightEvent,
+  type SpecialKind,
   type FightInput,
 } from '@/games/luta/core';
 import { healBetweenFights, PLAYER_STATS, rivalFor, winBonus } from '@/games/luta/ladder';
@@ -100,7 +102,10 @@ describe('luta', () => {
     sim.fighters[0].meter = MAX_METER;
     events = run(sim, 1.5, (i) => press({ special: i === 0 }));
     expect(events.some((e) => e.type === 'special')).toBe(true);
-    expect(events.find((e) => e.type === 'hit')).toMatchObject({ kind: 'special', blocked: false });
+    expect(events.find((e) => e.type === 'hit')).toMatchObject({
+      kind: 'fireball',
+      blocked: false,
+    });
     expect(sim.fighters[0].meter).toBeLessThan(MAX_METER);
   });
 
@@ -176,5 +181,79 @@ describe('luta', () => {
     const base = { level: 2, hpLeft: 50, maxHp: 100, timeLeft: 30, perfect: false };
     expect(winBonus({ ...base, perfect: true })).toBe(winBonus(base) + 3000);
     expect(winBonus({ ...base, level: 3 })).toBeGreaterThan(winBonus(base));
+  });
+
+  describe('powers', () => {
+    const withPower = (special: SpecialKind, gap = 300) => {
+      const sim = new FightSim({ ...EVEN, special }, EVEN);
+      closeIn(sim, gap);
+      sim.fighters[0].meter = MAX_METER;
+      return sim;
+    };
+    const cast = (i: number) => press({ special: i === 0 });
+
+    it('ice freezes the foe for a long time', () => {
+      const sim = withPower('ice');
+      const events = run(sim, 1.2, cast);
+      expect(events.find((e) => e.type === 'hit')).toMatchObject({ kind: 'ice' });
+      expect(sim.fighters[1].frozen).toBeGreaterThan(0.5);
+      expect(sim.fighters[1].state).toBe('hit');
+    });
+
+    it('the ground wave hits standing foes but not jumping ones', () => {
+      const sim = withPower('wave');
+      expect(run(sim, 1.2, cast).some((e) => e.type === 'hit')).toBe(true);
+      const jumper = withPower('wave');
+      const events = run(jumper, 1.2, cast, () => {
+        const p = jumper.projectiles[0];
+        return press({ jump: !!p && Math.abs(p.x - jumper.fighters[1].x) < 160 });
+      });
+      expect(events.some((e) => e.type === 'hit')).toBe(false);
+    });
+
+    it('lightning falls where the foe was: standing still gets hit, moving away dodges', () => {
+      const still = withPower('lightning');
+      const hit = run(still, 1.5, cast);
+      expect(hit.some((e) => e.type === 'strike')).toBe(true);
+      expect(hit.find((e) => e.type === 'hit')).toMatchObject({ kind: 'lightning' });
+      const runner = withPower('lightning');
+      const dodge = run(runner, 1.5, cast, () => press({ left: true }));
+      expect(dodge.some((e) => e.type === 'hit')).toBe(false);
+    });
+
+    it('lightning cannot be blocked', () => {
+      const sim = withPower('lightning');
+      sim.fighters[1].x = STAGE_RIGHT; // pinned: holding back guards without moving away
+      const events = run(sim, 1.5, cast, () => press({ right: true }));
+      expect(events.find((e) => e.type === 'hit')).toMatchObject({
+        kind: 'lightning',
+        blocked: false,
+      });
+    });
+
+    it('heal restores life', () => {
+      const sim = withPower('heal');
+      sim.fighters[0].hp = 40;
+      const events = run(sim, 0.8, cast);
+      expect(events.find((e) => e.type === 'heal')).toMatchObject({ amount: 25 });
+      expect(sim.fighters[0].hp).toBe(65);
+    });
+
+    it('dash rushes across the stage into the foe', () => {
+      const sim = withPower('dash', 280);
+      const events = run(sim, 1, cast);
+      expect(events.find((e) => e.type === 'hit')).toMatchObject({ kind: 'dash', blocked: false });
+    });
+
+    it('dive leaps and crashes down on the foe', () => {
+      const sim = withPower('dive', 260);
+      let maxY = 0;
+      const events = run(sim, 1.6, (i) => {
+        maxY = Math.max(maxY, sim.fighters[0].y);
+        return cast(i);
+      });
+      expect(maxY).toBeGreaterThan(200);
+      expect(events.find((e) => e.type === 'hit')).toMatchObject({ kind: 'dive' });
+    });
   });
 });
