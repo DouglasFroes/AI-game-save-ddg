@@ -1,6 +1,6 @@
 import type { Services } from '@/services';
 import type { ScoreRecord } from './bestScores';
-import type { SubmitResult } from './leaderboard';
+import { GLOBAL_TOP, type SubmitResult } from './leaderboard';
 
 export interface AutoSubmit {
   readonly rank: number;
@@ -27,7 +27,16 @@ export async function autoSubmit(
     const rank = await services.leaderboard.qualify(gameId, record.score);
     return rank === null ? null : { needsName: true, rank };
   }
-  return services.leaderboard.autoSubmit(gameId, { name, ...record });
+  const result = await services.leaderboard.autoSubmit(gameId, { name, ...record });
+  if (result?.result === 'global') void watchBoard(services, gameId);
+  return result;
+}
+
+/** Remembers the player's current place on a global board (the baseline for overtakes). */
+export async function watchBoard(services: Services, gameId: string): Promise<void> {
+  const { leaderboard, rankWatch } = services;
+  const entries = await leaderboard.list(gameId, GLOBAL_TOP).catch(() => null);
+  if (entries && leaderboard.online) rankWatch.check(gameId, entries, (e) => leaderboard.isMine(e));
 }
 
 export function rankMessage(r: AutoSubmit | null, online: boolean): string {

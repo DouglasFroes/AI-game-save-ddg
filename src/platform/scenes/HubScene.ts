@@ -2,7 +2,9 @@ import Phaser from 'phaser';
 import { COLORS, GAME_WIDTH, SceneKeys } from '@/config';
 import { GAMES, type GameDefinition } from '@/games/registry';
 import { loadGame } from '@/platform/gameLoader';
+import { GLOBAL_TOP } from '@/platform/leaderboard';
 import { formatNumber } from '@/platform/ranking';
+import type { Overtake } from '@/platform/rankWatch';
 import { askName } from '@/platform/ui/nameDialog';
 import { addBackground, addText, Button, iconButton } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
@@ -21,6 +23,9 @@ const DRAG_SLOP = 12;
 
 /** Scroll position survives trips into a game and back. */
 let savedScroll = 0;
+/** When the boards were last checked for overtakes (at most once a minute). */
+let lastRivalCheck = -Infinity;
+const RIVAL_CHECK_MS = 60_000;
 
 /** Main menu: pick a game, set your nickname, toggle sound. */
 export class HubScene extends Phaser.Scene {
@@ -104,6 +109,8 @@ export class HubScene extends Phaser.Scene {
       { color: COLORS.textLight, stroke: '#1d2b53', strokeThickness: 5 },
     );
 
+    void this.checkRivals();
+
     // The hub is already on screen: warm the game chunks in the background so taps feel instant.
     this.time.delayedCall(1500, () => {
       for (const game of GAMES) loadGame(this.game, game).catch(() => undefined);
@@ -120,11 +127,13 @@ export class HubScene extends Phaser.Scene {
 
     const rows = Math.ceil(GAMES.length / COLS);
     const gridW = COLS * CARD_W + (COLS - 1) * GAP;
-    GAMES.forEach((game, i) => {
-      const x = (GAME_WIDTH - gridW) / 2 + CARD_W / 2 + (i % COLS) * (CARD_W + GAP);
-      const y = VIEW_TOP + PAD_TOP + CARD_H / 2 + Math.floor(i / COLS) * (CARD_H + GAP);
-      this.buildCard(game, x, y);
-    });
+    getServices(this)
+      .favorites.sort(GAMES)
+      .forEach((game, i) => {
+        const x = (GAME_WIDTH - gridW) / 2 + CARD_W / 2 + (i % COLS) * (CARD_W + GAP);
+        const y = VIEW_TOP + PAD_TOP + CARD_H / 2 + Math.floor(i / COLS) * (CARD_H + GAP);
+        this.buildCard(game, x, y);
+      });
     const contentH = PAD_TOP + rows * CARD_H + (rows - 1) * GAP + PAD_BOTTOM;
     this.maxScroll = Math.max(0, contentH - (VIEW_BOTTOM - VIEW_TOP));
     this.scroll = Phaser.Math.Clamp(savedScroll, 0, this.maxScroll);
@@ -333,5 +342,91 @@ export class HubScene extends Phaser.Scene {
       { width: 58, height: 52, fontSize: 26, color: COLORS.panel, shade: 0xc7cfdc },
     );
     this.list.add(ranking);
+
+    // Star: favorites move to the top of the grid.
+    const fav = services.favorites.has(game.id);
+    const star = new Button(
+      this,
+      x - CARD_W / 2 + 36,
+      y - CARD_H / 2 + 34,
+      fav ? '★' : '☆',
+      () => {
+        if (!this.isTap(this.input.activePointer)) return;
+        services.favorites.toggle(game.id);
+        this.scene.restart();
+      },
+      {
+        width: 58,
+        height: 52,
+        fontSize: 30,
+        color: fav ? 0xffd23f : COLORS.panel,
+        shade: fav ? 0xe0a800 : 0xc7cfdc,
+        textColor: fav ? '#ffffff' : '#9aa5b8',
+      },
+    );
+    this.list.add(star);
+  }
+
+  // ── Someone passed you ──────────────────────────────────────────────────
+
+  /** Looks at the global boards the player is on and warns them about anyone who passed them. */
+  private async checkRivals(): Promise<void> {
+    const { leaderboard, rankWatch } = getServices(this);
+    if (!leaderboard.hasRemote || this.time.now - lastRivalCheck < RIVAL_CHECK_MS) return;
+    lastRivalCheck = this.time.now;
+    const found: Array<{ game: GameDefinition; o: Overtake }> = [];
+    for (const id of rankWatch.games()) {
+      const entries = await leaderboard.list(id, GLOBAL_TOP).catch(() => null);
+      if (!entries || !leaderboard.online) return; // offline: try again next time
+      const o = rankWatch.check(id, entries, (e) => leaderboard.isMine(e));
+      const game = GAMES.find((g) => g.id === id);
+      if (o && game) found.push({ game, o });
+    }
+    if (this.sys.isActive()) this.showOvertakes(found);
+  }
+
+  /** One banner at a time above the footer; tap it to see that ranking. */
+  private showOvertakes(queue: Array<{ game: GameDefinition; o: Overtake }>): void {
+    const next = queue.shift();
+    if (!next) return;
+    const { game, o } = next;
+    const services = getServices(this);
+    services.sfx.play('hit');
+    const where = o.to ? `Você caiu de ${o.from}º para ${o.to}º` : `Você saiu do top ${GLOBAL_TOP}`;
+    const banner = this.add.container(GAME_WIDTH / 2, 1120).setDepth(30);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.25).fillRoundedRect(-330, -62, 660, 132, 26);
+    bg.fillStyle(0x1d2b53).fillRoundedRect(-330, -68, 660, 132, 26);
+    bg.lineStyle(4, 0xffd23f).strokeRoundedRect(-330, -68, 660, 132, 26);
+    const icon = this.add.image(-262, -2, game.icon);
+    icon.setScale(Math.min(92 / icon.width, 92 / icon.height));
+    banner.add([
+      bg,
+      icon,
+      addText(this, 40, -26, `🏆 ${o.by} passou você no ${game.title}!`, 26, {
+        color: '#ffd23f',
+      }).setWordWrapWidth(500),
+      addText(this, 40, 24, `${where} · toque para ver`, 22, {
+        color: COLORS.textLight,
+        weight: 'normal',
+      }),
+    ]);
+    banner.setSize(660, 132).setInteractive({ useHandCursor: true });
+    const close = () => {
+      if (!banner.active) return;
+      this.tweens.add({
+        targets: banner,
+        y: 1400,
+        duration: 250,
+        onComplete: () => {
+          banner.destroy();
+          this.showOvertakes(queue);
+        },
+      });
+    };
+    banner.on('pointerup', () => this.scene.start(SceneKeys.Leaderboard, { gameId: game.id }));
+    banner.y = 1400;
+    this.tweens.add({ targets: banner, y: 1120, duration: 350, ease: 'Back.easeOut' });
+    this.time.delayedCall(5500, close);
   }
 }

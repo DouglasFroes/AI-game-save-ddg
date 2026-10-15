@@ -121,6 +121,9 @@ export class LeaderboardScene extends Phaser.Scene {
     this.clear();
     this.status.setText('Carregando…');
     const entries = await leaderboard.list(this.def.id, GLOBAL_TOP);
+    // The player saw the board: that's the new baseline for "someone passed you" warnings.
+    if (leaderboard.online)
+      getServices(this).rankWatch.check(this.def.id, entries, (e) => leaderboard.isMine(e));
     if (!this.scene.isActive() || this.tab !== 'global') return;
     this.clear();
     this.status.setText(
