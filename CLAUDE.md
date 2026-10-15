@@ -1,6 +1,7 @@
-# Salve o Doguinho
+# Fliperama
 
-Mobile-first "Draw to Save" web game: Vite + TypeScript (strict) + Phaser 3 (Matter physics).
+Mobile-first arcade of web games (Salve o Doguinho, Block Blast, Sudoku, Road Fighter), each with its
+own ranking. Vite + TypeScript (strict) + Phaser 3 + Firebase (anonymous auth + Firestore). Node 22.13+.
 
 ## Commands
 
@@ -10,12 +11,13 @@ Mobile-first "Draw to Save" web game: Vite + TypeScript (strict) + Phaser 3 (Mat
 
 ## Architecture
 
-See [docs/patterns/game-architecture.md](docs/patterns/game-architecture.md): pure logic in `src/core`
-(no Phaser, unit-tested), I/O behind ports (`KeyValueStore`, `LeaderboardRepository`), services injected
-via `game.registry`, fixed physics timestep, levels as typed data in `src/data/levels.ts`.
+See [docs/patterns/game-architecture.md](docs/patterns/game-architecture.md): shared `src/platform`
+(hub, profile, ranking, generic GameOver/Leaderboard scenes) + one folder per game in `src/games`, each
+with a pure, unit-tested `core`. Games plug in via `src/games/registry.ts`.
 
 ## Conventions
 
 - Comments and code in English; player-facing text in Portuguese (pt-BR).
-- World coordinates are 720×1280; the HUD occupies `y < HUD_HEIGHT`.
-- Global ranking is enabled by setting `VITE_LEADERBOARD_URL` (see `.env.example`).
+- World coordinates are 720×1280 (`GAME_WIDTH`/`GAME_HEIGHT`).
+- Global ranking is enabled by the `VITE_FIREBASE_*` variables (see `.env.example`); without them the
+  ranking stays on the device. Keep `firestore.rules` in sync when adding a game id.

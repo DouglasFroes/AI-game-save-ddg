@@ -2,21 +2,9 @@
 export const GAME_WIDTH = 720;
 export const GAME_HEIGHT = 1280;
 
-/** Area reserved for the HUD; the player cannot draw there. */
-export const HUD_HEIGHT = 150;
-
-/** Fixed physics step so the game behaves the same on 60 Hz and 120 Hz phones. */
-export const PHYSICS_STEP_MS = 1000 / 60;
-
-export const LINE_THICKNESS = 16;
-export const DRAW_MIN_SPACING = 12;
-export const DOG_BODY = { width: 88, height: 80 } as const;
-export const BEE_RADIUS = 13;
-/** Radius around a hive where drawing is not allowed. */
-export const HIVE_RADIUS = 60;
-
 export const FONT_FAMILY = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
+/** Shared palette used by the platform UI and the games. */
 export const COLORS = {
   ink: 0x2b2d42,
   inkPreview: 0x3d405b,
@@ -36,24 +24,29 @@ export const COLORS = {
   dangerDark: 0xc93c3c,
   panel: 0xffffff,
   locked: 0xb8c0cc,
+  navy: 0x1d2b53,
   text: '#1d2b53',
+  textMuted: '#5b6b8c',
   textLight: '#ffffff',
 } as const;
 
 export const SceneKeys = {
   Boot: 'Boot',
-  Menu: 'Menu',
-  LevelSelect: 'LevelSelect',
-  Game: 'Game',
-  Result: 'Result',
-  Ranking: 'Ranking',
+  Hub: 'Hub',
+  Leaderboard: 'Leaderboard',
+  GameOver: 'GameOver',
+  DogLevels: 'DogLevels',
+  DogGame: 'DogGame',
+  DogResult: 'DogResult',
+  BlockBlast: 'BlockBlast',
+  SudokuMenu: 'SudokuMenu',
+  Sudoku: 'Sudoku',
+  RoadFighter: 'RoadFighter',
+  Game2048: 'Game2048',
+  FlappyBee: 'FlappyBee',
+  Snake: 'Snake',
+  Stack: 'Stack',
+  FruitMerge: 'FruitMerge',
 } as const;
 
-/** Matter body labels used to identify collisions. */
-export const BodyLabel = {
-  dog: 'dog',
-  bee: 'bee',
-  ink: 'ink',
-  terrain: 'terrain',
-  spike: 'spike',
-} as const;
+export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

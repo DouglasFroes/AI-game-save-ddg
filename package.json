@@ -24,6 +24,7 @@
   },
   "license": "ISC",
   "dependencies": {
+    "firebase": "^13.0.0",
     "phaser": "^3.90.0"
   },
   "devDependencies": {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { GAME_HEIGHT, GAME_WIDTH, HUD_HEIGHT } from '@/config';
-import { getLevel, LEVEL_ORDER, LEVELS, nextLevelId } from '@/data/levels';
+import { GAME_HEIGHT, GAME_WIDTH } from '@/config';
+import { HUD_HEIGHT } from '@/games/doguinho/config';
+import { getLevel, LEVEL_ORDER, LEVELS, nextLevelId } from '@/games/doguinho/data/levels';
 
 describe('level data', () => {
   it('has 20 levels with unique, sequential ids', () => {
