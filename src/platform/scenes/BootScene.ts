@@ -12,6 +12,7 @@ import { generateAtravessaTextures } from '@/games/atravessa/art';
 import { generateLenhaTextures } from '@/games/lenha/art';
 import { generatePianoTextures } from '@/games/piano/art';
 import { generatePulaTextures } from '@/games/pula/art';
+import { generateFusaoTextures } from '@/games/fusao/art';
 import { generate2048Textures } from '@/games/game2048/art';
 import { generateSnakeTextures } from '@/games/snake/art';
 import { generateStackTextures } from '@/games/stack/art';
@@ -46,6 +47,7 @@ export class BootScene extends Phaser.Scene {
     generateAlvoTextures(this);
     generatePulaTextures(this);
     generateAtravessaTextures(this);
+    generateFusaoTextures(this);
     this.scene.start(SceneKeys.Hub);
   }
 }

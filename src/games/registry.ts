@@ -26,7 +26,8 @@ export type GameId =
   | 'piano'
   | 'alvo'
   | 'pula'
-  | 'atravessa';
+  | 'atravessa'
+  | 'fusao';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -353,6 +354,27 @@ export const GAMES: readonly GameDefinition[] = [
     load: () => import('./atravessa/AtravessaScene').then((m) => [m.AtravessaScene]),
     columns: [{ key: 'score', label: 'Pulos', x: 600, format: formatNumber }],
     personalBest: storedBest('atravessa'),
+  },
+  {
+    id: 'fusao',
+    title: 'Fusão Infinita',
+    tagline: 'Sobreviva e funda poderes',
+    icon: 'fusao-icon',
+    color: 0x3a0ca3,
+    shade: 0x240873,
+    entryScene: SceneKeys.FusaoMenu,
+    load: () =>
+      Promise.all([
+        import('./fusao/scenes/MenuScene'),
+        import('./fusao/scenes/RunScene'),
+        import('./fusao/scenes/ResultsScene'),
+      ]).then(([a, b, c]) => [a.FusaoMenuScene, b.FusaoRunScene, c.FusaoResultsScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'seconds', label: 'Tempo', x: 580, format: formatTime },
+      { key: 'level', label: 'Nível', x: 660 },
+    ],
+    personalBest: storedBest('fusao'),
   },
 ];
 

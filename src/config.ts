@@ -75,6 +75,9 @@ export const SceneKeys = {
   Alvo: 'Alvo',
   Pula: 'Pula',
   Atravessa: 'Atravessa',
+  FusaoMenu: 'FusaoMenu',
+  FusaoRun: 'FusaoRun',
+  FusaoResults: 'FusaoResults',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];
