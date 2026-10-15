@@ -1,20 +1,22 @@
 rules_version = '2';
 
-// Ranking: leaderboards/{gameId}/entries/{uid}
+// Ranking: leaderboards/{gameId}/entries/{entryId} — one document per run, so the same player
+// can hold several places (the game shows only the top 20).
 // - anyone can read the rankings
-// - a signed-in (anonymous) player can only write their own document
+// - a signed-in (anonymous) player can only create entries in their own name (`player` = uid)
+// - entries are never changed or deleted by the game
 // - fields and value ranges are validated to limit abuse
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /leaderboards/{gameId}/entries/{uid} {
+    match /leaderboards/{gameId}/entries/{entryId} {
       allow read: if gameId in gameIds();
 
-      allow create, update: if request.auth != null
-        && request.auth.uid == uid
+      allow create: if request.auth != null
+        && request.resource.data.player == request.auth.uid
         && gameId in gameIds()
         && validEntry(request.resource.data);
 
-      allow delete: if false;
+      allow update, delete: if false;
     }
 
     function gameIds() {
@@ -25,8 +27,8 @@ service cloud.firestore {
     }
 
     function validEntry(d) {
-      return d.keys().hasOnly(['name', 'score', 'details', 'date'])
-        && d.keys().hasAll(['name', 'score', 'details', 'date'])
+      return d.keys().hasOnly(['player', 'name', 'score', 'details', 'date'])
+        && d.keys().hasAll(['player', 'name', 'score', 'details', 'date'])
         && d.name is string && d.name.size() > 0 && d.name.size() <= 16
         && d.score is int && d.score >= 0 && d.score <= 100000000
         && d.details is map && d.details.size() <= 6

@@ -2,7 +2,10 @@ import type { ScoreDetails } from './bestScores';
 import { readJson, writeJson, type KeyValueStore } from './storage';
 
 export interface LeaderboardEntry {
+  /** Unique per entry: a player can hold several places on a board. */
   readonly id: string;
+  /** Who made it (device id locally, Firebase uid globally). */
+  readonly player: string;
   readonly name: string;
   readonly score: number;
   /** Game-specific numbers shown as extra columns (stars, time, distance…). */
@@ -27,19 +30,16 @@ export const MAX_NAME_LENGTH = 16;
 export const GLOBAL_TOP = 20;
 
 /**
- * Where `score` would land in a board (1-based), counting every other player; null when it
- * stays outside the top `size`, or when the player already has an equal or better entry there
- * (a worse run must never overwrite their best).
+ * Where `score` would land in a board (1-based; ties go after the older entries), or null when
+ * it stays outside the top `size`. Every run counts on its own: the same player may hold several
+ * places, and a worse run never replaces a better one.
  */
 export function placementFor(
   entries: readonly LeaderboardEntry[],
   score: number,
-  isMine: (e: LeaderboardEntry) => boolean,
   size = GLOBAL_TOP,
 ): number | null {
-  const mine = entries.find(isMine);
-  if (mine && mine.score >= score) return null;
-  const rank = entries.filter((e) => !isMine(e) && e.score >= score).length + 1;
+  const rank = entries.filter((e) => e.score >= score).length + 1;
   return rank <= size ? rank : null;
 }
 export const MAX_DETAILS = 6;
@@ -62,14 +62,9 @@ export function sanitizeDetails(raw: unknown): ScoreDetails {
   return out;
 }
 
-/** One row per player (best score wins), sorted by score then oldest first. */
+/** Sorted by score, then oldest first (an earlier run keeps a tied place). */
 export function rankEntries(entries: readonly LeaderboardEntry[]): LeaderboardEntry[] {
-  const best = new Map<string, LeaderboardEntry>();
-  for (const e of entries) {
-    const prev = best.get(e.id);
-    if (!prev || e.score > prev.score) best.set(e.id, e);
-  }
-  return [...best.values()].sort((a, b) => b.score - a.score || a.date.localeCompare(b.date));
+  return [...entries].sort((a, b) => b.score - a.score || a.date.localeCompare(b.date));
 }
 
 export function parseEntry(raw: unknown): LeaderboardEntry | null {
@@ -80,6 +75,8 @@ export function parseEntry(raw: unknown): LeaderboardEntry | null {
   if (typeof e.score !== 'number' || !Number.isFinite(e.score)) return null;
   return {
     id: e.id,
+    // Older entries (one per player) used the player id as their own id.
+    player: typeof e.player === 'string' ? e.player : e.id,
     name: sanitizeName(e.name),
     score: e.score,
     details: sanitizeDetails(e.details),
@@ -101,12 +98,10 @@ export class LocalLeaderboard implements LeaderboardRepository {
     return rankEntries(this.read(gameId)).slice(0, max);
   }
 
-  /** One row per player: a lower score never replaces their best (only their name changes). */
+  /** Every run is its own row; only the best GLOBAL_TOP are kept (the rest is dropped). */
   async submit(gameId: string, entry: LeaderboardEntry): Promise<void> {
-    const all = this.read(gameId);
-    const prev = all.find((e) => e.id === entry.id);
-    const keep = prev && prev.score > entry.score ? { ...prev, name: entry.name } : entry;
-    writeJson(this.store, boardKey(gameId), [...all.filter((e) => e.id !== entry.id), keep]);
+    const kept = rankEntries([...this.read(gameId), entry]).slice(0, GLOBAL_TOP);
+    writeJson(this.store, boardKey(gameId), kept);
   }
 }
 
@@ -140,7 +135,7 @@ export class ResilientLeaderboard {
   }
 
   isMine(entry: LeaderboardEntry): boolean {
-    return entry.id === this.localId || entry.id === this.remoteId;
+    return entry.player === this.localId || entry.player === this.remoteId;
   }
 
   async list(gameId: string, max = 10): Promise<LeaderboardEntry[]> {
@@ -162,7 +157,7 @@ export class ResilientLeaderboard {
   }
 
   /**
-   * Sends the run only if it makes the top 20 (and beats the player's own entry there).
+   * Sends the run only if it makes the top 20.
    * Returns its place and where it went, or null when it didn't qualify.
    */
   autoSubmit(
@@ -170,7 +165,7 @@ export class ResilientLeaderboard {
     s: Submission,
   ): Promise<{ rank: number; result: SubmitResult } | null> {
     // One at a time per game: a quick second run must see the first one already on the board,
-    // or a worse score could overwrite a better one.
+    // or both would claim the same place.
     const prev = this.pending.get(gameId) ?? Promise.resolve();
     const next = prev.catch(() => undefined).then(() => this.qualifyAndSubmit(gameId, s));
     this.pending.set(gameId, next);
@@ -182,9 +177,7 @@ export class ResilientLeaderboard {
     const prev = this.pending.get(gameId) ?? Promise.resolve();
     const next = prev
       .catch(() => undefined)
-      .then(async () =>
-        placementFor(await this.list(gameId, GLOBAL_TOP), score, (e) => this.isMine(e)),
-      );
+      .then(async () => placementFor(await this.list(gameId, GLOBAL_TOP), score));
     this.pending.set(gameId, next);
     return next;
   }
@@ -194,7 +187,7 @@ export class ResilientLeaderboard {
     s: Submission,
   ): Promise<{ rank: number; result: SubmitResult } | null> {
     const entries = await this.list(gameId, GLOBAL_TOP);
-    const rank = placementFor(entries, s.score, (e) => this.isMine(e));
+    const rank = placementFor(entries, s.score);
     if (rank === null) return null;
     return { rank, result: await this.submit(gameId, s) };
   }
@@ -206,11 +199,12 @@ export class ResilientLeaderboard {
       details: sanitizeDetails(s.details),
       date: this.now().toISOString(),
     };
-    await this.local.submit(gameId, { ...base, id: this.localId });
+    const id = `${base.date}-${Math.random().toString(36).slice(2, 8)}`;
+    await this.local.submit(gameId, { ...base, id, player: this.localId });
     if (!this.remote) return 'local';
     try {
       this.remoteId = await this.remote.playerId();
-      await this.remote.submit(gameId, { ...base, id: this.remoteId });
+      await this.remote.submit(gameId, { ...base, id, player: this.remoteId });
       return 'global';
     } catch (err) {
       console.warn('Não foi possível enviar ao ranking global.', err);

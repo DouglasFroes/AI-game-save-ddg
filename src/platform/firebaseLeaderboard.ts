@@ -59,7 +59,8 @@ interface Connection {
 }
 
 /**
- * Firestore-backed ranking: leaderboards/{gameId}/entries/{uid}.
+ * Firestore-backed ranking: leaderboards/{gameId}/entries/{entryId}, one document per run (a
+ * player can hold several places). Each document stores its owner's uid in `player`.
  * The SDK is loaded lazily so it never slows down the first screen.
  */
 export class FirebaseLeaderboard implements RemoteLeaderboard {
@@ -109,7 +110,8 @@ export class FirebaseLeaderboard implements RemoteLeaderboard {
   async submit(gameId: string, entry: LeaderboardEntry): Promise<void> {
     const { fs, db, uid } = await this.connect();
     await withTimeout(
-      fs.setDoc(fs.doc(db, 'leaderboards', gameId, 'entries', uid), {
+      fs.addDoc(fs.collection(db, 'leaderboards', gameId, 'entries'), {
+        player: uid,
         name: entry.name,
         score: Math.round(entry.score),
         details: entry.details,

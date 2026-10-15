@@ -19,7 +19,8 @@ import { MemoryStore, writeJson } from '@/platform/storage';
 import type { Services } from '@/services';
 
 const entry = (id: string, score: number, date = '2026-01-01T00:00:00.000Z'): LeaderboardEntry => ({
-  id,
+  id: `${id}-${score}`,
+  player: id,
   name: id,
   score,
   details: {},
@@ -45,12 +46,17 @@ describe('names and details', () => {
 });
 
 describe('ranking', () => {
-  it('keeps one row per player, best score first', () => {
+  it('keeps every run, best first: a player can hold several places', () => {
     const ranked = rankEntries([entry('a', 5), entry('b', 9), entry('a', 7)]);
-    expect(ranked.map((e) => [e.id, e.score])).toEqual([
+    expect(ranked.map((e) => [e.player, e.score])).toEqual([
       ['b', 9],
       ['a', 7],
+      ['a', 5],
     ]);
+  });
+
+  it('old one-per-player entries read their owner from the id', () => {
+    expect(parseEntry({ id: 'uid-9', name: 'A', score: 3, date: 'd' })?.player).toBe('uid-9');
   });
 
   it('keeps separate local boards per game', async () => {
@@ -58,7 +64,7 @@ describe('ranking', () => {
     await board.submit('sudoku', entry('me', 20));
     await board.submit('blockblast', entry('me', 99));
     await board.submit('sudoku', entry('me', 30));
-    expect(await board.list('sudoku', 10)).toEqual([entry('me', 30)]);
+    expect(await board.list('sudoku', 10)).toEqual([entry('me', 30), entry('me', 20)]);
     expect((await board.list('blockblast', 10))[0]?.score).toBe(99);
   });
 
@@ -78,7 +84,7 @@ describe('ranking', () => {
       'global',
     );
     expect(saved[0]?.[0]).toBe('sudoku');
-    expect(saved[0]?.[1]).toMatchObject({ id: 'uid-1', name: 'Ana', score: 50 });
+    expect(saved[0]?.[1]).toMatchObject({ player: 'uid-1', name: 'Ana', score: 50 });
     const list = await board.list('sudoku');
     expect(board.online).toBe(true);
     expect(board.isMine(list[0]!)).toBe(true);
@@ -100,7 +106,7 @@ describe('ranking', () => {
     );
     const list = await board.list('roadfighter');
     expect(board.online).toBe(false);
-    expect(list.map((e) => e.id)).toEqual(['local-1']);
+    expect(list.map((e) => e.player)).toEqual(['local-1']);
   });
 });
 
@@ -141,14 +147,16 @@ describe('firebase helpers', () => {
   });
 
   it('converts Firestore documents', () => {
-    const e = fromFirestore('uid', {
+    const e = fromFirestore('doc-1', {
+      player: 'uid',
       name: 'Ana',
       score: 42,
       details: { level: 3 },
       date: { toDate: () => new Date('2026-10-14T12:00:00.000Z') },
     });
     expect(e).toEqual({
-      id: 'uid',
+      id: 'doc-1',
+      player: 'uid',
       name: 'Ana',
       score: 42,
       details: { level: 3 },
@@ -170,22 +178,22 @@ describe('firebase helpers', () => {
 
 describe('automatic ranking and local top 10', () => {
   const entry = (id: string, score: number): LeaderboardEntry => ({
-    id,
+    id: `${id}-${score}`,
+    player: id,
     name: id,
     score,
     details: {},
     date: '2026-01-01T00:00:00.000Z',
   });
 
-  it('places a score in the top 20, never over a better own entry', () => {
+  it('places a score in the top 20, my own entries count like anyone else', () => {
     const board = Array.from({ length: 20 }, (_, i) => entry(`p${i}`, 2000 - i * 100));
-    const mine = (e: LeaderboardEntry) => e.id === 'me';
-    expect(placementFor(board, 1850, mine)).toBe(3);
-    expect(placementFor(board, 50, mine)).toBeNull(); // below the 20th
-    expect(placementFor(board.slice(0, 5), 50, mine)).toBe(6); // board not full yet
-    const withMe = [...board.slice(0, 19), entry('me', 1500)];
-    expect(placementFor(withMe, 1400, mine)).toBeNull(); // worse than my own entry
-    expect(placementFor(withMe, 1950, mine)).toBe(2);
+    expect(placementFor(board, 1850)).toBe(3);
+    expect(placementFor(board, 50)).toBeNull(); // below the 20th
+    expect(placementFor(board.slice(0, 5), 50)).toBe(6); // board not full yet
+    const withMe = [...board.slice(0, 10), entry('me', 1500)];
+    expect(placementFor(withMe, 1400)).toBe(9); // a second place of mine, below my best
+    expect(placementFor(board, 2000)).toBe(2); // a tie goes after the older entry
   });
 
   it('auto-submits only qualifying runs', async () => {
@@ -197,12 +205,18 @@ describe('automatic ranking and local top 10', () => {
       rank: 2,
       result: 'local',
     });
-    expect((await local.list('g', 20)).some((e) => e.id === 'me' && e.score === 1185)).toBe(true);
-    // A worse run later doesn't replace it.
-    expect(await auto.autoSubmit('g', { name: 'Eu', score: 1100, details: {} })).toBeNull();
+    // A worse run that still makes the top 20 takes another place; the first one stays.
+    expect(await auto.autoSubmit('g', { name: 'Eu', score: 1100, details: {} })).toEqual({
+      rank: 12,
+      result: 'local',
+    });
+    const board = await local.list('g', 50);
+    expect(board).toHaveLength(20); // the device keeps only the top 20
+    expect(board.filter((e) => e.player === 'me').map((e) => e.score)).toEqual([1185, 1100]);
+    expect(board.at(-1)!.score).toBe(1020); // the two lowest dropped out
   });
 
-  it('back-to-back runs never let a worse score overwrite a better one', async () => {
+  it('back-to-back runs both keep their own place', async () => {
     // A slow remote board, like a real network.
     const rows: LeaderboardEntry[] = [];
     const slow: RemoteLeaderboard = {
@@ -213,8 +227,6 @@ describe('automatic ranking and local top 10', () => {
       },
       submit: async (_g, e) => {
         await new Promise((r) => setTimeout(r, 30));
-        const i = rows.findIndex((x) => x.id === e.id);
-        if (i >= 0) rows.splice(i, 1);
         rows.push(e);
       },
     };
@@ -224,8 +236,11 @@ describe('automatic ranking and local top 10', () => {
       board.autoSubmit('g', { name: 'Eu', score: 150, details: {} }),
     ]);
     expect(first).toEqual({ rank: 1, result: 'global' });
-    expect(second).toBeNull();
-    expect(rows.map((r) => r.score)).toEqual([420]);
+    expect(second).toEqual({ rank: 2, result: 'global' });
+    expect(rankEntries(rows).map((r) => [r.player, r.score])).toEqual([
+      ['me-remote', 420],
+      ['me-remote', 150],
+    ]);
   });
 
   it('never sends without a name: it only says where the run would land', async () => {
@@ -245,13 +260,6 @@ describe('automatic ranking and local top 10', () => {
       result: 'local',
     });
     expect(await local.list('g', 20)).toMatchObject([{ name: 'Ana', score: 300 }]);
-  });
-
-  it('the device board keeps a player best even if a lower score is sent', async () => {
-    const local = new LocalLeaderboard(new MemoryStore());
-    await local.submit('g', entry('me', 500));
-    await local.submit('g', { ...entry('me', 100), name: 'Novo nome' });
-    expect(await local.list('g', 5)).toMatchObject([{ score: 500, name: 'Novo nome' }]);
   });
 
   it('keeps the 10 best local runs, best first', () => {
