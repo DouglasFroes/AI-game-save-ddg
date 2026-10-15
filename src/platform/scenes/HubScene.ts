@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_WIDTH, SceneKeys } from '@/config';
 import { GAMES, type GameDefinition } from '@/games/registry';
+import { loadGame } from '@/platform/gameLoader';
 import { formatNumber } from '@/platform/ranking';
 import { askName } from '@/platform/ui/nameDialog';
 import { addBackground, addText, Button, iconButton } from '@/platform/ui/widgets';
@@ -18,7 +19,10 @@ export class HubScene extends Phaser.Scene {
     super(SceneKeys.Hub);
   }
 
+  private opening = false;
+
   create(): void {
+    this.opening = false;
     const { profile, sfx, leaderboard } = getServices(this);
     const cx = GAME_WIDTH / 2;
     addBackground(this);
@@ -81,6 +85,32 @@ export class HubScene extends Phaser.Scene {
       22,
       { color: COLORS.textLight, stroke: '#1d2b53', strokeThickness: 5 },
     );
+
+    // The hub is already on screen: warm the game chunks in the background so taps feel instant.
+    this.time.delayedCall(1500, () => {
+      for (const game of GAMES) loadGame(this.game, game).catch(() => undefined);
+    });
+  }
+
+  private open(game: GameDefinition): void {
+    if (this.opening) return;
+    this.opening = true;
+    loadGame(this.game, game).then(
+      () => {
+        if (this.sys.isActive()) this.scene.start(game.entryScene);
+      },
+      (err: unknown) => {
+        console.warn(`Falha ao carregar ${game.id}`, err);
+        this.opening = false;
+        if (!this.sys.isActive()) return;
+        const msg = addText(this, GAME_WIDTH / 2, 1200, 'Sem conexão. Tente de novo.', 26, {
+          color: COLORS.textLight,
+          stroke: '#1d2b53',
+          strokeThickness: 6,
+        });
+        this.time.delayedCall(2200, () => msg.destroy());
+      },
+    );
   }
 
   private buildCard(game: GameDefinition, x: number, y: number): void {
@@ -139,7 +169,7 @@ export class HubScene extends Phaser.Scene {
     card.on('pointerup', () => {
       card.setScale(1);
       services.sfx.play('click');
-      this.scene.start(game.entryScene);
+      this.open(game);
     });
 
     // Separate object (not a child) so its tap is not also a card tap.

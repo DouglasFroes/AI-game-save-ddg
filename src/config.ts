@@ -1,6 +1,23 @@
+import type Phaser from 'phaser';
+
 /** Logical resolution (9:16). Phaser scales it to fit any screen. */
 export const GAME_WIDTH = 720;
 export const GAME_HEIGHT = 1280;
+
+/**
+ * Matter.js setup, enabled only by the scenes that need physics (Doguinho, Fruit Merge) so the
+ * other scenes don't pay for an idle physics world. Both step it manually with a fixed timestep.
+ */
+export const MATTER_PHYSICS: Phaser.Types.Core.PhysicsConfig = {
+  default: 'matter',
+  matter: {
+    gravity: { x: 0, y: 1 },
+    autoUpdate: false,
+    positionIterations: 10,
+    velocityIterations: 8,
+    debug: false,
+  },
+};
 
 export const FONT_FAMILY = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 

@@ -1,3 +1,4 @@
+import type Phaser from 'phaser';
 import { COLORS, SceneKeys, type SceneKey } from '@/config';
 import { summarize } from '@/games/doguinho/core/progress';
 import { FRUITS } from '@/games/fruitmerge/core';
@@ -16,6 +17,8 @@ export type GameId =
   | 'stack'
   | 'fruitmerge';
 
+export type SceneClass = new () => Phaser.Scene;
+
 /** A ranking column: 'score' or a key of the entry's details. */
 export interface RankColumn {
   readonly key: string;
@@ -33,6 +36,8 @@ export interface GameDefinition {
   readonly color: number;
   readonly shade: number;
   readonly entryScene: SceneKey;
+  /** Imports the game's scenes on demand, so each game is its own chunk. */
+  load(): Promise<readonly SceneClass[]>;
   readonly columns: readonly RankColumn[];
   personalBest(services: Services): ScoreRecord | null;
 }
@@ -50,6 +55,7 @@ export const GAMES: readonly GameDefinition[] = [
     color: COLORS.primary,
     shade: COLORS.primaryDark,
     entryScene: SceneKeys.DogLevels,
+    load: () => import('./doguinho/scenes').then((m) => m.scenes),
     columns: [
       { key: 'stars', label: '★', x: 450 },
       { key: 'deaths', label: 'Mortes', x: 545 },
@@ -72,6 +78,7 @@ export const GAMES: readonly GameDefinition[] = [
     color: 0x9b5de5,
     shade: 0x7038b8,
     entryScene: SceneKeys.BlockBlast,
+    load: () => import('./blockblast/BlockBlastScene').then((m) => [m.BlockBlastScene]),
     columns: [{ key: 'score', label: 'Pontos', x: 600, format: formatNumber }],
     personalBest: storedBest('blockblast'),
   },
@@ -83,6 +90,7 @@ export const GAMES: readonly GameDefinition[] = [
     color: COLORS.secondary,
     shade: COLORS.secondaryDark,
     entryScene: SceneKeys.SudokuMenu,
+    load: () => import('./sudoku/scenes').then((m) => m.scenes),
     columns: [
       { key: 'score', label: 'Pontos', x: 460, format: formatNumber },
       { key: 'level', label: 'Nível', x: 565, format: (v) => LEVEL_NAMES[v] ?? '-' },
@@ -98,6 +106,7 @@ export const GAMES: readonly GameDefinition[] = [
     color: COLORS.danger,
     shade: COLORS.dangerDark,
     entryScene: SceneKeys.RoadFighter,
+    load: () => import('./roadfighter/RoadFighterScene').then((m) => [m.RoadFighterScene]),
     columns: [
       { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
       { key: 'meters', label: 'Distância', x: 620, format: (v) => `${(v / 1000).toFixed(1)} km` },
@@ -112,6 +121,7 @@ export const GAMES: readonly GameDefinition[] = [
     color: 0xedc22e,
     shade: 0xb8941c,
     entryScene: SceneKeys.Game2048,
+    load: () => import('./game2048/Game2048Scene').then((m) => [m.Game2048Scene]),
     columns: [
       { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
       { key: 'maxTile', label: 'Maior', x: 630 },
@@ -126,6 +136,7 @@ export const GAMES: readonly GameDefinition[] = [
     color: 0x2ec4b6,
     shade: 0x1f8a80,
     entryScene: SceneKeys.FlappyBee,
+    load: () => import('./flappy/FlappyScene').then((m) => [m.FlappyScene]),
     columns: [{ key: 'score', label: 'Colmeias', x: 600, format: formatNumber }],
     personalBest: storedBest('flappybee'),
   },
@@ -137,6 +148,7 @@ export const GAMES: readonly GameDefinition[] = [
     color: 0x40916c,
     shade: 0x1b4332,
     entryScene: SceneKeys.Snake,
+    load: () => import('./snake/SnakeScene').then((m) => [m.SnakeScene]),
     columns: [
       { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
       { key: 'length', label: 'Tamanho', x: 630 },
@@ -151,6 +163,7 @@ export const GAMES: readonly GameDefinition[] = [
     color: 0xf15bb5,
     shade: 0xb23a85,
     entryScene: SceneKeys.Stack,
+    load: () => import('./stack/StackScene').then((m) => [m.StackScene]),
     columns: [
       { key: 'score', label: 'Andares', x: 480, format: formatNumber },
       { key: 'perfects', label: 'Perfeitos', x: 630 },
@@ -165,6 +178,7 @@ export const GAMES: readonly GameDefinition[] = [
     color: 0xff7b25,
     shade: 0xc4561a,
     entryScene: SceneKeys.FruitMerge,
+    load: () => import('./fruitmerge/FruitMergeScene').then((m) => [m.FruitMergeScene]),
     columns: [
       { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
       { key: 'biggest', label: 'Maior fruta', x: 625, format: (v) => FRUITS[v]?.name ?? '-' },

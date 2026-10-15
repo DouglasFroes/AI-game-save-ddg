@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { generateBlockBlastTextures } from '@/games/blockblast/art';
-import { generateFruitTextures } from '@/games/fruitmerge/FruitMergeScene';
-import { generate2048Textures } from '@/games/game2048/Game2048Scene';
-import { generateSnakeTextures } from '@/games/snake/SnakeScene';
-import { generateStackTextures } from '@/games/stack/StackScene';
+import { generateFruitTextures } from '@/games/fruitmerge/art';
+import { generate2048Textures } from '@/games/game2048/art';
+import { generateSnakeTextures } from '@/games/snake/art';
+import { generateStackTextures } from '@/games/stack/art';
 import { generateDoguinhoTextures } from '@/games/doguinho/art';
 import { generateRoadFighterTextures } from '@/games/roadfighter/art';
-import { generateSudokuTextures } from '@/games/sudoku/SudokuMenuScene';
+import { generateSudokuTextures } from '@/games/sudoku/art';
 import { generatePlatformTextures } from '@/platform/art/textures';
 
 /** Generates all procedural textures once, then opens the hub. */

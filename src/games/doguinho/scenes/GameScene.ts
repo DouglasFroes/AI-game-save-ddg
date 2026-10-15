@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '@/config';
+import { COLORS, GAME_HEIGHT, GAME_WIDTH, MATTER_PHYSICS, SceneKeys } from '@/config';
 import { getGame } from '@/games/registry';
 import { submitScore } from '@/platform/ranking';
 import {
@@ -61,7 +61,7 @@ export class GameScene extends Phaser.Scene {
   private puff!: Phaser.GameObjects.Particles.ParticleEmitter;
 
   constructor() {
-    super(SceneKeys.DogGame);
+    super({ key: SceneKeys.DogGame, physics: MATTER_PHYSICS });
   }
 
   init(data: GameSceneData): void {

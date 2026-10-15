@@ -11,6 +11,12 @@ export default defineConfig({
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 1600,
+    rolldownOptions: {
+      output: {
+        // Phaser rarely changes: its own chunk stays cached across deploys of the games.
+        codeSplitting: { groups: [{ name: 'phaser', test: /node_modules[\\/]phaser/ }] },
+      },
+    },
   },
   test: {
     include: ['tests/**/*.test.ts'],

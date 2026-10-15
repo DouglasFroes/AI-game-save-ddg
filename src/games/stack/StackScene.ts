@@ -1,35 +1,16 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '@/config';
-import { bake } from '@/platform/art/textures';
 import type { GameOverData } from '@/platform/scenes/GameOverScene';
 import { addText, iconButton } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { StackGame, type Layer } from './core';
-
-export const STACK_ICON = 'stack-icon';
+import { hsl, hueAt } from './art';
 
 const H = 56;
 const SIDE = 14;
 const BASE_Y = 1150;
 const FOCUS_Y = 640;
 const MAX_DT = 1 / 30;
-
-const hueAt = (i: number, start: number) => (start + i * 7) % 360;
-const hsl = (h: number, s: number, l: number) =>
-  Phaser.Display.Color.HSLToColor(h / 360, s, l).color;
-
-export function generateStackTextures(scene: Phaser.Scene): void {
-  bake(scene, STACK_ICON, 150, 150, (g) => {
-    g.fillStyle(0x1d2b53).fillRoundedRect(0, 0, 150, 150, 22);
-    const widths = [110, 96, 96, 80, 70, 70];
-    widths.forEach((w, i) => {
-      const y = 122 - i * 18;
-      const x = 75 - w / 2 + (i % 2 ? 4 : -2);
-      g.fillStyle(hsl(hueAt(i, 190), 0.55, 0.45)).fillRect(x, y + 12, w, 5);
-      g.fillStyle(hsl(hueAt(i, 190), 0.55, 0.62)).fillRect(x, y, w, 13);
-    });
-  });
-}
 
 export class StackScene extends Phaser.Scene {
   private game_ = new StackGame();

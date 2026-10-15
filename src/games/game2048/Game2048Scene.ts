@@ -1,14 +1,11 @@
 import Phaser from 'phaser';
-import { FONT_FAMILY, GAME_WIDTH, SceneKeys } from '@/config';
-import { canvasTexture } from '@/platform/art/textures';
+import { GAME_WIDTH, SceneKeys } from '@/config';
 import { formatNumber } from '@/platform/ranking';
 import type { GameOverData } from '@/platform/scenes/GameOverScene';
 import { bindSwipe } from '@/platform/ui/swipe';
 import { addText, iconButton } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { Game2048, N, WIN_VALUE, type Tile } from './core';
-
-export const G2048_ICON = 'g2048-icon';
 
 const CELL = 150;
 const GAP = 14;
@@ -31,20 +28,6 @@ const TILE_COLORS: Record<number, [number, string]> = {
   2048: [0xedc22e, '#ffffff'],
 };
 const tileStyle = (v: number): [number, string] => TILE_COLORS[v] ?? [0x3c3a32, '#ffffff'];
-
-export function generate2048Textures(scene: Phaser.Scene): void {
-  canvasTexture(scene, G2048_ICON, 150, 150, (ctx) => {
-    ctx.fillStyle = '#edc22e';
-    ctx.beginPath();
-    ctx.roundRect(4, 4, 142, 142, 26);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `bold 50px ${FONT_FAMILY}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('2048', 75, 80);
-  });
-}
 
 const cellX = (c: number) => BOARD_X + GAP + c * (CELL + GAP) + CELL / 2;
 const cellY = (r: number) => BOARD_Y + GAP + r * (CELL + GAP) + CELL / 2;
