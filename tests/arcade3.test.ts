@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barColorAt, ColorSim, ringColorAt } from '@/games/cores/core';
+import { barColorAt, ColorSim, ringColorAt, SWITCH_OFFSET } from '@/games/cores/core';
 import { MemorySim } from '@/games/memoria/core';
 import { BALL_R, BrickSim, PADDLE_Y } from '@/games/tijolos/core';
 
@@ -162,10 +162,22 @@ describe('pula cor', () => {
     g.vy = 0;
     const s1 = g.step(0.001);
     expect(s1.some((e) => e.type === 'star')).toBe(true);
-    g.y = o.y + o.r + 120;
+    g.y = o.y + SWITCH_OFFSET;
     g.vy = 0;
     const s2 = g.step(0.001);
     expect(s2.some((e) => e.type === 'switch')).toBe(true);
     expect(g.color).not.toBe(before);
+  });
+});
+
+describe('pula cor: switcher placement', () => {
+  it('leaves room to react before the next obstacle after a color switch', () => {
+    const g = new ColorSim(seeded(9));
+    const [a, b] = g.obstacles;
+    const extent = (o: typeof a) => (o!.kind === 'ring' ? o!.r : 0) + o!.thick / 2;
+    const switchY = a!.y + SWITCH_OFFSET;
+    // Clear space (ball included) above this obstacle and below the next one.
+    expect(switchY - (a!.y + extent(a)) - 16).toBeGreaterThan(120);
+    expect(b!.y - extent(b) - switchY - 16).toBeGreaterThan(120);
   });
 });

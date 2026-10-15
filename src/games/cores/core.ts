@@ -10,7 +10,9 @@ export const COLORS = 4;
 const GRAVITY = 2100;
 const HOP = 820;
 export const BALL_R = 16;
-const GAP = 520;
+/** Distance between obstacles; the color switcher sits halfway, with room on both sides. */
+const GAP = 700;
+export const SWITCH_OFFSET = GAP / 2;
 const BAR_W = 720;
 
 export interface Obstacle {
@@ -110,7 +112,7 @@ export class ColorSim {
         events.push({ type: 'star', score: this.score });
       }
       // Switcher above it: picks a new color.
-      const sy = o.y + (o.kind === 'ring' ? o.r + 120 : 200);
+      const sy = o.y + SWITCH_OFFSET;
       if (o.switcher && Math.abs(this.y - sy) < 28) {
         o.switcher = false;
         let c = this.color;

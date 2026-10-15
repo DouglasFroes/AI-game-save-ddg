@@ -3,7 +3,7 @@ import { COLORS, GAME_HEIGHT, GAME_WIDTH, SceneKeys, type SceneKey } from '@/con
 import { getGame } from '@/games/registry';
 import { Tex } from '@/platform/art/textures';
 import type { ScoreRecord } from '@/platform/bestScores';
-import { formatNumber, submitMessage, submitScore } from '@/platform/ranking';
+import { autoSubmit, formatNumber, rankMessage } from '@/platform/ranking';
 import { askName } from '@/platform/ui/nameDialog';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
@@ -113,7 +113,8 @@ export class GameOverScene extends Phaser.Scene {
       }
       const status = addText(this, 0, y, '', 22, { color: COLORS.textMuted, wrapWidth: 560 });
       card.add(status);
-      if (newBest) void this.sendToRanking(data, status, card, y + 48);
+      const place = services.localTop.add(data.gameId, record);
+      void this.sendToRanking(data, status, card, y + 58, place);
     } else {
       for (const line of data.lines ?? []) {
         this.chip(card, y, line);
@@ -240,38 +241,53 @@ export class GameOverScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * Every run is recorded in the player's local top 10. If it makes the top 20 it is sent to the
+   * ranking automatically — but only with a name: without one, the player is asked first.
+   */
   private async sendToRanking(
     data: GameOverData,
     status: Phaser.GameObjects.Text,
     card: Phaser.GameObjects.Container,
     buttonY: number,
+    place: number | null,
   ): Promise<void> {
     const services = getServices(this);
     const record = data.record;
     if (!record) return;
-    if (!services.profile.get().name) {
-      status.setText('Escolha um nome para o ranking:');
-      const btn = new Button(
-        this,
-        0,
-        buttonY,
-        '✎ Escolher nome',
-        async () => {
-          const name = await askName(this, '');
-          if (!name) return;
-          services.profile.update({ name });
-          btn.destroy();
-          status.setText('Enviando…');
-          status.setText(submitMessage(await submitScore(services, data.gameId, record)));
-        },
-        { width: 360, height: 62, fontSize: 28, color: COLORS.success, shade: COLORS.successDark },
-      );
-      card.add(btn);
+    const mine = place ? `${place}º melhor seu · ` : '';
+    status.setText(`${mine}Verificando o ranking…`);
+    const result = await autoSubmit(services, data.gameId, record).catch(() => null);
+    if (!status.active) return;
+    if (!result || !('needsName' in result)) {
+      status.setText(mine + rankMessage(result, services.leaderboard.online));
       return;
     }
-    status.setText('Enviando ao ranking…');
-    const result = await submitScore(services, data.gameId, record);
-    if (status.active) status.setText(submitMessage(result));
+    status.setText(`${mine}Top 20: ${result.rank}º lugar! Escolha um nome:`);
+    const btn = new Button(
+      this,
+      0,
+      buttonY,
+      '✎ Escolher nome',
+      async () => {
+        const name = await askName(this, '');
+        if (!name) return;
+        services.profile.update({ name });
+        btn.destroy();
+        status.setText('Enviando…');
+        const sent = await autoSubmit(services, data.gameId, record).catch(() => null);
+        if (status.active)
+          status.setText(
+            mine +
+              rankMessage(
+                sent && !('needsName' in sent) ? sent : null,
+                services.leaderboard.online,
+              ),
+          );
+      },
+      { width: 380, height: 62, fontSize: 28, color: COLORS.success, shade: COLORS.successDark },
+    );
+    card.add(btn);
   }
 
   private go(data: GameOverData, scene: SceneKey, sceneData?: object): void {

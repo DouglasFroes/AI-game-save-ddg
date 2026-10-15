@@ -5,7 +5,7 @@ import type { GameOverData } from '@/platform/scenes/GameOverScene';
 import { addText, iconButton } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { PALETTE } from './art';
-import { BALL_R, ColorSim, type ColorEvent } from './core';
+import { BALL_R, ColorSim, SWITCH_OFFSET, type ColorEvent } from './core';
 
 const BASE = 1100;
 const CX = GAME_WIDTH / 2;
@@ -134,7 +134,7 @@ export class CoresScene extends Phaser.Scene {
         g.fillStyle(0xffffff).fillPoints(pts, true);
       }
       if (o.switcher) {
-        const sy = this.sy(o.y + (o.kind === 'ring' ? o.r + 120 : 200));
+        const sy = this.sy(o.y + SWITCH_OFFSET);
         for (let i = 0; i < 4; i++)
           g.fillStyle(PALETTE[i]!)
             .slice(CX, sy, 20, (i * TAU) / 4, ((i + 1) * TAU) / 4, false)

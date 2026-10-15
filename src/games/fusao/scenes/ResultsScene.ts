@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
-import { formatNumber, submitScore } from '@/platform/ranking';
+import { autoSubmit, formatNumber } from '@/platform/ranking';
 import { getServices } from '@/services';
 import { FT } from '../art';
 import { audio } from '../audio';
@@ -133,8 +133,9 @@ export class FusaoResultsScene extends Phaser.Scene {
         score: runScore(s),
         details: { seconds: Math.floor(s.seconds), kills: s.kills, level: s.level },
       };
-      if (services.best.offer('fusao', record) && services.profile.get().name)
-        void submitScore(services, 'fusao', record);
+      services.best.offer('fusao', record);
+      services.localTop.add('fusao', record);
+      void autoSubmit(services, 'fusao', record).catch(() => null);
     } catch {
       // Ranking is optional: the run is already saved locally.
     }

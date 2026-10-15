@@ -23,6 +23,25 @@ export interface RemoteLeaderboard extends LeaderboardRepository {
 }
 
 export const MAX_NAME_LENGTH = 16;
+/** Size of the global board scores are automatically sent to. */
+export const GLOBAL_TOP = 20;
+
+/**
+ * Where `score` would land in a board (1-based), counting every other player; null when it
+ * stays outside the top `size`, or when the player already has an equal or better entry there
+ * (a worse run must never overwrite their best).
+ */
+export function placementFor(
+  entries: readonly LeaderboardEntry[],
+  score: number,
+  isMine: (e: LeaderboardEntry) => boolean,
+  size = GLOBAL_TOP,
+): number | null {
+  const mine = entries.find(isMine);
+  if (mine && mine.score >= score) return null;
+  const rank = entries.filter((e) => !isMine(e) && e.score >= score).length + 1;
+  return rank <= size ? rank : null;
+}
 export const MAX_DETAILS = 6;
 
 export function sanitizeName(name: string): string {
@@ -82,9 +101,12 @@ export class LocalLeaderboard implements LeaderboardRepository {
     return rankEntries(this.read(gameId)).slice(0, max);
   }
 
+  /** One row per player: a lower score never replaces their best (only their name changes). */
   async submit(gameId: string, entry: LeaderboardEntry): Promise<void> {
-    const others = this.read(gameId).filter((e) => e.id !== entry.id);
-    writeJson(this.store, boardKey(gameId), [...others, entry]);
+    const all = this.read(gameId);
+    const prev = all.find((e) => e.id === entry.id);
+    const keep = prev && prev.score > entry.score ? { ...prev, name: entry.name } : entry;
+    writeJson(this.store, boardKey(gameId), [...all.filter((e) => e.id !== entry.id), keep]);
   }
 }
 
@@ -104,6 +126,7 @@ export class ResilientLeaderboard {
   /** True when the last list() came from the remote backend. */
   online = false;
   private remoteId: string | null = null;
+  private readonly pending = new Map<string, Promise<unknown>>();
 
   constructor(
     private readonly local: LeaderboardRepository,
@@ -136,6 +159,44 @@ export class ResilientLeaderboard {
     }
     this.online = false;
     return this.local.list(gameId, max);
+  }
+
+  /**
+   * Sends the run only if it makes the top 20 (and beats the player's own entry there).
+   * Returns its place and where it went, or null when it didn't qualify.
+   */
+  autoSubmit(
+    gameId: string,
+    s: Submission,
+  ): Promise<{ rank: number; result: SubmitResult } | null> {
+    // One at a time per game: a quick second run must see the first one already on the board,
+    // or a worse score could overwrite a better one.
+    const prev = this.pending.get(gameId) ?? Promise.resolve();
+    const next = prev.catch(() => undefined).then(() => this.qualifyAndSubmit(gameId, s));
+    this.pending.set(gameId, next);
+    return next;
+  }
+
+  /** Where a score would land in the top 20 (or null), without sending anything. */
+  qualify(gameId: string, score: number): Promise<number | null> {
+    const prev = this.pending.get(gameId) ?? Promise.resolve();
+    const next = prev
+      .catch(() => undefined)
+      .then(async () =>
+        placementFor(await this.list(gameId, GLOBAL_TOP), score, (e) => this.isMine(e)),
+      );
+    this.pending.set(gameId, next);
+    return next;
+  }
+
+  private async qualifyAndSubmit(
+    gameId: string,
+    s: Submission,
+  ): Promise<{ rank: number; result: SubmitResult } | null> {
+    const entries = await this.list(gameId, GLOBAL_TOP);
+    const rank = placementFor(entries, s.score, (e) => this.isMine(e));
+    if (rank === null) return null;
+    return { rank, result: await this.submit(gameId, s) };
   }
 
   async submit(gameId: string, s: Submission): Promise<SubmitResult> {

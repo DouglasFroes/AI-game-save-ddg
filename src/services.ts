@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import { ProgressRepository } from '@/games/doguinho/core/progress';
 import { Sfx } from '@/platform/audio/Sfx';
 import { BestScores } from '@/platform/bestScores';
+import { LocalTop } from '@/platform/localTop';
 import { FirebaseLeaderboard, readFirebaseSettings } from '@/platform/firebaseLeaderboard';
 import { LocalLeaderboard, ResilientLeaderboard } from '@/platform/leaderboard';
 import { ProfileRepository } from '@/platform/profile';
@@ -11,6 +12,8 @@ import { BrowserStore } from '@/platform/storage';
 export interface Services {
   readonly profile: ProfileRepository;
   readonly best: BestScores;
+  /** The player's 10 best runs of each game. */
+  readonly localTop: LocalTop;
   readonly leaderboard: ResilientLeaderboard;
   readonly sfx: Sfx;
   readonly dogProgress: ProgressRepository;
@@ -30,6 +33,7 @@ export function createServices(env: Record<string, unknown> = import.meta.env): 
   return {
     profile,
     best: new BestScores(store),
+    localTop: new LocalTop(store),
     leaderboard,
     sfx,
     dogProgress: new ProgressRepository(store),

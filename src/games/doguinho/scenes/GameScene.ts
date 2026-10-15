@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, MATTER_PHYSICS, SceneKeys } from '@/config';
 import { getGame } from '@/games/registry';
-import { submitScore } from '@/platform/ranking';
+import { autoSubmit } from '@/platform/ranking';
 import {
   BodyLabel,
   DRAW_MIN_SPACING,
@@ -369,7 +369,7 @@ export class GameScene extends Phaser.Scene {
     const inkRatio = this.stroke.ratio;
     this.services.dogProgress.update((p) => recordWin(p, this.level.id, stars, inkRatio));
     const best = getGame('doguinho').personalBest(this.services);
-    if (best) void submitScore(this.services, 'doguinho', best);
+    if (best) void autoSubmit(this.services, 'doguinho', best).catch(() => null);
     this.showResult({ levelId: this.level.id, won: true, stars, inkRatio });
   }
 
