@@ -1,9 +1,9 @@
 /**
  * "Dar grau": an endless wheelie through city streets — pure simulation (no Phaser, no Three).
  *
- * Units are meters and seconds. The bike rides along the current street segment; `s` is the distance
- * along it and `x` the lateral offset (positive = right). At the end of a segment there is a crossing:
- * the lane you are in decides where you go (left lane = turn left, right lane = turn right).
+ * Units are meters and seconds. The street is endless and straight, built from blocks (segments)
+ * separated by crossings; `s` is the distance along the current block and `x` the lateral offset
+ * (positive = right). Traffic flows the same way and overtakes slower cars when there is room.
  */
 
 export type Rng = () => number;
@@ -44,7 +44,11 @@ const BUMP_KICK = 2.3;
 
 const ACCEL = 4;
 const LATERAL_SPEED = 10;
-const TURN_SLOWDOWN = 0.85;
+/** Blinker time before a car starts changing lanes, and its sideways speed. */
+const SIGNAL_S = 0.6;
+const CAR_LATERAL = 2.6;
+/** A car only overtakes a slower one closer than this. */
+const OVERTAKE_LOOK = 20;
 const COMBO_STEP_S = 2;
 export const MAX_COMBO = 8;
 /** Short touches of the front wheel don't break the combo. */
@@ -53,14 +57,13 @@ const SPAWN_AHEAD = 110;
 const CAR_FOLLOW_GAP = 3;
 /** Obstacle-free run-up at the start of the game and after each crossing. */
 const SAFE_START = 60;
-const SAFE_AFTER_CORNER = 28;
 
 export type Heading = 0 | 1 | 2 | 3;
 export interface Vec2 {
   readonly x: number;
   readonly z: number;
 }
-/** Heading 0 faces -z (Three's default forward); each step turns 90° to the right. */
+/** Heading 0 faces -z (Three's default forward); each step is 90° to the right. */
 export const HEADINGS: readonly Vec2[] = [
   { x: 0, z: -1 },
   { x: 1, z: 0 },
@@ -69,7 +72,6 @@ export const HEADINGS: readonly Vec2[] = [
 ];
 export const forwardOf = (h: Heading): Vec2 => HEADINGS[h]!;
 export const rightOf = (h: Heading): Vec2 => HEADINGS[(h + 1) % 4]!;
-export const turn = (h: Heading, dir: number): Heading => ((((h + dir) % 4) + 4) % 4) as Heading;
 
 export type StreetKind = 'rua' | 'avenida';
 export interface Street {
@@ -93,7 +95,7 @@ export interface Segment {
   readonly length: number;
   readonly potholes: readonly Pothole[];
   readonly bumps: readonly number[];
-  /** Streets you can turn into at the end of this segment. */
+  /** Cross streets at the end of this block (names for the corner sign). */
   readonly left: Street;
   readonly right: Street;
 }
@@ -101,9 +103,15 @@ export interface Segment {
 export interface Car {
   readonly id: number;
   s: number;
-  readonly lane: number;
-  readonly x: number;
+  /** Lane it drives in (or is moving into while overtaking). */
+  lane: number;
+  x: number;
   speed: number;
+  /** Speed it drives at when nothing slower is ahead. */
+  readonly cruise: number;
+  /** Blinker while changing lanes: -1 left, 1 right, 0 off. */
+  signal: -1 | 0 | 1;
+  signalT: number;
   /** Palette index, chosen by the renderer. */
   readonly paint: number;
   passed: boolean;
@@ -112,7 +120,8 @@ export interface Car {
 export type CrashReason = 'car' | 'loop' | 'pothole';
 
 export type GrauEvent =
-  | { type: 'street'; dir: -1 | 0 | 1; segment: Segment; bonus: number }
+  | { type: 'block'; segment: Segment }
+  | { type: 'overtake'; car: Car }
   | { type: 'pass'; car: Car; bonus: number }
   | { type: 'pothole'; pothole: Pothole; bonus: number }
   | { type: 'bump' }
@@ -169,7 +178,6 @@ export class GrauSim {
   omega = 0;
   meters = 0;
   combo = 1;
-  turns = 0;
   passed = 0;
   bestWheelie = 0;
   crashed: CrashReason | null = null;
@@ -204,16 +212,6 @@ export class GrauSim {
     return this.pitch >= GRAU_ALTO;
   }
 
-  /** Meters to the center of the next crossing. */
-  get toCorner(): number {
-    return this.segment.length - this.s;
-  }
-
-  /** Where the current lane leads at the next crossing. */
-  get exitDir(): -1 | 0 | 1 {
-    return this.lane as -1 | 0 | 1;
-  }
-
   steer(dir: -1 | 1): void {
     if (!this.crashed) this.lane = Math.max(-1, Math.min(1, this.lane + dir));
   }
@@ -222,7 +220,7 @@ export class GrauSim {
     if (this.crashed) return [];
     const events: GrauEvent[] = [];
 
-    // Speed: ramps up with distance; a turn costs some of it.
+    // Speed ramps up with distance.
     const target = speedFor(this.meters);
     this.speed = Math.min(target, this.speed + ACCEL * dt);
 
@@ -269,7 +267,7 @@ export class GrauSim {
     this.moveTraffic(dt, events);
     if (this.crashed) return events;
 
-    if (this.s >= this.segment.length) this.cross(events);
+    if (this.s >= this.segment.length) this.nextBlock(events);
     return events;
   }
 
@@ -295,11 +293,11 @@ export class GrauSim {
   }
 
   private moveTraffic(dt: number, events: GrauEvent[]): void {
-    const seg = this.segment;
-    while (this.nextCarS <= this.s + SPAWN_AHEAD && this.nextCarS <= seg.length - 20) {
+    while (this.nextCarS <= this.s + SPAWN_AHEAD) {
       this.spawnWave(Math.max(this.nextCarS, this.s + SPAWN_AHEAD * 0.8));
     }
 
+    this.changeLanes(dt, events);
     for (const car of this.cars) car.s += car.speed * dt;
     this.keepDistance();
 
@@ -318,8 +316,8 @@ export class GrauSim {
         this.points += bonus;
         events.push({ type: 'pass', car, bonus });
       }
-      // Cars behind the camera or past the crossing (they turned off) are dropped.
-      if (car.s < this.s - 30 || car.s > seg.length + 8) this.cars.splice(i, 1);
+      // Cars left behind the camera are dropped.
+      if (car.s < this.s - 30) this.cars.splice(i, 1);
     }
   }
 
@@ -329,16 +327,18 @@ export class GrauSim {
     const lanes = [-1, 0, 1].sort(() => this.rng() - 0.5);
     const count = this.rng() < (avenue ? 0.45 : 0.2) ? 2 : 1;
     for (const lane of lanes.slice(0, count)) {
-      const free = this.cars.every(
-        (c) => c.lane !== lane || Math.abs(c.s - at) > CAR_LEN + CAR_FOLLOW_GAP,
-      );
-      if (!free) continue;
+      if (!this.laneFree(lane, at - CAR_LEN - CAR_FOLLOW_GAP, at + CAR_LEN + CAR_FOLLOW_GAP))
+        continue;
+      const cruise = (avenue ? 7 : 4.5) + this.rng() * 6;
       this.cars.push({
         id: ++this.ids,
         s: at,
         lane,
         x: laneX(lane),
-        speed: (avenue ? 8 : 5) + this.rng() * 4,
+        speed: cruise,
+        cruise,
+        signal: 0,
+        signalT: 0,
         paint: Math.floor(this.rng() * 1000),
         passed: false,
       });
@@ -346,51 +346,85 @@ export class GrauSim {
     this.nextCarS = at + (avenue ? 22 + this.rng() * 22 : 34 + this.rng() * 30);
   }
 
-  /** Cars never drive through the one ahead in their lane. */
-  private keepDistance(): void {
-    const byFront = [...this.cars].sort((a, b) => b.s - a.s);
-    for (let j = 1; j < byFront.length; j++) {
-      const car = byFront[j]!;
-      for (let i = 0; i < j; i++) {
-        const lead = byFront[i]!;
-        if (lead.lane !== car.lane) continue;
-        const maxS = lead.s - CAR_LEN - CAR_FOLLOW_GAP;
-        if (car.s > maxS) {
-          car.s = maxS;
-          car.speed = Math.min(car.speed, lead.speed);
-        }
+  /** Whether no car occupies `lane` (or is moving through it) between s0 and s1. */
+  private laneFree(lane: number, s0: number, s1: number, except?: Car): boolean {
+    const x = laneX(lane);
+    return this.cars.every(
+      (c) =>
+        c === except ||
+        c.s < s0 ||
+        c.s > s1 ||
+        (c.lane !== lane && Math.abs(c.x - x) >= CAR_W + 0.2),
+    );
+  }
+
+  /**
+   * A car stuck behind a slower one signals and moves to a free lane next to it (left first, like
+   * on Brazilian roads). It never cuts in right in front of the bike.
+   */
+  private changeLanes(dt: number, events: GrauEvent[]): void {
+    for (const car of this.cars) {
+      if (car.signal !== 0) {
+        car.signalT += dt;
+        if (car.signalT < SIGNAL_S) continue;
+        const tx = laneX(car.lane);
+        const step = CAR_LATERAL * dt;
+        car.x += Math.max(-step, Math.min(step, tx - car.x));
+        if (car.x === tx) car.signal = 0;
+        continue;
+      }
+      const slow = this.cars.find(
+        (c) =>
+          c !== car &&
+          c.lane === car.lane &&
+          c.s > car.s &&
+          c.s - car.s < OVERTAKE_LOOK &&
+          c.speed < car.cruise - 1,
+      );
+      if (!slow || this.rng() > dt * 2) continue;
+      for (const dir of [-1, 1] as const) {
+        const lane = car.lane + dir;
+        if (lane < -1 || lane > 1) continue;
+        if (!this.laneFree(lane, car.s - CAR_LEN * 2, car.s + CAR_LEN * 3, car)) continue;
+        // The bike close behind (or beside) in that lane: wait, don't cut it off.
+        const gap = car.s - this.s;
+        if (Math.abs(this.x - laneX(lane)) < LANE_W && gap > -CAR_LEN && gap < 35) continue;
+        car.lane = lane;
+        car.signal = dir;
+        car.signalT = 0;
+        events.push({ type: 'overtake', car });
+        break;
       }
     }
   }
 
-  /** Reached the center of the crossing: follow the lane's direction into the next segment. */
-  private cross(events: GrauEvent[]): void {
-    const seg = this.segment;
-    const dir = this.exitDir;
-    const street = dir === -1 ? seg.left : dir === 1 ? seg.right : seg.street;
-    const next = this.makeSegment(
-      street,
-      turn(seg.heading, dir),
-      worldPos(seg, seg.length, 0),
-      SAFE_AFTER_CORNER,
-    );
-    this.segment = next;
-    this.s -= seg.length;
-
-    let bonus = 0;
-    if (dir === 0) {
-      // Same line continues: keep the traffic ahead, in the new segment's coordinates.
-      for (const car of this.cars) car.s -= seg.length;
-      this.nextCarS -= seg.length;
-    } else {
-      this.cars.length = 0;
-      this.nextCarS = SAFE_AFTER_CORNER;
-      this.speed *= TURN_SLOWDOWN;
-      this.turns++;
-      bonus = this.wheelie ? 100 * this.combo : 20;
-      this.points += bonus;
+  /** Cars never drive through the one ahead of them; they slow down to its speed instead. */
+  private keepDistance(): void {
+    const byFront = [...this.cars].sort((a, b) => b.s - a.s);
+    for (const car of byFront) car.speed = car.cruise;
+    for (let j = 1; j < byFront.length; j++) {
+      const car = byFront[j]!;
+      for (let i = 0; i < j; i++) {
+        const lead = byFront[i]!;
+        if (Math.abs(lead.x - car.x) >= CAR_W + 0.2) continue;
+        const maxS = lead.s - CAR_LEN - CAR_FOLLOW_GAP;
+        if (car.s > maxS) car.s = maxS;
+        if (lead.s - car.s < CAR_LEN + CAR_FOLLOW_GAP * 3)
+          car.speed = Math.min(car.speed, lead.speed);
+      }
     }
-    events.push({ type: 'street', dir, segment: next, bonus });
+  }
+
+  /** Past the crossing: the street goes on straight into the next block. */
+  private nextBlock(events: GrauEvent[]): void {
+    const seg = this.segment;
+    const street: Street = { name: seg.street.name, kind: this.rng() < 0.4 ? 'avenida' : 'rua' };
+    this.segment = this.makeSegment(street, seg.heading, worldPos(seg, seg.length, 0), 20);
+    this.s -= seg.length;
+    // Everything ahead carries over, in the new block's coordinates.
+    for (const car of this.cars) car.s -= seg.length;
+    this.nextCarS -= seg.length;
+    events.push({ type: 'block', segment: this.segment });
   }
 
   private crash(reason: CrashReason, events: GrauEvent[]): GrauEvent[] {

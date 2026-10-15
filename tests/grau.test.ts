@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CAR_LEN,
+  CAR_W,
   comboFor,
   GRAU_ALTO,
   GrauSim,
@@ -98,45 +99,94 @@ describe('grau', () => {
   it('crashes into a car in the same lane, passes one in another lane', () => {
     const sim = new GrauSim(seeded(6));
     flatSegment(sim, {});
-    sim.cars.push({ id: 1, s: 25, lane: 0, x: 0, speed: 5, paint: 0, passed: false });
+    sim.cars.push({
+      id: 1,
+      s: 25,
+      lane: 0,
+      x: 0,
+      speed: 5,
+      cruise: 5,
+      signal: 0,
+      signalT: 0,
+      paint: 0,
+      passed: false,
+    });
     run(sim, 5, () => false, false);
     expect(sim.crashed).toBe('car');
 
     const ok = new GrauSim(seeded(6));
     flatSegment(ok, {});
-    ok.cars.push({ id: 1, s: 25, lane: 1, x: LANE_W, speed: 5, paint: 0, passed: false });
+    ok.cars.push({
+      id: 1,
+      s: 25,
+      lane: 1,
+      x: LANE_W,
+      speed: 5,
+      cruise: 5,
+      signal: 0,
+      signalT: 0,
+      paint: 0,
+      passed: false,
+    });
     const events = run(ok, 4.5, () => false, false);
     expect(ok.crashed).toBeNull();
     expect(events.some((e) => e.type === 'pass')).toBe(true);
   });
 
-  it('turns into the street of the lane it is in at the crossing', () => {
-    const sim = new GrauSim(seeded(7));
-    flatSegment(sim, { length: 40 });
-    const { left, right, street } = sim.segment;
+  it('always goes straight on into the next block, whatever the lane', () => {
+    for (const lane of [-1, 0, 1] as const) {
+      const sim = new GrauSim(seeded(7));
+      flatSegment(sim, { length: 40 });
+      if (lane !== 0) sim.steer(lane);
+      const events = run(sim, 4, () => false);
+      expect(events.find((e) => e.type === 'block')).toBeTruthy();
+      expect(sim.segment.heading).toBe(0);
+      expect(sim.segment.origin).toEqual({ x: 0, z: -40 });
+    }
+  });
+
+  it('cars overtake slower ones by changing lanes', () => {
+    const sim = new GrauSim(seeded(9));
+    flatSegment(sim, {});
+    const car = (id: number, s: number, cruise: number) => ({
+      id,
+      s,
+      lane: 0,
+      x: 0,
+      speed: cruise,
+      cruise,
+      signal: 0 as const,
+      signalT: 0,
+      paint: 0,
+      passed: false,
+    });
+    sim.cars.push(car(1, 90, 4), car(2, 70, 11));
+    sim.x = -100; // bike far away
+    const events: GrauEvent[] = [];
+    for (let t = 0; t < 12 * 60; t++) {
+      sim.x = -100;
+      sim.speed = 0;
+      events.push(...sim.step(DT, false));
+    }
+    const fast = sim.cars.find((c) => c.id === 2)!;
+    const slow = sim.cars.find((c) => c.id === 1)!;
+    expect(events.some((e) => e.type === 'overtake' && e.car.id === 2)).toBe(true);
+    expect(fast.s).toBeGreaterThan(slow.s);
+  });
+
+  it('a car never cuts in right in front of the bike', () => {
+    const sim = new GrauSim(seeded(10));
+    flatSegment(sim, {});
     sim.steer(-1);
-    let events = run(sim, 4, () => false);
-    let turnEvent = events.find((e) => e.type === 'street');
-    expect(turnEvent).toMatchObject({ dir: -1 });
-    expect(sim.segment.heading).toBe(3);
-    expect(sim.segment.street).toEqual(left);
-    expect(sim.segment.origin).toEqual({ x: 0, z: -40 });
-    expect(sim.turns).toBe(1);
-
-    const straight = new GrauSim(seeded(7));
-    flatSegment(straight, { length: 40 });
-    events = run(straight, 4, () => false);
-    turnEvent = events.find((e) => e.type === 'street');
-    expect(turnEvent).toMatchObject({ dir: 0 });
-    expect(straight.segment.street).toEqual(street);
-    expect(straight.segment.heading).toBe(0);
-
-    const r = new GrauSim(seeded(7));
-    flatSegment(r, { length: 40 });
-    r.steer(1);
-    run(r, 4, () => false);
-    expect(r.segment.street).toEqual(right);
-    expect(r.segment.heading).toBe(1);
+    run(sim, 0.5, () => false);
+    const base = { lane: 0, x: 0, signal: 0 as const, signalT: 0, paint: 0, passed: false };
+    sim.cars.push(
+      { ...base, id: 1, s: sim.s + 22, speed: 3, cruise: 3 },
+      { ...base, id: 2, s: sim.s + 12, speed: 12, cruise: 12 },
+    );
+    const events: GrauEvent[] = [];
+    for (let t = 0; t < 60; t++) events.push(...sim.step(DT, false));
+    expect(events.some((e) => e.type === 'overtake' && e.car.lane === -1)).toBe(false);
   });
 
   it('maps segment coordinates to the world', () => {
@@ -153,9 +203,11 @@ describe('grau', () => {
         sim.step(DT, false);
         const cars = sim.cars;
         for (let i = 0; i < cars.length; i++)
-          for (let j = i + 1; j < cars.length; j++)
-            if (cars[i]!.lane === cars[j]!.lane && Math.abs(cars[i]!.s - cars[j]!.s) < CAR_LEN)
-              expect.fail(`seed ${seed}, frame ${t}: cars overlap`);
+          for (let j = i + 1; j < cars.length; j++) {
+            const [a, b] = [cars[i]!, cars[j]!];
+            if (Math.abs(a.x - b.x) < CAR_W && Math.abs(a.s - b.s) < CAR_LEN)
+              expect.fail(`seed ${seed}, frame ${t}: cars ${a.id} and ${b.id} overlap`);
+          }
       }
       expect(sim.meters).toBeGreaterThan(1000);
     }

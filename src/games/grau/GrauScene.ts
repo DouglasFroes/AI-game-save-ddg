@@ -46,9 +46,6 @@ export class GrauScene extends Phaser.Scene {
     combo: Phaser.GameObjects.Text;
     gauge: Phaser.GameObjects.Graphics;
     grauLabel: Phaser.GameObjects.Text;
-    corner: Phaser.GameObjects.Container;
-    cornerText: Phaser.GameObjects.Text[];
-    cornerDist: Phaser.GameObjects.Text;
     throttle: Phaser.GameObjects.Graphics;
   };
   private keys?: {
@@ -145,16 +142,12 @@ export class GrauScene extends Phaser.Scene {
   private onEvent(e: GrauEvent): void {
     const { sfx } = getServices(this);
     switch (e.type) {
-      case 'street': {
-        this.world.onStreet(this.sim, this.segment, e.dir);
-        const changed = e.segment.street.name !== this.segment.street.name;
+      case 'block':
+        this.world.onBlock(this.sim, this.segment);
         this.segment = e.segment;
-        if (changed) this.banner(e.segment.street.name);
-        if (e.bonus >= 100) this.popup(`+${e.bonus} GRAU NA CURVA!`, '#ffd23f');
-        else if (e.bonus > 0) this.popup(`+${e.bonus}`, '#ffffff');
-        if (e.dir !== 0) sfx.play('pop');
         break;
-      }
+      case 'overtake':
+        break;
       case 'pass':
         if (e.bonus > 5) this.popup(`+${e.bonus} ULTRAPASSOU`, '#9bf6ff');
         break;
@@ -204,21 +197,6 @@ export class GrauScene extends Phaser.Scene {
       .setOrigin(0, 0.5)
       .setDepth(21);
 
-    const cornerBg = this.add.graphics();
-    cornerBg.fillStyle(0x0b1430, 0.6).fillRoundedRect(-330, -42, 660, 84, 22);
-    const cornerText = [-1, 0, 1].map((dir) =>
-      addText(this, dir * 220, 0, '', 22, { color: COLORS.textLight, wrapWidth: 210 }),
-    );
-    const cornerDist = addText(this, 0, -62, '', 22, {
-      color: COLORS.textLight,
-      stroke: '#0b1430',
-      strokeThickness: 6,
-    });
-    const corner = this.add
-      .container(GAME_WIDTH / 2, 240, [cornerBg, ...cornerText, cornerDist])
-      .setDepth(20)
-      .setVisible(false);
-
     const throttle = this.add.graphics().setDepth(20).setPosition(585, 1110);
     addText(this, 585, 1110, 'GRAU', 40, { color: COLORS.textLight, stroke: '#0b1430' }).setDepth(
       21,
@@ -230,9 +208,6 @@ export class GrauScene extends Phaser.Scene {
       combo,
       gauge,
       grauLabel,
-      corner,
-      cornerText,
-      cornerDist,
       throttle,
     };
   }
@@ -276,22 +251,9 @@ export class GrauScene extends Phaser.Scene {
     const alto = sim.grauAlto && !sim.crashed;
     if (alto && !this.wasAlto) this.popup('GRAU ALTO!', '#ffd23f');
     this.wasAlto = alto;
-    this.hud.grauLabel.setText(alto ? 'GRAU ALTO x5' : sim.wheelie ? 'GRAU x2' : '');
-
-    // Crossing preview: which street each lane leads to.
-    const near = this.running && sim.toCorner < 95;
-    this.hud.corner.setVisible(near);
-    if (near) {
-      const seg = sim.segment;
-      const names = [`← ${seg.left.name}`, `↑ ${seg.street.name}`, `${seg.right.name} →`];
-      this.hud.cornerText.forEach((t, i) => {
-        const chosen = i - 1 === sim.exitDir;
-        t.setText(names[i]!)
-          .setColor(chosen ? '#ffd23f' : '#ffffffaa')
-          .setScale(chosen ? 1.12 : 1);
-      });
-      this.hud.cornerDist.setText(`Esquina em ${Math.max(0, Math.ceil(sim.toCorner))} m`);
-    }
+    this.hud.grauLabel.setText(
+      sim.crashed ? '' : alto ? 'GRAU ALTO x5' : sim.wheelie ? 'GRAU x2' : '',
+    );
 
     const t = this.hud.throttle.clear();
     t.fillStyle(throttle ? 0xff5d5d : 0x0b1430, throttle ? 0.75 : 0.45).fillCircle(0, 0, 108);
@@ -317,31 +279,13 @@ export class GrauScene extends Phaser.Scene {
     });
   }
 
-  private banner(name: string): void {
-    const t = addText(this, GAME_WIDTH / 2, 390, name, 54, {
-      color: COLORS.textLight,
-      stroke: '#0b1430',
-      strokeThickness: 10,
-    })
-      .setDepth(25)
-      .setAlpha(0);
-    this.tweens.add({
-      targets: t,
-      alpha: 1,
-      duration: 200,
-      yoyo: true,
-      hold: 1100,
-      onComplete: () => t.destroy(),
-    });
-  }
-
   private countdown(): void {
     const { sfx } = getServices(this);
     const hint = addText(
       this,
       GAME_WIDTH / 2,
       760,
-      'Segure o lado direito para dar grau\n◀ ▶ trocam de faixa\nNa esquina, a faixa escolhe a rua',
+      'Segure o lado direito para dar grau\n◀ ▶ trocam de faixa\nCuidado com quem ultrapassa!',
       30,
       { color: COLORS.textLight, stroke: '#0b1430', strokeThickness: 8 },
     ).setDepth(30);
@@ -378,13 +322,13 @@ export class GrauScene extends Phaser.Scene {
       gameId: 'grau',
       title: CRASH_TITLES[reason],
       lines: [
-        `Distância: ${(meters / 1000).toFixed(2)} km · Ruas: ${sim.turns}`,
+        `Distância: ${(meters / 1000).toFixed(2)} km · Ultrapassagens: ${sim.passed}`,
         `Maior grau: ${formatNumber(bestWheelie)} m`,
       ],
-      record: { score: sim.score, details: { meters, bestWheelie, turns: sim.turns } },
+      record: { score: sim.score, details: { meters, bestWheelie, passed: sim.passed } },
       parent: SceneKeys.Grau,
       retry: { scene: SceneKeys.Grau },
     };
-    this.time.delayedCall(1300, () => this.scene.launch(SceneKeys.GameOver, data));
+    this.time.delayedCall(2600, () => this.scene.launch(SceneKeys.GameOver, data));
   }
 }

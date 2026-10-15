@@ -67,6 +67,34 @@ function tiledBox(sx: number, sy: number, sz: number, tileX: number, tileY: numb
   return g;
 }
 
+/** A thrown body: free flight with gravity, bounces and friction on the asphalt. */
+interface Body {
+  readonly obj: THREE.Object3D;
+  readonly vel: THREE.Vector3;
+  readonly spin: THREE.Vector3;
+  /** Height of the body's center when lying on the ground. */
+  readonly rest: number;
+}
+
+interface CrashFx {
+  readonly reason: CrashReason;
+  t: number;
+  readonly rider: Body;
+  readonly bikeVel: THREE.Vector3;
+  readonly yaw: number;
+  orbit: number;
+}
+
+interface Particle {
+  readonly mesh: THREE.Mesh;
+  readonly vel: THREE.Vector3;
+  life: number;
+  readonly maxLife: number;
+  readonly grow: number;
+}
+
+const GRAVITY_3D = 18;
+
 interface SegmentView {
   readonly group: THREE.Group;
   /** Crossing-street stubs by exit direction (-1 left, 0 straight, 1 right). */
@@ -108,7 +136,10 @@ export class GrauWorld {
   private readonly offset = new THREE.Vector3();
   private readonly lastPos = new THREE.Vector3();
   private shake = 0;
-  private crashT = 0;
+  private clock = 0;
+  private rider!: THREE.Group;
+  private crash: CrashFx | null = null;
+  private particles: Particle[] = [];
 
   private constructor() {
     const dpr = window.devicePixelRatio || 1;
@@ -152,7 +183,9 @@ export class GrauWorld {
     this.yaw = yawOf(sim.segment.heading);
     this.offset.set(0, 0, 0);
     this.shake = 0;
-    this.crashT = 0;
+    this.clock = 0;
+    this.crash = null;
+    this.particles = [];
     this.lean = 0;
     this.addSegment(sim.segment, true);
     this.size = { w: 0, h: 0, left: 0, top: 0 };
@@ -170,13 +203,13 @@ export class GrauWorld {
     this.wheels = [];
   }
 
-  /** The bike entered a new street segment, taking `dir` at the crossing of `previous`. */
-  onStreet(sim: GrauSim, previous: Segment, dir: number): void {
-    // The stub of the street we took is replaced by the real segment (same geometry).
-    const taken = this.segments.get(previous.id)?.stubs.get(dir);
-    if (taken) this.disposeTree(taken);
+  /** The bike crossed into the next block of the (straight) street after `previous`. */
+  onBlock(sim: GrauSim, previous: Segment): void {
+    // The straight-ahead stub is replaced by the real block (same geometry).
+    const ahead = this.segments.get(previous.id)?.stubs.get(0);
+    if (ahead) this.disposeTree(ahead);
     this.addSegment(sim.segment, false);
-    // Keep the two latest segments: the one we left is still visible during the turn.
+    // Keep the two latest blocks: the one we left is still behind the camera.
     const keep = new Set([sim.segment.id, previous.id]);
     for (const [id, view] of this.segments) {
       if (keep.has(id)) continue;
@@ -199,35 +232,40 @@ export class GrauWorld {
 
   update(sim: GrauSim, dt: number, throttle: boolean): void {
     this.syncSize();
+    this.clock += dt;
+    if (sim.crashed && !this.crash) this.startCrash(sim);
+    if (this.crash) {
+      this.updateCrash(sim, dt);
+      this.updateParticles(dt * this.slowmo());
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+
     const seg = sim.segment;
     const p = worldPos(seg, sim.s, sim.x);
     this.lastPos.set(p.x, 0, p.z);
     this.offset.multiplyScalar(Math.exp(-dt * 5));
 
-    // Yaw follows the street with a short swing, like leaning into the corner.
     let diff = yawOf(seg.heading) - this.yaw;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     this.yaw += diff * (1 - Math.exp(-dt * 7));
-    const leanTarget = (sim.x - sim.lane * LANE_W) * 0.12 - diff * 0.5;
+    const leanTarget = (sim.x - sim.lane * LANE_W) * 0.12;
     this.lean += (leanTarget - this.lean) * (1 - Math.exp(-dt * 10));
 
     const bikePos = new THREE.Vector3(p.x + this.offset.x, 0, p.z + this.offset.z);
     this.bike.position.copy(bikePos);
     this.bike.rotation.set(0, this.yaw, 0);
-
-    if (sim.crashed) this.animateCrash(sim.crashed, dt);
-    else {
-      this.pitchPivot.rotation.set(sim.pitch, 0, this.lean);
-      const spin = ((throttle ? 1.15 : 1) * sim.speed * dt) / WHEEL_R;
-      for (const w of this.wheels) w.rotation.x -= spin;
-    }
+    this.pitchPivot.rotation.set(sim.pitch, 0, this.lean);
+    const spin = ((throttle ? 1.15 : 1) * sim.speed * dt) / WHEEL_R;
+    for (const w of this.wheels) w.rotation.x -= spin;
 
     this.updateCars(sim);
     this.updatePotholes(sim);
+    this.updateParticles(dt);
     this.ground.position.set(bikePos.x, -0.03, bikePos.z);
 
     // Chase camera: pulls back and widens with speed.
-    const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    const fwd = this.forward(this.yaw);
     const fast = Math.min(1, sim.speed / 30);
     this.camera.position
       .copy(bikePos)
@@ -235,23 +273,202 @@ export class GrauWorld {
       .setY(3.1 + sim.pitch * 0.6);
     this.camera.fov = 64 + fast * 8;
     this.camera.updateProjectionMatrix();
-    if (this.shake > 0) {
-      this.camera.position.x += (Math.random() - 0.5) * this.shake;
-      this.camera.position.y += (Math.random() - 0.5) * this.shake;
-      this.shake = Math.max(0, this.shake - dt * 1.5);
-    }
+    this.applyShake(dt);
     this.camera.lookAt(bikePos.clone().addScaledVector(fwd, 7).setY(1.2));
     this.renderer.render(this.scene, this.camera);
   }
 
-  private animateCrash(reason: CrashReason, dt: number): void {
-    this.crashT += dt;
-    const k = 1 - Math.exp(-dt * 6);
+  private forward(yaw: number): THREE.Vector3 {
+    return new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+  }
+
+  private applyShake(dt: number): void {
+    if (this.shake <= 0) return;
+    this.camera.position.x += (Math.random() - 0.5) * this.shake;
+    this.camera.position.y += (Math.random() - 0.5) * this.shake;
+    this.shake = Math.max(0, this.shake - dt * 1.5);
+  }
+
+  // ── Crash ───────────────────────────────────────────────────────────────
+
+  /** Slow motion right after the impact, easing back to normal speed. */
+  private slowmo(): number {
+    const t = this.crash?.t ?? 1e9;
+    return t < 0.8 ? 0.28 : Math.min(1, 0.28 + (t - 0.8) * 1.2);
+  }
+
+  /** Throws the rider off and lets the bike tumble, depending on how the run ended. */
+  private startCrash(sim: GrauSim): void {
+    const fwd = this.forward(this.yaw);
+    const side = new THREE.Vector3(-fwd.z, 0, fwd.x);
+    const v = sim.speed;
+    const lateral = (Math.random() - 0.5) * 2;
+
+    // Detach the rider around its own center so it tumbles naturally.
+    this.bike.updateMatrixWorld(true);
+    const center = new THREE.Box3().setFromObject(this.rider).getCenter(new THREE.Vector3());
+    const holder = new THREE.Group();
+    holder.position.copy(center);
+    this.scene.add(holder);
+    holder.updateMatrixWorld(true);
+    holder.attach(this.rider);
+
+    const riderVel = new THREE.Vector3();
+    const riderSpin = new THREE.Vector3();
+    const bikeVel = fwd.clone();
+    const at = (ahead: number, y: number) =>
+      this.bike.position.clone().addScaledVector(fwd, ahead).setY(y);
+    switch (sim.crashed) {
+      case 'car': // slams the car: the rider flies over it
+        riderVel
+          .copy(fwd)
+          .multiplyScalar(v * 0.75)
+          .addScaledVector(side, lateral * 2)
+          .setY(7.5);
+        riderSpin.set(-7, lateral * 2, lateral * 3);
+        bikeVel.multiplyScalar(v * 0.12).addScaledVector(side, lateral * 3);
+        this.burst(at(1.2, 0.9), 0xffd166, 26, 7);
+        break;
+      case 'pothole': // the front wheel drops in: over the handlebars
+        riderVel
+          .copy(fwd)
+          .multiplyScalar(v * 0.7)
+          .addScaledVector(side, lateral)
+          .setY(5.5);
+        riderSpin.set(-6, lateral, lateral * 2);
+        bikeVel.multiplyScalar(v * 0.45);
+        this.burst(at(1.3, 0.2), 0x8d7b68, 14, 4, 0.5);
+        break;
+      default: // looped: falls off the back
+        riderVel
+          .copy(fwd)
+          .multiplyScalar(v * 0.25)
+          .setY(3.2);
+        riderSpin.set(4.5, lateral, lateral * 2);
+        bikeVel.multiplyScalar(v * 0.55);
+    }
+    this.crash = {
+      reason: sim.crashed!,
+      t: 0,
+      rider: { obj: holder, vel: riderVel, spin: riderSpin, rest: 0.32 },
+      bikeVel,
+      yaw: this.yaw,
+      orbit: 0,
+    };
+    this.shake = 0.9;
+  }
+
+  private updateCrash(sim: GrauSim, realDt: number): void {
+    const c = this.crash!;
+    const dt = realDt * this.slowmo();
+    c.t += realDt;
+    const k = (rate: number) => 1 - Math.exp(-dt * rate);
+
+    // Bike: slides on, tips over on its side, scraping sparks.
+    this.bike.position.addScaledVector(c.bikeVel, dt);
+    c.bikeVel.multiplyScalar(Math.exp(-dt * 1.6));
     const r = this.pitchPivot.rotation;
-    if (reason === 'loop') r.x += (Math.PI * 0.95 - r.x) * k;
-    else {
-      r.x += (0 - r.x) * k;
-      r.z += (Math.PI / 2.1 - r.z) * k;
+    if (c.reason === 'loop') {
+      r.x += (1.95 - r.x) * k(5);
+      this.bike.rotation.z += (Math.PI / 2.2 - this.bike.rotation.z) * k(2);
+    } else {
+      const dive = c.reason === 'pothole' && c.t < 0.35 ? -0.65 : 0;
+      r.x += (dive - r.x) * k(c.reason === 'pothole' ? 9 : 6);
+      r.z += (0 - r.z) * k(6);
+      if (c.t > (c.reason === 'pothole' ? 0.3 : 0.05))
+        this.bike.rotation.z += (Math.PI / 2.1 - this.bike.rotation.z) * k(4);
+      this.bike.rotation.y += c.bikeVel.length() * dt * (c.reason === 'car' ? 0.3 : 0.1);
+    }
+    const sliding = c.bikeVel.length();
+    for (const w of this.wheels) w.rotation.x -= (sliding * dt) / WHEEL_R + dt * 6;
+    if (sliding > 2.5 && Math.random() < 0.9) {
+      const color = Math.random() < 0.7 ? 0xffc93c : 0xff7b00;
+      this.burst(this.bike.position.clone().setY(0.1), color, 2, 3);
+    }
+
+    // Rider: thrown body with bounces.
+    const b = c.rider;
+    b.vel.y -= GRAVITY_3D * dt;
+    b.obj.position.addScaledVector(b.vel, dt);
+    b.obj.rotation.x += b.spin.x * dt;
+    b.obj.rotation.y += b.spin.y * dt;
+    b.obj.rotation.z += b.spin.z * dt;
+    if (b.obj.position.y < b.rest) {
+      b.obj.position.y = b.rest;
+      if (b.vel.y < -2) {
+        // Bounce: lose most energy, puff of dust.
+        b.vel.y = -b.vel.y * 0.32;
+        b.vel.x *= 0.6;
+        b.vel.z *= 0.6;
+        b.spin.multiplyScalar(0.55);
+        this.burst(b.obj.position.clone().setY(0.2), 0xb5a99a, 10, 2.5, 0.6);
+        this.shake = Math.max(this.shake, 0.35);
+      } else {
+        b.vel.y = 0;
+        b.vel.x *= Math.exp(-dt * 3.5);
+        b.vel.z *= Math.exp(-dt * 3.5);
+        b.spin.multiplyScalar(Math.exp(-dt * 5));
+        // Settles lying on the asphalt.
+        const flat = Math.round(b.obj.rotation.x / Math.PI) * Math.PI - Math.PI / 2;
+        b.obj.rotation.x += (flat - b.obj.rotation.x) * k(3);
+      }
+    }
+
+    this.updateCars(sim);
+
+    // Camera: swings around the crash, framing the bike and the rider.
+    c.orbit += dt * 0.9;
+    const focus = this.bike.position.clone().lerp(b.obj.position, 0.5).setY(0.8);
+    const angle = c.yaw + Math.PI + c.orbit;
+    const dist = 7 + Math.min(4, this.bike.position.distanceTo(b.obj.position) * 0.5);
+    const offset = new THREE.Vector3(-Math.sin(angle) * dist, 3.2, -Math.cos(angle) * dist);
+    this.camera.position.lerp(focus.clone().add(offset), k(4));
+    this.camera.fov += (58 - this.camera.fov) * k(3);
+    this.camera.updateProjectionMatrix();
+    this.applyShake(realDt);
+    this.camera.lookAt(focus);
+    this.ground.position.set(focus.x, -0.03, focus.z);
+  }
+
+  /** Sparks, debris and dust: small boxes flying out, falling and fading. */
+  private burst(at: THREE.Vector3, color: number, count: number, speed: number, grow = 0): void {
+    const geo = this.geo('particle', () => new THREE.BoxGeometry(0.09, 0.09, 0.09));
+    for (let i = 0; i < count; i++) {
+      const mat = new THREE.MeshBasicMaterial({ color, transparent: true });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(at);
+      if (grow) mesh.scale.setScalar(2.5);
+      this.scene.add(mesh);
+      const vel = new THREE.Vector3(
+        (Math.random() - 0.5) * speed,
+        Math.random() * speed * (grow ? 0.4 : 0.9),
+        (Math.random() - 0.5) * speed,
+      );
+      const life = grow ? 0.9 : 0.35 + Math.random() * 0.3;
+      this.particles.push({ mesh, vel, life, maxLife: life, grow });
+    }
+  }
+
+  private updateParticles(dt: number): void {
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i]!;
+      p.life -= dt;
+      const mat = p.mesh.material as THREE.MeshBasicMaterial;
+      if (p.life <= 0) {
+        mat.dispose();
+        p.mesh.removeFromParent();
+        this.particles.splice(i, 1);
+        continue;
+      }
+      if (!p.grow) p.vel.y -= GRAVITY_3D * 0.6 * dt;
+      p.mesh.position.addScaledVector(p.vel, dt);
+      if (p.mesh.position.y < 0.03) {
+        p.mesh.position.y = 0.03;
+        p.vel.multiplyScalar(0.4);
+      }
+      const k = p.life / p.maxLife;
+      mat.opacity = p.grow ? k * 0.55 : k;
+      if (p.grow) p.mesh.scale.setScalar(2.5 + (1 - k) * 6 * p.grow);
     }
   }
 
@@ -458,7 +675,12 @@ export class GrauWorld {
       }
       const p = worldPos(sim.segment, car.s, car.x);
       view.position.set(p.x, 0, p.z);
-      view.rotation.y = yawOf(sim.segment.heading);
+      const swerve = Math.max(-0.22, Math.min(0.22, -(car.lane * LANE_W - car.x) * 0.12));
+      view.rotation.y = yawOf(sim.segment.heading) + swerve;
+      const on = car.signal !== 0 && Math.floor(this.clock * 4) % 2 === 0;
+      const blink = view.userData as { left: THREE.Object3D[]; right: THREE.Object3D[] };
+      for (const m of blink.left) m.visible = on && car.signal === -1;
+      for (const m of blink.right) m.visible = on && car.signal === 1;
     }
     for (const [id, view] of this.cars) {
       if (seen.has(id)) continue;
@@ -519,6 +741,20 @@ export class GrauWorld {
       light.position.set(x * (CAR_W / 2 - 0.3), 0.85, CAR_LEN / 2 + 0.01);
       car.add(light);
     }
+    // Blinkers on the four corners, shown while changing lanes.
+    const blinkGeo = this.geo('blinker', () => new THREE.BoxGeometry(0.24, 0.16, 0.08));
+    const amber = this.mat('blinker', () => new THREE.MeshBasicMaterial({ color: 0xffa600 }));
+    const blink = { left: [] as THREE.Object3D[], right: [] as THREE.Object3D[] };
+    for (const x of [-1, 1]) {
+      for (const z of [-1, 1]) {
+        const b = new THREE.Mesh(blinkGeo, amber);
+        b.position.set(x * (CAR_W / 2 - 0.02), 0.82, z * (CAR_LEN / 2 + 0.02));
+        b.visible = false;
+        car.add(b);
+        (x < 0 ? blink.left : blink.right).push(b);
+      }
+    }
+    car.userData = blink;
     return car;
   }
 
@@ -540,11 +776,12 @@ export class GrauWorld {
       y: number,
       z: number,
       rx = 0,
+      parent: THREE.Object3D = pivot,
     ) => {
       const m = new THREE.Mesh(geo, mat);
       m.position.set(x, y, z);
       m.rotation.x = rx;
-      pivot.add(m);
+      parent.add(m);
       return m;
     };
 
@@ -585,16 +822,27 @@ export class GrauWorld {
     );
     part(new THREE.CylinderGeometry(0.05, 0.07, 0.6, 6), chrome, 0.16, 0.42, 0.05, 1.37);
 
-    // Rider: leans back over the rear wheel, arms to the bars.
+    // Rider: leans back over the rear wheel, arms to the bars (own group: thrown off in a crash).
+    const rider = new THREE.Group();
+    pivot.add(rider);
+    this.rider = rider;
     const shirt = lambert('shirt', 0x00b4d8);
     const jeans = lambert('jeans', 0x264653);
     const skin = lambert('skin', 0xc68642);
     const handGeo = new THREE.SphereGeometry(0.1, 8, 8);
-    part(new THREE.BoxGeometry(0.42, 0.62, 0.28), shirt, 0, 1.36, frontZ * 0.22, 0.22);
+    part(new THREE.BoxGeometry(0.42, 0.62, 0.28), shirt, 0, 1.36, frontZ * 0.22, 0.22, rider);
     for (const x of [-1, 1]) {
-      part(new THREE.BoxGeometry(0.16, 0.16, 0.6), jeans, x * 0.13, 0.98, frontZ * 0.38);
-      part(new THREE.BoxGeometry(0.12, 0.12, 0.62), shirt, x * 0.25, 1.38, frontZ * 0.52, 0.35);
-      part(handGeo, skin, x * 0.3, 1.18, frontZ + 0.32);
+      part(new THREE.BoxGeometry(0.16, 0.16, 0.6), jeans, x * 0.13, 0.98, frontZ * 0.38, 0, rider);
+      part(
+        new THREE.BoxGeometry(0.12, 0.12, 0.62),
+        shirt,
+        x * 0.25,
+        1.38,
+        frontZ * 0.52,
+        0.35,
+        rider,
+      );
+      part(handGeo, skin, x * 0.3, 1.18, frontZ + 0.32, 0, rider);
     }
     part(
       new THREE.SphereGeometry(0.22, 14, 12),
@@ -602,6 +850,8 @@ export class GrauWorld {
       0,
       1.86,
       frontZ * 0.14,
+      0,
+      rider,
     );
     part(
       new THREE.BoxGeometry(0.3, 0.1, 0.06),
@@ -609,6 +859,8 @@ export class GrauWorld {
       0,
       1.88,
       frontZ * 0.14 - 0.2,
+      0,
+      rider,
     );
     return root;
   }
