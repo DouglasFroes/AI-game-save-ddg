@@ -3,6 +3,7 @@ import {
   CAR_H,
   CAR_W,
   laneX,
+  MAX_FUEL,
   MAX_SPEED,
   overlaps,
   PLAYER_Y,
@@ -86,5 +87,24 @@ describe('road fighter', () => {
     const a = { x: 0, y: 0, w: 60, h: 100 };
     expect(overlaps(a, { x: 56, y: 0, w: 60, h: 100 })).toBe(false);
     expect(overlaps(a, { x: 40, y: 0, w: 60, h: 100 })).toBe(true);
+  });
+
+  it('never lets traffic cars drive through each other', () => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const sim = new RoadSim(seeded(seed));
+      for (let t = 0; t < 150 * 60; t++) {
+        // Keep the run alive so traffic gets dense, fast and red cars show up.
+        sim.invulnerable = 999;
+        sim.fuel = MAX_FUEL;
+        sim.step(1 / 60, null);
+        const cars = sim.cars;
+        for (let i = 0; i < cars.length; i++)
+          for (let j = i + 1; j < cars.length; j++)
+            if (overlaps(cars[i]!, cars[j]!, 0))
+              expect.fail(
+                `seed ${seed}, frame ${t}: cars ${cars[i]!.id} and ${cars[j]!.id} overlap`,
+              );
+      }
+    }
   });
 });

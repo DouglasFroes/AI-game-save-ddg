@@ -26,6 +26,9 @@ const ACCEL = 260;
 const INVULNERABLE_S = 1.6;
 const FUEL_EVERY = 4200;
 const FUEL_REFILL = 32;
+/** Bumper-to-bumper distance a car keeps behind the one ahead in its lane. */
+const FOLLOW_GAP = 40;
+const SPAWN_Y = -200;
 
 export type CarKind = 'blue' | 'yellow' | 'red' | 'truck';
 
@@ -36,8 +39,8 @@ export interface Car {
   y: number;
   readonly w: number;
   readonly h: number;
-  /** Absolute speed in px/s (the player's speed scrolls the world). */
-  readonly speed: number;
+  /** Absolute speed in px/s (the player's speed scrolls the world). Drops when stuck behind a slower car. */
+  speed: number;
   targetX: number;
   swerved: boolean;
 }
@@ -158,7 +161,9 @@ export class RoadSim {
         car.targetX = this.playerX;
       }
       const maxMove = 260 * dt;
-      car.x += Math.max(-maxMove, Math.min(maxMove, car.targetX - car.x));
+      const nextX = car.x + Math.max(-maxMove, Math.min(maxMove, car.targetX - car.x));
+      // Change lanes only into free space; otherwise wait for a gap.
+      if (nextX !== car.x && !this.blocked({ ...car, x: nextX }, car)) car.x = nextX;
 
       if (car.y > PLAYER_Y + 400) {
         this.cars.splice(i, 1);
@@ -171,6 +176,32 @@ export class RoadSim {
     for (let i = this.pickups.length - 1; i >= 0; i--) {
       if (this.pickups[i]!.y > PLAYER_Y + 300) this.pickups.splice(i, 1);
     }
+    this.keepDistance();
+  }
+
+  /** Whether a car-sized box would touch any other traffic car. */
+  private blocked(box: Box, self?: Car): boolean {
+    return this.cars.some((c) => c !== self && overlaps(box, c, -FOLLOW_GAP / 2));
+  }
+
+  /**
+   * Faster cars brake behind slower ones in the same lane instead of driving through them.
+   * Front to back (smaller y = further ahead), so a queue settles in one pass.
+   */
+  private keepDistance(): void {
+    const byFront = [...this.cars].sort((a, b) => a.y - b.y);
+    for (let j = 1; j < byFront.length; j++) {
+      const car = byFront[j]!;
+      for (let i = 0; i < j; i++) {
+        const ahead = byFront[i]!;
+        if (Math.abs(car.x - ahead.x) >= (car.w + ahead.w) / 2) continue;
+        const minY = ahead.y + (car.h + ahead.h) / 2 + FOLLOW_GAP;
+        if (car.y < minY) {
+          car.y = minY;
+          car.speed = Math.min(car.speed, ahead.speed);
+        }
+      }
+    }
   }
 
   private pickKind(): CarKind {
@@ -182,20 +213,23 @@ export class RoadSim {
     return 'blue';
   }
 
-  /** One or two cars, always leaving at least one free lane. */
+  /** One or two cars, always leaving at least one free lane; never on top of another car. */
   private spawnWave(): void {
     const lanes = [0, 1, 2, 3].sort(() => this.rng() - 0.5);
     const count = this.speed > 700 && this.rng() < 0.45 ? 2 : 1;
     for (const lane of lanes.slice(0, count)) {
       const kind = this.pickKind();
       const truck = kind === 'truck';
+      const w = truck ? TRUCK_W : CAR_W;
+      const h = truck ? TRUCK_H : CAR_H;
+      if (this.blocked({ x: laneX(lane), y: SPAWN_Y, w, h })) continue;
       this.cars.push({
         id: ++this.ids,
         kind,
         x: laneX(lane),
-        y: -200,
-        w: truck ? TRUCK_W : CAR_W,
-        h: truck ? TRUCK_H : CAR_H,
+        y: SPAWN_Y,
+        w,
+        h,
         speed: this.speed * (truck ? 0.35 : kind === 'red' ? 0.55 : 0.45 + this.rng() * 0.15),
         targetX: laneX(lane),
         swerved: false,

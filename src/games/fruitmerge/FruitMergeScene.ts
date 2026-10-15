@@ -239,6 +239,8 @@ export class FruitMergeScene extends Phaser.Scene {
       const vy = (ba.velocity.y + bb.velocity.y) / 2;
       this.fruits.delete(ba);
       this.fruits.delete(bb);
+      // A fruit can merge again mid pop-in tween; a live tween would scale its destroyed body.
+      this.tweens.killTweensOf([a.img, b.img]);
       a.img.destroy();
       b.img.destroy();
 
