@@ -16,7 +16,8 @@ export type GameId =
   | 'snake'
   | 'stack'
   | 'fruitmerge'
-  | 'grau';
+  | 'grau'
+  | 'luta';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -201,6 +202,22 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'bestWheelie', label: 'Grau', x: 655, format: (v) => `${v} m` },
     ],
     personalBest: storedBest('grau'),
+  },
+  {
+    id: 'luta',
+    title: 'Luta de Rua',
+    tagline: 'Vença todos os rivais',
+    icon: 'luta-icon',
+    color: 0x7209b7,
+    shade: 0x4a0080,
+    entryScene: SceneKeys.Luta,
+    load: () => import('./luta/LutaScene').then((m) => [m.LutaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 580 },
+      { key: 'maxCombo', label: 'Combo', x: 660 },
+    ],
+    personalBest: storedBest('luta'),
   },
 ];
 
