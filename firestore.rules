@@ -31,7 +31,11 @@ service cloud.firestore {
               'game2048', 'flappybee', 'snake', 'stack', 'fruitmerge', 'grau', 'luta', 'bomba', 'turma', 'corre', 'crush',
               'lenha', 'piano', 'alvo', 'pula', 'atravessa', 'fusao',
               'tijolos', 'memoria', 'cores', 'milhao', 'memofases', 'bolha',
-              'paciencia', 'ultima', 'territorio'];
+              'paciencia', 'ultima', 'territorio',
+              'orbita', 'zigue', 'ponte', 'corcerta', 'conta', 'cesto',
+              'sequencia', 'relampago', 'luzes', 'inverte', 'balao', 'toupeira',
+              'corta', 'gelo', 'velha', 'ligue4', 'minas', 'bolhas',
+              'blocos', 'comecome', 'nave'];
     }
 
     function campaignIds() {

@@ -32,6 +32,11 @@ src/
     bomba/             core.ts (pure maze/bomb rules) · art.ts (kids, monsters, tiles) · BombaScene.ts
     luta/              core.ts (pure fight rules + powers) · ai.ts (CPU) · ladder.ts · fighterView.ts · LutaScene.ts
                        TurmaScene.ts (subclass: the kids, each with a power) · kidView.ts · turma.ts
+    orbita/ zigue/ ponte/ corcerta/ conta/ cesto/ sequencia/ relampago/ luzes/ inverte/ balao/ toupeira/
+    corta/ gelo/ velha/ ligue4/ minas/ bolhas/ blocos/ comecome/ nave/
+                       core.ts (pure) · <Name>Scene.ts extending MiniScene (platform/ui/miniGame.ts:
+                       background, back button, score, finish() -> GameOver). Hub icon = `emoji` field
+                       in the registry, drawn by BootScene (no art.ts needed).
 tests/               Vitest for every core + the platform
 firestore.rules      security rules for leaderboards/{gameId}/entries/{uid}
 ```

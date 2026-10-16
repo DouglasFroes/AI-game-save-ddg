@@ -39,7 +39,28 @@ export type GameId =
   | 'bolha'
   | 'paciencia'
   | 'ultima'
-  | 'territorio';
+  | 'territorio'
+  | 'orbita'
+  | 'zigue'
+  | 'ponte'
+  | 'corcerta'
+  | 'conta'
+  | 'cesto'
+  | 'sequencia'
+  | 'relampago'
+  | 'luzes'
+  | 'inverte'
+  | 'balao'
+  | 'toupeira'
+  | 'corta'
+  | 'gelo'
+  | 'velha'
+  | 'ligue4'
+  | 'minas'
+  | 'bolhas'
+  | 'blocos'
+  | 'comecome'
+  | 'nave';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -59,6 +80,8 @@ export interface GameDefinition {
   readonly icon: string;
   readonly color: number;
   readonly shade: number;
+  /** Games without a hand-drawn icon get one made from this emoji (see BootScene). */
+  readonly emoji?: string;
   readonly entryScene: SceneKey;
   /** Imports the game's scenes on demand, so each game is its own chunk. */
   load(): Promise<readonly SceneClass[]>;
@@ -522,6 +545,342 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'kills', label: 'Cortes', x: 650 },
     ],
     personalBest: storedBest('territorio'),
+  },
+  {
+    id: 'orbita',
+    title: 'Órbita',
+    tagline: 'Troque de pista e colete',
+    icon: 'orbita-icon',
+    emoji: '🪐',
+    color: 0x7b2cbf,
+    shade: 0x3a1c71,
+    entryScene: SceneKeys.Orbita,
+    load: () => import('./orbita/OrbitaScene').then((m) => [m.OrbitaScene]),
+    columns: [
+      { key: 'score', label: 'Estrelas', x: 520, format: formatNumber },
+      { key: 'seconds', label: 'Tempo', x: 650, format: formatTime },
+    ],
+    personalBest: storedBest('orbita'),
+  },
+  {
+    id: 'zigue',
+    title: 'Zigue-Zague',
+    tagline: 'Vire na hora certa',
+    icon: 'zigue-icon',
+    emoji: '🔴',
+    color: 0x1b998b,
+    shade: 0x0b3d5c,
+    entryScene: SceneKeys.Zigue,
+    load: () => import('./zigue/ZigueScene').then((m) => [m.ZigueScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'gems', label: 'Gemas', x: 650 },
+    ],
+    personalBest: storedBest('zigue'),
+  },
+  {
+    id: 'ponte',
+    title: 'Ponte Certa',
+    tagline: 'Segure e solte',
+    icon: 'ponte-icon',
+    emoji: '🌉',
+    color: 0xfb8b24,
+    shade: 0x9a4a05,
+    entryScene: SceneKeys.Ponte,
+    load: () => import('./ponte/PonteScene').then((m) => [m.PonteScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'perfects', label: 'Perfeitas', x: 650 },
+    ],
+    personalBest: storedBest('ponte'),
+  },
+  {
+    id: 'corcerta',
+    title: 'Cor Certa',
+    tagline: 'A cor bate com a palavra?',
+    icon: 'corcerta-icon',
+    emoji: '🎨',
+    color: 0x8338ec,
+    shade: 0x432371,
+    entryScene: SceneKeys.CorCerta,
+    load: () => import('./corcerta/CorCertaScene').then((m) => [m.CorCertaScene]),
+    columns: [
+      { key: 'score', label: 'Acertos', x: 520, format: formatNumber },
+      { key: 'streak', label: 'Seq.', x: 650 },
+    ],
+    personalBest: storedBest('corcerta'),
+  },
+  {
+    id: 'conta',
+    title: 'Conta Rápida',
+    tagline: 'Resolva antes do tempo',
+    icon: 'conta-icon',
+    emoji: '🧮',
+    color: 0xe5383b,
+    shade: 0x5f0f40,
+    entryScene: SceneKeys.Conta,
+    load: () => import('./conta/ContaScene').then((m) => [m.ContaScene]),
+    columns: [
+      { key: 'score', label: 'Acertos', x: 520, format: formatNumber },
+      { key: 'streak', label: 'Seq.', x: 650 },
+    ],
+    personalBest: storedBest('conta'),
+  },
+  {
+    id: 'cesto',
+    title: 'Cesto Maluco',
+    tagline: 'Pegue as frutas, fuja das bombas',
+    icon: 'cesto-icon',
+    emoji: '🧺',
+    color: 0x2a9d8f,
+    shade: 0x264653,
+    entryScene: SceneKeys.Cesto,
+    load: () => import('./cesto/CestoScene').then((m) => [m.CestoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'caught', label: 'Frutas', x: 650 },
+    ],
+    personalBest: storedBest('cesto'),
+  },
+  {
+    id: 'sequencia',
+    title: 'Sequência',
+    tagline: 'Repita a ordem das luzes',
+    icon: 'sequencia-icon',
+    emoji: '🧠',
+    color: 0x9d4edd,
+    shade: 0x3c096c,
+    entryScene: SceneKeys.Sequencia,
+    load: () => import('./sequencia/SequenciaScene').then((m) => [m.SequenciaScene]),
+    columns: [{ key: 'score', label: 'Rodadas', x: 600, format: formatNumber }],
+    personalBest: storedBest('sequencia'),
+  },
+  {
+    id: 'relampago',
+    title: 'Relâmpago',
+    tagline: 'Toque no verde, rápido!',
+    icon: 'relampago-icon',
+    emoji: '⚡',
+    color: 0x2ecc71,
+    shade: 0x1b7a43,
+    entryScene: SceneKeys.Relampago,
+    load: () => import('./relampago/RelampagoScene').then((m) => [m.RelampagoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 500, format: formatNumber },
+      { key: 'best', label: 'Reação', x: 640, format: (v) => `${v} ms` },
+    ],
+    personalBest: storedBest('relampago'),
+  },
+  {
+    id: 'luzes',
+    title: 'Acende Tudo',
+    tagline: 'Apague todas as luzes',
+    icon: 'luzes-icon',
+    emoji: '💡',
+    color: 0xffb703,
+    shade: 0x9a6b00,
+    entryScene: SceneKeys.Luzes,
+    load: () => import('./luzes/LuzesScene').then((m) => [m.LuzesScene]),
+    columns: [
+      { key: 'score', label: 'Placas', x: 520, format: formatNumber },
+      { key: 'moves', label: 'Toques', x: 650 },
+    ],
+    personalBest: storedBest('luzes'),
+  },
+  {
+    id: 'inverte',
+    title: 'Inverte',
+    tagline: 'Vire a gravidade',
+    icon: 'inverte-icon',
+    emoji: '🙃',
+    color: 0x0077b6,
+    shade: 0x03045e,
+    entryScene: SceneKeys.Inverte,
+    load: () => import('./inverte/InverteScene').then((m) => [m.InverteScene]),
+    columns: [
+      { key: 'score', label: 'Metros', x: 520, format: formatNumber },
+      { key: 'seconds', label: 'Tempo', x: 650, format: formatTime },
+    ],
+    personalBest: storedBest('inverte'),
+  },
+  {
+    id: 'balao',
+    title: 'Balão',
+    tagline: 'Segure para subir',
+    icon: 'balao-icon',
+    emoji: '🎈',
+    color: 0xe5383b,
+    shade: 0x6a040f,
+    entryScene: SceneKeys.Balao,
+    load: () => import('./balao/BalaoScene').then((m) => [m.BalaoScene]),
+    columns: [
+      { key: 'score', label: 'Metros', x: 520, format: formatNumber },
+      { key: 'seconds', label: 'Tempo', x: 650, format: formatTime },
+    ],
+    personalBest: storedBest('balao'),
+  },
+  {
+    id: 'toupeira',
+    title: 'Toupeira',
+    tagline: 'Acerte, mas não a bomba',
+    icon: 'toupeira-icon',
+    emoji: '🐹',
+    color: 0x8d5524,
+    shade: 0x5a3e2b,
+    entryScene: SceneKeys.Toupeira,
+    load: () => import('./toupeira/ToupeiraScene').then((m) => [m.ToupeiraScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'combo', label: 'Combo', x: 650 },
+    ],
+    personalBest: storedBest('toupeira'),
+  },
+  {
+    id: 'corta',
+    title: 'Corta Frutas',
+    tagline: 'Deslize e fatie',
+    icon: 'corta-icon',
+    emoji: '🍉',
+    color: 0xf72585,
+    shade: 0x7209b7,
+    entryScene: SceneKeys.Corta,
+    load: () => import('./corta/CortaScene').then((m) => [m.CortaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'fruits', label: 'Frutas', x: 575 },
+      { key: 'combo', label: 'Combo', x: 655 },
+    ],
+    personalBest: storedBest('corta'),
+  },
+  {
+    id: 'gelo',
+    title: 'Gelo',
+    tagline: 'Deslize até a bandeira',
+    icon: 'gelo-icon',
+    emoji: '🐧',
+    color: 0x48cae4,
+    shade: 0x0077b6,
+    entryScene: SceneKeys.Gelo,
+    load: () => import('./gelo/GeloScene').then((m) => [m.GeloScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'boards', label: 'Fases', x: 650 },
+    ],
+    personalBest: storedBest('gelo'),
+  },
+  {
+    id: 'velha',
+    title: 'Velha Infinita',
+    tagline: 'Só 3 peças por vez',
+    icon: 'velha-icon',
+    emoji: '❌',
+    color: 0x8d99ae,
+    shade: 0x2b2d42,
+    entryScene: SceneKeys.Velha,
+    load: () => import('./velha/VelhaScene').then((m) => [m.VelhaScene]),
+    columns: [
+      { key: 'score', label: 'Vitórias', x: 520, format: formatNumber },
+      { key: 'rounds', label: 'Rodadas', x: 650 },
+    ],
+    personalBest: storedBest('velha'),
+  },
+  {
+    id: 'ligue4',
+    title: 'Ligue 4',
+    tagline: 'Alinhe 4 contra o robô',
+    icon: 'ligue4-icon',
+    emoji: '🔵',
+    color: 0x1d4ed8,
+    shade: 0x03045e,
+    entryScene: SceneKeys.Ligue4,
+    load: () => import('./ligue4/Ligue4Scene').then((m) => [m.Ligue4Scene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 650 },
+    ],
+    personalBest: storedBest('ligue4'),
+  },
+  {
+    id: 'minas',
+    title: 'Campo Minado',
+    tagline: 'Limpe sem explodir',
+    icon: 'minas-icon',
+    emoji: '💣',
+    color: 0x588157,
+    shade: 0x344e41,
+    entryScene: SceneKeys.Minas,
+    load: () => import('./minas/MinasScene').then((m) => [m.MinasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'boards', label: 'Campos', x: 650 },
+    ],
+    personalBest: storedBest('minas'),
+  },
+  {
+    id: 'bolhas',
+    title: 'Atira Bolhas',
+    tagline: 'Estoure por cor',
+    icon: 'bolhas-icon',
+    emoji: '🫧',
+    color: 0xb5179e,
+    shade: 0x3c096c,
+    entryScene: SceneKeys.Bolhas,
+    load: () => import('./bolhas/BolhasScene').then((m) => [m.BolhasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'popped', label: 'Bolhas', x: 650 },
+    ],
+    personalBest: storedBest('bolhas'),
+  },
+  {
+    id: 'blocos',
+    title: 'Blocos',
+    tagline: 'O clássico que não para',
+    icon: 'blocos-icon',
+    emoji: '🧱',
+    color: 0x3a506b,
+    shade: 0x0b132b,
+    entryScene: SceneKeys.Blocos,
+    load: () => import('./blocos/BlocosScene').then((m) => [m.BlocosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'lines', label: 'Linhas', x: 575 },
+      { key: 'level', label: 'Nível', x: 655 },
+    ],
+    personalBest: storedBest('blocos'),
+  },
+  {
+    id: 'comecome',
+    title: 'Come-Come',
+    tagline: 'Fuja dos fantasmas',
+    icon: 'comecome-icon',
+    emoji: '👻',
+    color: 0x2540ff,
+    shade: 0x050a30,
+    entryScene: SceneKeys.ComeCome,
+    load: () => import('./comecome/ComeComeScene').then((m) => [m.ComeComeScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'level', label: 'Fase', x: 650 },
+    ],
+    personalBest: storedBest('comecome'),
+  },
+  {
+    id: 'nave',
+    title: 'Nave',
+    tagline: 'Atire em tudo',
+    icon: 'nave-icon',
+    emoji: '🚀',
+    color: 0x370617,
+    shade: 0x03071e,
+    entryScene: SceneKeys.Nave,
+    load: () => import('./nave/NaveScene').then((m) => [m.NaveScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'wave', label: 'Onda', x: 575 },
+      { key: 'kills', label: 'Abates', x: 655 },
+    ],
+    personalBest: storedBest('nave'),
   },
 ];
 

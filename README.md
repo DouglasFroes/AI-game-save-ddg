@@ -36,6 +36,27 @@ quando alguém passar o seu recorde.
 | **Paciência** | O clássico das cartas |
 | **Última Carta** | Cores, +2 e coringas |
 | **Território** | Feche a volta e conquiste |
+| **Órbita** | Troque de pista e colete |
+| **Zigue-Zague** | Vire na hora certa |
+| **Ponte Certa** | Segure e solte |
+| **Cor Certa** | A cor bate com a palavra? |
+| **Conta Rápida** | Resolva antes do tempo |
+| **Cesto Maluco** | Pegue as frutas, fuja das bombas |
+| **Sequência** | Repita a ordem das luzes |
+| **Relâmpago** | Toque no verde, rápido! |
+| **Acende Tudo** | Apague todas as luzes |
+| **Inverte** | Vire a gravidade |
+| **Balão** | Segure para subir |
+| **Toupeira** | Acerte, mas não a bomba |
+| **Corta Frutas** | Deslize e fatie |
+| **Gelo** | Deslize até a bandeira |
+| **Velha Infinita** | Só 3 peças por vez |
+| **Ligue 4** | Alinhe 4 contra o robô |
+| **Campo Minado** | Limpe sem explodir |
+| **Atira Bolhas** | Estoure por cor |
+| **Blocos** | O clássico que não para |
+| **Come-Come** | Fuja dos fantasmas |
+| **Nave** | Atire em tudo |
 
 O jogador escolhe um apelido uma vez no menu e ele vale para todos os rankings.
 
