@@ -29,16 +29,20 @@ export class ZigueScene extends MiniScene {
     this.fall = 0;
     this.frame();
     this.g = this.add.graphics();
-    this.hint = addText(this, CX, 1130, 'Toque para virar', 38, {
+    this.hint = addText(this, CX, 1130, 'Toque para começar e virar', 38, {
       color: '#ffffff',
       stroke: '#0b1430',
     });
     const tap = () => {
       if (this.ended) return;
-      this.hint?.destroy();
-      this.hint = undefined;
-      this.sim.tap();
       getServices(this).sfx.play('click');
+      // The first tap only starts the run; turning on it would drop the ball off the start.
+      if (this.hint) {
+        this.hint.destroy();
+        this.hint = undefined;
+        return;
+      }
+      this.sim.tap();
     };
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
       if (p.y > 130) tap();

@@ -4,6 +4,7 @@ import { getGame } from '@/games/registry';
 import { Tex } from '@/platform/art/textures';
 import type { ScoreRecord } from '@/platform/bestScores';
 import { autoSubmit, formatNumber, rankMessage } from '@/platform/ranking';
+import { shareWithToast } from '@/platform/share';
 import { askName } from '@/platform/ui/nameDialog';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
@@ -133,9 +134,9 @@ export class GameOverScene extends Phaser.Scene {
       ),
     );
     const small = {
-      width: 262,
+      width: 184,
       height: 86,
-      fontSize: 30,
+      fontSize: 26,
       color: 0xe9eef6,
       shade: 0xc7cfdc,
       textColor: COLORS.text,
@@ -143,15 +144,30 @@ export class GameOverScene extends Phaser.Scene {
     card.add(
       new Button(
         this,
-        -139,
+        -198,
         CARD_H / 2 - 62,
         '🏆 Ranking',
         () => this.go(data, SceneKeys.Leaderboard, { gameId: data.gameId, back: data.retry.scene }),
         small,
       ),
     );
+    const score = data.record?.score;
+    const challenge =
+      score !== undefined
+        ? `Fiz ${formatNumber(score)} pontos em ${game.title} no Fliperama! Consegue me superar? 🏆`
+        : `Joga ${game.title} comigo no Fliperama! 🎮`;
     card.add(
-      new Button(this, 139, CARD_H / 2 - 62, '⌂ Menu', () => this.go(data, SceneKeys.Hub), small),
+      new Button(
+        this,
+        0,
+        CARD_H / 2 - 62,
+        '🔗 Convidar',
+        () => void shareWithToast(this, data.gameId, game.title, challenge),
+        small,
+      ),
+    );
+    card.add(
+      new Button(this, 198, CARD_H / 2 - 62, '⌂ Menu', () => this.go(data, SceneKeys.Hub), small),
     );
 
     card.setY(cy + 220).setAlpha(0);

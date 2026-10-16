@@ -45,9 +45,40 @@ export function placementFor(
   entries: readonly LeaderboardEntry[],
   score: number,
   size = GLOBAL_TOP,
+  tie: { gameId: string; details: ScoreDetails } | null = null,
 ): number | null {
-  const rank = entries.filter((e) => e.score >= score).length + 1;
+  const mine = tie ? tieValue(tie.gameId, tie.details) : 0;
+  const ahead = entries.filter(
+    (e) =>
+      e.score > score || (e.score === score && (!tie || tieValue(tie.gameId, e.details) >= mine)),
+  ).length;
+  const rank = ahead + 1;
   return rank <= size ? rank : null;
+}
+
+/**
+ * Games where equal scores are settled by a second number (higher wins), e.g. Stack: the floors
+ * tie, the one with more perfect drops ranks first. Games not listed tie by date only.
+ */
+export const TIEBREAK: Readonly<Record<string, string>> = { stack: 'perfects' };
+
+/** The tiebreak number of a run (0 when the game has none or the run lacks it). */
+export function tieValue(gameId: string, details: ScoreDetails): number {
+  const key = TIEBREAK[gameId];
+  return key ? (details[key] ?? 0) : 0;
+}
+
+/** Score first, then the game's tiebreak, then the older run. Shared by every board. */
+export function compareRuns(
+  gameId: string,
+  a: { score: number; details: ScoreDetails; date: string },
+  b: { score: number; details: ScoreDetails; date: string },
+): number {
+  return (
+    b.score - a.score ||
+    tieValue(gameId, b.details) - tieValue(gameId, a.details) ||
+    a.date.localeCompare(b.date)
+  );
 }
 export const MAX_DETAILS = 6;
 
@@ -69,9 +100,9 @@ export function sanitizeDetails(raw: unknown): ScoreDetails {
   return out;
 }
 
-/** Sorted by score, then oldest first (an earlier run keeps a tied place). */
-export function rankEntries(entries: readonly LeaderboardEntry[]): LeaderboardEntry[] {
-  return [...entries].sort((a, b) => b.score - a.score || a.date.localeCompare(b.date));
+/** Sorted by score, then the game's tiebreak, then oldest first (an earlier run keeps a tie). */
+export function rankEntries(entries: readonly LeaderboardEntry[], gameId = ''): LeaderboardEntry[] {
+  return [...entries].sort((a, b) => compareRuns(gameId, a, b));
 }
 
 export function parseEntry(raw: unknown): LeaderboardEntry | null {
@@ -102,13 +133,13 @@ export class LocalLeaderboard implements LeaderboardRepository {
   }
 
   async list(gameId: string, max: number): Promise<LeaderboardEntry[]> {
-    return rankEntries(this.read(gameId)).slice(0, max);
+    return rankEntries(this.read(gameId), gameId).slice(0, max);
   }
 
   /** Every run is its own row; only the best GLOBAL_TOP are kept (the rest is dropped). */
   async submit(gameId: string, entry: LeaderboardEntry, replace = false): Promise<void> {
     const others = this.read(gameId).filter((e) => !replace || e.player !== entry.player);
-    const kept = rankEntries([...others, entry]).slice(0, GLOBAL_TOP);
+    const kept = rankEntries([...others, entry], gameId).slice(0, GLOBAL_TOP);
     writeJson(this.store, boardKey(gameId), kept);
   }
 }
@@ -181,11 +212,13 @@ export class ResilientLeaderboard {
   }
 
   /** Where a score would land in the top 20 (or null), without sending anything. */
-  qualify(gameId: string, score: number): Promise<number | null> {
+  qualify(gameId: string, score: number, details: ScoreDetails = {}): Promise<number | null> {
     const prev = this.pending.get(gameId) ?? Promise.resolve();
     const next = prev
       .catch(() => undefined)
-      .then(async () => this.placement(gameId, await this.list(gameId, GLOBAL_TOP), score));
+      .then(async () =>
+        this.placement(gameId, await this.list(gameId, GLOBAL_TOP), score, details),
+      );
     this.pending.set(gameId, next);
     return next;
   }
@@ -195,19 +228,27 @@ export class ResilientLeaderboard {
     s: Submission,
   ): Promise<{ rank: number; result: SubmitResult } | null> {
     const entries = await this.list(gameId, GLOBAL_TOP);
-    const rank = this.placement(gameId, entries, s.score);
+    const rank = this.placement(gameId, entries, s.score, s.details);
     if (rank === null) return null;
     return { rank, result: await this.submit(gameId, s) };
   }
 
   /** Campaign games: the player's own entry doesn't count, and a lower total is never sent. */
-  private placement(gameId: string, entries: LeaderboardEntry[], score: number): number | null {
-    if (!CAMPAIGN_GAMES.has(gameId)) return placementFor(entries, score);
+  private placement(
+    gameId: string,
+    entries: LeaderboardEntry[],
+    score: number,
+    details: ScoreDetails,
+  ): number | null {
+    const tie = { gameId, details };
+    if (!CAMPAIGN_GAMES.has(gameId)) return placementFor(entries, score, GLOBAL_TOP, tie);
     const mine = entries.find((e) => this.isMine(e));
     if (mine && mine.score >= score) return null;
     return placementFor(
       entries.filter((e) => !this.isMine(e)),
       score,
+      GLOBAL_TOP,
+      tie,
     );
   }
 

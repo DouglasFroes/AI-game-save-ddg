@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CELLS, CLEAR_AT, HexaSim, NEIGHBOURS, topRun } from '@/games/hexa/core';
 import { BALL_X, HelixSim, PERIOD, SECTOR_W, SMASH_AT } from '@/games/helix/core';
 import { layoutTiles, TrioSim } from '@/games/trio/core';
+import { ZigueSim } from '@/games/zigue/core';
 import { seeded } from '@/platform/rnd';
 
 describe('hexa pilhas', () => {
@@ -138,5 +139,23 @@ describe('trio de peças', () => {
     }
     expect(ev?.lost).toBe(true);
     expect(sim.lost).toBe(true);
+  });
+});
+
+describe('zigue-zague (jogabilidade)', () => {
+  it('a bot that turns at each corner survives a long run', () => {
+    const sim = new ZigueSim(seeded(11));
+    for (let i = 0; i < 60 * 60 && !sim.dead; i++) {
+      // Turn once the ball reaches the corner tile the path bends at.
+      const cur = sim.tiles[sim.index]!;
+      const next = sim.tiles[sim.index + 1];
+      if (next) {
+        const wantDir = next.x !== cur.x ? 0 : 1;
+        if (wantDir !== sim.dir) sim.tap();
+      }
+      sim.step(1 / 60);
+    }
+    expect(sim.dead).toBe(false);
+    expect(sim.score).toBeGreaterThan(100);
   });
 });

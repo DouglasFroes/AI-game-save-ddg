@@ -1,5 +1,5 @@
 import type { ScoreDetails, ScoreRecord } from './bestScores';
-import { sanitizeDetails } from './leaderboard';
+import { compareRuns, sanitizeDetails } from './leaderboard';
 import { readJson, writeJson, type KeyValueStore } from './storage';
 
 /** How many of the player's own best runs each game keeps on the device. */
@@ -32,7 +32,7 @@ export class LocalTop {
     return raw
       .map(parseRun)
       .filter((r): r is LocalRun => !!r)
-      .sort((a, b) => b.score - a.score || a.date.localeCompare(b.date))
+      .sort((a, b) => compareRuns(gameId, a, b))
       .slice(0, LOCAL_TOP);
   }
 
@@ -43,9 +43,7 @@ export class LocalTop {
       details: sanitizeDetails(record.details),
       date: now.toISOString(),
     };
-    const list = [...this.list(gameId), run].sort(
-      (a, b) => b.score - a.score || a.date.localeCompare(b.date),
-    );
+    const list = [...this.list(gameId), run].sort((a, b) => compareRuns(gameId, a, b));
     const place = list.indexOf(run);
     writeJson(this.store, key(gameId), list.slice(0, LOCAL_TOP));
     return place < LOCAL_TOP ? place + 1 : null;

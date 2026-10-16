@@ -24,7 +24,7 @@ export async function autoSubmit(
 ): Promise<AutoSubmit | NeedsName | null> {
   const name = services.profile.get().name;
   if (!name) {
-    const rank = await services.leaderboard.qualify(gameId, record.score);
+    const rank = await services.leaderboard.qualify(gameId, record.score, record.details);
     return rank === null ? null : { needsName: true, rank };
   }
   const result = await services.leaderboard.autoSubmit(gameId, { name, ...record });

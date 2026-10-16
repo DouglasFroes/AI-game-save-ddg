@@ -4,6 +4,8 @@ import { GAMES, type GameDefinition } from '@/games/registry';
 import { canFullscreen, isFullscreen, isStandalone, toggleFullscreen } from '@/platform/fullscreen';
 import { loadGame } from '@/platform/gameLoader';
 import { GLOBAL_TOP } from '@/platform/leaderboard';
+import { shareWithToast } from '@/platform/share';
+import { gameIdFromSearch } from '@/platform/shareLink';
 import { formatNumber } from '@/platform/ranking';
 import type { Overtake } from '@/platform/rankWatch';
 import { askName } from '@/platform/ui/nameDialog';
@@ -24,8 +26,13 @@ const DRAG_SLOP = 12;
 
 /** Scroll position survives trips into a game and back. */
 let savedScroll = 0;
+/** Game asked for by a shared link (`?jogo=id`); opened once, right after the hub appears. */
+let pendingLink: string | null =
+  typeof window === 'undefined'
+    ? null
+    : gameIdFromSearch(window.location.search, (id) => GAMES.some((g) => g.id === id));
 /** The "what's your name?" modal opens by itself at most once per session. */
-let askedName = false;
+let askedName = pendingLink !== null;
 /** When the boards were last checked for overtakes (at most once a minute). */
 let lastRivalCheck = -Infinity;
 const RIVAL_CHECK_MS = 60_000;
@@ -124,6 +131,14 @@ export class HubScene extends Phaser.Scene {
       22,
       { color: COLORS.textLight, stroke: '#1d2b53', strokeThickness: 5 },
     );
+
+    // A friend's link goes straight into the game (the URL is cleaned so a refresh shows the hub).
+    const linked = pendingLink ? GAMES.find((g) => g.id === pendingLink) : undefined;
+    if (linked) {
+      pendingLink = null;
+      window.history.replaceState(null, '', window.location.pathname);
+      this.time.delayedCall(300, () => this.open(linked));
+    }
 
     void this.checkRivals();
 
@@ -393,6 +408,25 @@ export class HubScene extends Phaser.Scene {
       { width: 58, height: 52, fontSize: 26, color: COLORS.panel, shade: 0xc7cfdc },
     );
     this.list.add(ranking);
+
+    // Invite a friend: shares a link that opens this very game.
+    const share = new Button(
+      this,
+      x + CARD_W / 2 - 36,
+      y - CARD_H / 2 + 96,
+      '🔗',
+      () => {
+        if (!this.isTap(this.input.activePointer)) return;
+        void shareWithToast(
+          this,
+          game.id,
+          game.title,
+          `Joga ${game.title} comigo no Fliperama! 🎮`,
+        );
+      },
+      { width: 58, height: 52, fontSize: 24, color: COLORS.panel, shade: 0xc7cfdc },
+    );
+    this.list.add(share);
 
     // Star: favorites move to the top of the grid.
     const fav = services.favorites.has(game.id);

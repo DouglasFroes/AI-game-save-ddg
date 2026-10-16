@@ -1,6 +1,9 @@
 import type * as FirestoreLite from 'firebase/firestore/lite';
 import type { LeaderboardEntry, RemoteLeaderboard } from './leaderboard';
-import { parseEntry } from './leaderboard';
+import { parseEntry, rankEntries, TIEBREAK } from './leaderboard';
+
+/** Extra rows fetched on tiebreak boards so a tied entry just past the cut-off is not lost. */
+const TIE_MARGIN = 20;
 
 /** Public web config from the Firebase console (safe to ship: security lives in firestore.rules). */
 export interface FirebaseSettings {
@@ -99,12 +102,14 @@ export class FirebaseLeaderboard implements RemoteLeaderboard {
     const q = fs.query(
       fs.collection(db, 'leaderboards', gameId, 'entries'),
       fs.orderBy('score', 'desc'),
-      fs.limit(max),
+      fs.limit(TIEBREAK[gameId] ? max + TIE_MARGIN : max),
     );
     const snap = await withTimeout(fs.getDocs(q), this.timeoutMs);
-    return snap.docs
+    const entries = snap.docs
       .map((doc) => fromFirestore(doc.id, doc.data()))
       .filter((e): e is LeaderboardEntry => e !== null);
+    // Equal scores are settled here (the game's tiebreak, then the older run).
+    return rankEntries(entries, gameId).slice(0, max);
   }
 
   async submit(gameId: string, entry: LeaderboardEntry, replace = false): Promise<void> {
