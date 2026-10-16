@@ -29,11 +29,11 @@ service cloud.firestore {
     function gameIds() {
       return ['doguinho', 'blockblast', 'sudoku', 'roadfighter',
               'game2048', 'flappybee', 'snake', 'stack', 'fruitmerge', 'grau', 'luta', 'bomba', 'turma', 'corre', 'crush',
-              'lenha', 'piano', 'alvo', 'pula', 'atravessa', 'fusao',
+              'lenha', 'piano', 'alvo', 'pula', 'atravessa', 'hexa',
               'tijolos', 'memoria', 'cores', 'milhao', 'memofases', 'bolha',
               'paciencia', 'ultima', 'territorio',
-              'orbita', 'zigue', 'ponte', 'corcerta', 'conta', 'cesto',
-              'sequencia', 'relampago', 'luzes', 'inverte', 'balao', 'toupeira',
+              'helix', 'zigue', 'ponte', 'corcerta', 'conta', 'cesto',
+              'sequencia', 'relampago', 'trio', 'inverte', 'balao', 'toupeira',
               'corta', 'gelo', 'velha', 'ligue4', 'minas', 'bolhas',
               'blocos', 'comecome', 'nave'];
     }

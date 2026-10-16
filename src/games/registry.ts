@@ -30,7 +30,7 @@ export type GameId =
   | 'alvo'
   | 'pula'
   | 'atravessa'
-  | 'fusao'
+  | 'hexa'
   | 'tijolos'
   | 'memoria'
   | 'cores'
@@ -40,7 +40,7 @@ export type GameId =
   | 'paciencia'
   | 'ultima'
   | 'territorio'
-  | 'orbita'
+  | 'helix'
   | 'zigue'
   | 'ponte'
   | 'corcerta'
@@ -48,7 +48,7 @@ export type GameId =
   | 'cesto'
   | 'sequencia'
   | 'relampago'
-  | 'luzes'
+  | 'trio'
   | 'inverte'
   | 'balao'
   | 'toupeira'
@@ -391,25 +391,20 @@ export const GAMES: readonly GameDefinition[] = [
     personalBest: storedBest('atravessa'),
   },
   {
-    id: 'fusao',
-    title: 'Fusão Infinita',
-    tagline: 'Sobreviva e funda poderes',
-    icon: 'fusao-icon',
-    color: 0x3a0ca3,
+    id: 'hexa',
+    title: 'Hexa Pilhas',
+    tagline: 'Junte 10 da mesma cor',
+    icon: 'hexa-icon',
+    emoji: '🍯',
+    color: 0x7209b7,
     shade: 0x240873,
-    entryScene: SceneKeys.FusaoMenu,
-    load: () =>
-      Promise.all([
-        import('./fusao/scenes/MenuScene'),
-        import('./fusao/scenes/RunScene'),
-        import('./fusao/scenes/ResultsScene'),
-      ]).then(([a, b, c]) => [a.FusaoMenuScene, b.FusaoRunScene, c.FusaoResultsScene]),
+    entryScene: SceneKeys.Hexa,
+    load: () => import('./hexa/HexaScene').then((m) => [m.HexaScene]),
     columns: [
-      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
-      { key: 'seconds', label: 'Tempo', x: 580, format: formatTime },
-      { key: 'level', label: 'Nível', x: 660 },
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'chain', label: 'Combo', x: 650 },
     ],
-    personalBest: storedBest('fusao'),
+    personalBest: storedBest('hexa'),
   },
   {
     id: 'tijolos',
@@ -547,20 +542,20 @@ export const GAMES: readonly GameDefinition[] = [
     personalBest: storedBest('territorio'),
   },
   {
-    id: 'orbita',
-    title: 'Órbita',
-    tagline: 'Troque de pista e colete',
-    icon: 'orbita-icon',
-    emoji: '🪐',
-    color: 0x7b2cbf,
-    shade: 0x3a1c71,
-    entryScene: SceneKeys.Orbita,
-    load: () => import('./orbita/OrbitaScene').then((m) => [m.OrbitaScene]),
+    id: 'helix',
+    title: 'Torre Helix',
+    tagline: 'Gire a torre e desça',
+    icon: 'helix-icon',
+    emoji: '🌀',
+    color: 0x4361ee,
+    shade: 0x03045e,
+    entryScene: SceneKeys.Helix,
+    load: () => import('./helix/HelixScene').then((m) => [m.HelixScene]),
     columns: [
-      { key: 'score', label: 'Estrelas', x: 520, format: formatNumber },
-      { key: 'seconds', label: 'Tempo', x: 650, format: formatTime },
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'floors', label: 'Andares', x: 650 },
     ],
-    personalBest: storedBest('orbita'),
+    personalBest: storedBest('helix'),
   },
   {
     id: 'zigue',
@@ -672,20 +667,20 @@ export const GAMES: readonly GameDefinition[] = [
     personalBest: storedBest('relampago'),
   },
   {
-    id: 'luzes',
-    title: 'Acende Tudo',
-    tagline: 'Apague todas as luzes',
-    icon: 'luzes-icon',
-    emoji: '💡',
-    color: 0xffb703,
-    shade: 0x9a6b00,
-    entryScene: SceneKeys.Luzes,
-    load: () => import('./luzes/LuzesScene').then((m) => [m.LuzesScene]),
+    id: 'trio',
+    title: 'Trio de Peças',
+    tagline: 'Junte 3 iguais, não lote a bandeja',
+    icon: 'trio-icon',
+    emoji: '🎴',
+    color: 0x2d6a4f,
+    shade: 0x081c15,
+    entryScene: SceneKeys.Trio,
+    load: () => import('./trio/TrioScene').then((m) => [m.TrioScene]),
     columns: [
-      { key: 'score', label: 'Placas', x: 520, format: formatNumber },
-      { key: 'moves', label: 'Toques', x: 650 },
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'trios', label: 'Trios', x: 650 },
     ],
-    personalBest: storedBest('luzes'),
+    personalBest: storedBest('trio'),
   },
   {
     id: 'inverte',

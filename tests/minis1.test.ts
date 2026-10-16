@@ -4,53 +4,11 @@ import { BasketSim, BASKET_Y } from '@/games/cesto/core';
 import { makeQuestion, MathSim } from '@/games/conta/core';
 import { INKS, StroopSim } from '@/games/corcerta/core';
 import { FlipSim, PLAYER_X } from '@/games/inverte/core';
-import { generateLights, LightsGrid, LightsSim } from '@/games/luzes/core';
-import { angDiff, OrbitSim } from '@/games/orbita/core';
 import { BridgeSim, MAX_STICK } from '@/games/ponte/core';
 import { ReflexSim } from '@/games/relampago/core';
 import { SimonSim } from '@/games/sequencia/core';
 import { ZigueSim } from '@/games/zigue/core';
 import { seeded } from '@/platform/rnd';
-
-describe('órbita', () => {
-  it('tap swaps rings and collects stars on the ship ring only', () => {
-    const sim = new OrbitSim(seeded(1));
-    sim.tap();
-    expect(sim.ring).toBe(1);
-    sim.tap();
-    sim.items = [
-      { ring: 0, a: sim.angle + 0.05, kind: 'star', age: 0 },
-      { ring: 1, a: sim.angle + 0.05, kind: 'star', age: 0 },
-    ];
-    const events = sim.step(0.05);
-    expect(events).toEqual([{ type: 'star' }]);
-    expect(sim.score).toBe(1);
-    expect(sim.items).toHaveLength(1);
-  });
-
-  it('a rock on the ship ring crashes it, on the other ring it is harmless', () => {
-    const safe = new OrbitSim(seeded(2));
-    safe.items = [{ ring: 1, a: safe.angle + 0.05, kind: 'rock', age: 0 }];
-    safe.step(0.05);
-    expect(safe.dead).toBe(false);
-    const hit = new OrbitSim(seeded(2));
-    hit.items = [{ ring: 0, a: hit.angle + 0.05, kind: 'rock', age: 0 }];
-    expect(hit.step(0.05)).toEqual([{ type: 'crash' }]);
-    expect(hit.dead).toBe(true);
-  });
-
-  it('never spawns rocks on both rings at the same angle', () => {
-    const sim = new OrbitSim(seeded(3));
-    for (let i = 0; i < 20000; i++) {
-      sim.dead = false;
-      sim.step(0.016);
-      const rocks = sim.items.filter((it) => it.kind === 'rock');
-      for (const a of rocks)
-        for (const b of rocks)
-          if (a.ring !== b.ring) expect(Math.abs(angDiff(a.a, b.a))).toBeGreaterThanOrEqual(0.69);
-    }
-  });
-});
 
 describe('zigue-zague', () => {
   it('builds a connected one-tile path', () => {
@@ -236,46 +194,6 @@ describe('relâmpago', () => {
     sim.step(5);
     expect(sim.step(5)).toEqual({ type: 'fail', reason: 'late' });
     expect(sim.phase).toBe('over');
-  });
-});
-
-describe('acende tudo', () => {
-  it('pressing a lamp flips it and its orthogonal neighbours', () => {
-    const g = new LightsGrid(3);
-    g.toggle(4);
-    expect(g.cells.map(Number)).toEqual([0, 1, 0, 1, 1, 1, 0, 1, 0]);
-    g.toggle(4);
-    expect(g.solved).toBe(true);
-    g.toggle(0);
-    expect(g.cells.map(Number)).toEqual([1, 1, 0, 1, 0, 0, 0, 0, 0]);
-  });
-
-  it('generated boards are never solved and always solvable', () => {
-    const rnd = seeded(19);
-    for (let k = 0; k < 20; k++) {
-      const board = generateLights(3, 2 + (k % 4), rnd);
-      expect(board.solved).toBe(false);
-      // Presses commute, so brute-force the 2^9 subsets.
-      let solvable = false;
-      for (let mask = 0; mask < 512 && !solvable; mask++) {
-        const t = new LightsGrid(3);
-        t.cells.splice(0, 9, ...board.cells);
-        for (let i = 0; i < 9; i++) if (mask & (1 << i)) t.toggle(i);
-        solvable = t.solved;
-      }
-      expect(solvable).toBe(true);
-    }
-  });
-
-  it('solving a board adds time and moves to the next', () => {
-    const sim = new LightsSim(seeded(20));
-    sim.grid.cells.fill(false);
-    sim.grid.cells[0] = sim.grid.cells[1] = sim.grid.cells[3] = true;
-    const t = sim.time;
-    expect(sim.press(0)).toBe(true);
-    expect(sim.level).toBe(1);
-    expect(sim.time).toBeGreaterThan(t);
-    expect(sim.grid.solved).toBe(false);
   });
 });
 

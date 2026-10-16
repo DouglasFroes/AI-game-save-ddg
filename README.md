@@ -26,7 +26,7 @@ quando alguém passar o seu recorde.
 | **Acerta o Alvo** | Lápis no biscoito |
 | **Pula Pula** | Suba cada vez mais |
 | **Atravessa** | Rua, rio e águia |
-| **Fusão Infinita** | Sobreviva e funda poderes |
+| **Hexa Pilhas** | Junte 10 da mesma cor |
 | **Quebra-Tijolos** | Rebata e quebre tudo |
 | **Memória da Turma** | Ache os pares |
 | **Pula Cor** | Passe pela sua cor |
@@ -36,7 +36,7 @@ quando alguém passar o seu recorde.
 | **Paciência** | O clássico das cartas |
 | **Última Carta** | Cores, +2 e coringas |
 | **Território** | Feche a volta e conquiste |
-| **Órbita** | Troque de pista e colete |
+| **Torre Helix** | Gire a torre e desça |
 | **Zigue-Zague** | Vire na hora certa |
 | **Ponte Certa** | Segure e solte |
 | **Cor Certa** | A cor bate com a palavra? |
@@ -44,7 +44,7 @@ quando alguém passar o seu recorde.
 | **Cesto Maluco** | Pegue as frutas, fuja das bombas |
 | **Sequência** | Repita a ordem das luzes |
 | **Relâmpago** | Toque no verde, rápido! |
-| **Acende Tudo** | Apague todas as luzes |
+| **Trio de Peças** | Junte 3 iguais, não lote a bandeja |
 | **Inverte** | Vire a gravidade |
 | **Balão** | Segure para subir |
 | **Toupeira** | Acerte, mas não a bomba |

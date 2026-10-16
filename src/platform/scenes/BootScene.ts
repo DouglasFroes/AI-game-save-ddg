@@ -12,7 +12,6 @@ import { generateAtravessaTextures } from '@/games/atravessa/art';
 import { generateLenhaTextures } from '@/games/lenha/art';
 import { generatePianoTextures } from '@/games/piano/art';
 import { generatePulaTextures } from '@/games/pula/art';
-import { generateFusaoTextures } from '@/games/fusao/art';
 import { generateTijolosTextures } from '@/games/tijolos/art';
 import { generateMemoriaTextures } from '@/games/memoria/art';
 import { generateCoresTextures } from '@/games/cores/art';
@@ -57,7 +56,6 @@ export class BootScene extends Phaser.Scene {
     generateAlvoTextures(this);
     generatePulaTextures(this);
     generateAtravessaTextures(this);
-    generateFusaoTextures(this);
     generateTijolosTextures(this);
     generateMemoriaTextures(this);
     generateCoresTextures(this);
