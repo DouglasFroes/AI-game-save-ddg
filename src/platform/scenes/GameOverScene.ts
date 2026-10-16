@@ -152,16 +152,18 @@ export class GameOverScene extends Phaser.Scene {
       ),
     );
     const score = data.record?.score;
+    // The score plus the run's stats ("Andares: 55 · Perfeitos: 29"), and the link to beat it.
+    const stats = (data.lines ?? []).join(' · ');
     const challenge =
       score !== undefined
-        ? `Fiz ${formatNumber(score)} pontos em ${game.title} no Fliperama! Consegue me superar? 🏆`
+        ? `Fiz ${formatNumber(score)} pontos em ${game.title} no Fliperama!${stats ? ` (${stats})` : ''} Consegue me superar? 🏆`
         : `Joga ${game.title} comigo no Fliperama! 🎮`;
     card.add(
       new Button(
         this,
         0,
         CARD_H / 2 - 62,
-        '🔗 Convidar',
+        score !== undefined ? '📤 Enviar' : '🔗 Convidar',
         () => void shareWithToast(this, data.gameId, game.title, challenge),
         small,
       ),
