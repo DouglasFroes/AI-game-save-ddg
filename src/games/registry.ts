@@ -288,7 +288,7 @@ export const GAMES: readonly GameDefinition[] = [
     color: 0x00b4d8,
     shade: 0x0077b6,
     entryScene: SceneKeys.Turma,
-    load: () => import('./luta/TurmaScene').then((m) => [m.TurmaScene]),
+    load: () => import('./turma/TurmaScene').then((m) => [m.TurmaScene]),
     columns: [
       { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
       { key: 'wins', label: 'Vitórias', x: 580 },
