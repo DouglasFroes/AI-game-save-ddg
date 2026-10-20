@@ -1,6 +1,8 @@
 import type Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import type { GameDefinition, GameId } from '@/games/registry';
+import { attachSceneTelemetry } from './sessionTracker';
+import type { Services } from '@/services';
 
 const loading = new Map<GameId, Promise<void>>();
 
@@ -14,10 +16,17 @@ export function loadGame(game: Phaser.Game, def: GameDefinition): Promise<void> 
     pending = def
       .load()
       .then((scenes) => {
+        const services = game.registry.get('services') as Services | undefined;
         for (const SceneClass of scenes) {
           const scene = new SceneClass();
           const key = scene.sys.settings.key;
-          if (!game.scene.getScene(key)) game.scene.add(key, scene);
+          if (!game.scene.getScene(key)) {
+            game.scene.add(key, scene);
+            const added = game.scene.getScene(key);
+            if (added && services?.sessionTracker) {
+              attachSceneTelemetry(added, services.sessionTracker);
+            }
+          }
         }
         // New scenes are appended to the render list; keep the shared overlay above them.
         game.scene.bringToTop(SceneKeys.GameOver);

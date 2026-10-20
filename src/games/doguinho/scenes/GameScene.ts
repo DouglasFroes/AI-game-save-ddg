@@ -369,6 +369,7 @@ export class GameScene extends Phaser.Scene {
     const inkRatio = this.stroke.ratio;
     this.services.dogProgress.update((p) => recordWin(p, this.level.id, stars, inkRatio));
     const best = getGame('doguinho').personalBest(this.services);
+    this.services.sessionTracker.completeRun('doguinho', best?.score ?? 0);
     if (best) void autoSubmit(this.services, 'doguinho', best).catch(() => null);
     this.showResult({ levelId: this.level.id, won: true, stars, inkRatio });
   }
@@ -382,6 +383,7 @@ export class GameScene extends Phaser.Scene {
     this.services.sfx.play('hit');
     this.services.sfx.vibrate([60, 40, 60]);
     this.services.dogProgress.update(recordDeath);
+    this.services.sessionTracker.completeRun('doguinho', 0);
     this.showResult({ levelId: this.level.id, won: false, reason });
   }
 

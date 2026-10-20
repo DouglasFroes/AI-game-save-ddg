@@ -76,12 +76,12 @@ export class FirebaseLeaderboard implements RemoteLeaderboard {
 
   private connect(): Promise<Connection> {
     this.connection ??= (async () => {
-      const [{ initializeApp }, auth, fs] = await Promise.all([
+      const [{ getApps, initializeApp }, auth, fs] = await Promise.all([
         import('firebase/app'),
         import('firebase/auth'),
         import('firebase/firestore/lite'),
       ]);
-      const app = initializeApp(this.settings);
+      const app = getApps()[0] ?? initializeApp(this.settings);
       const a = auth.getAuth(app);
       await a.authStateReady();
       const user = a.currentUser ?? (await auth.signInAnonymously(a)).user;

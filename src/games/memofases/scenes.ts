@@ -295,6 +295,7 @@ export class MemoGameScene extends Phaser.Scene {
   private result(won: boolean, stars: 1 | 2 | 3 | 0, points: number): void {
     const services = getServices(this);
     const level = this.sim.level;
+    services.sessionTracker.completeRun('memofases', won ? points : 0);
     if (won && stars) {
       services.sfx.play('win');
       services.memoProgress.update((p) => recordWin(p, level.id, stars, points));

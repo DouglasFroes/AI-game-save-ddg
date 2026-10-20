@@ -4,59 +4,62 @@ Coleção de 30 jogos mobile-first no navegador, cada um com seu próprio rankin
 com envio automático, mais os seus 10 melhores no aparelho). Marque os favoritos com ⭐ e receba um aviso
 quando alguém passar o seu recorde.
 
-| Jogo | Em uma frase |
-|---|---|
-| **Salve o Doguinho** | Desenhe e proteja |
-| **Block Blast** | Encaixe e limpe linhas |
-| **Sudoku** | Lógica com números |
-| **Road Fighter** | Corrida sem fim |
-| **2048** | Junte os números |
-| **Flappy Bee** | Toque para voar |
-| **Snake** | Coma e cresça |
-| **Stack** | Empilhe sem errar |
-| **Fruit Merge** | Junte as frutas |
-| **Grau 3D** | Empine e não caia |
-| **Luta de Rua** | Vença todos os rivais |
-| **Bombinhas** | Exploda e ache a saída |
-| **Turma da Luta** | Cada um com seu poder |
-| **Corre Turma** | Corra, pule e desvie |
-| **Turma Crush** | Junte 3 iguais |
-| **Lenhador** | Corte sem levar galhada |
-| **Toque Rápido** | Não erre a peça |
-| **Acerta o Alvo** | Lápis no biscoito |
-| **Pula Pula** | Suba cada vez mais |
-| **Atravessa** | Rua, rio e águia |
-| **Hexa Pilhas** | Junte 10 da mesma cor |
-| **Quebra-Tijolos** | Rebata e quebre tudo |
-| **Memória da Turma** | Ache os pares |
-| **Pula Cor** | Passe pela sua cor |
-| **Jogo do Milhão** | Rumo ao milhão! |
-| **Memória: Aventura** | 30 fases com estrelas |
-| **Bolha Gulosa** | Coma e cresça |
-| **Paciência** | O clássico das cartas |
-| **Última Carta** | Cores, +2 e coringas |
-| **Território** | Feche a volta e conquiste |
-| **Torre Helix** | Gire a torre e desça |
-| **Zigue-Zague** | Vire na hora certa |
-| **Ponte Certa** | Segure e solte |
-| **Cor Certa** | A cor bate com a palavra? |
-| **Conta Rápida** | Resolva antes do tempo |
-| **Cesto Maluco** | Pegue as frutas, fuja das bombas |
-| **Sequência** | Repita a ordem das luzes |
-| **Relâmpago** | Toque no verde, rápido! |
-| **Trio de Peças** | Junte 3 iguais, não lote a bandeja |
-| **Inverte** | Vire a gravidade |
-| **Balão** | Segure para subir |
-| **Toupeira** | Acerte, mas não a bomba |
-| **Corta Frutas** | Deslize e fatie |
-| **Gelo** | Deslize até a bandeira |
-| **Velha Infinita** | Só 3 peças por vez |
-| **Ligue 4** | Alinhe 4 contra o robô |
-| **Campo Minado** | Limpe sem explodir |
-| **Atira Bolhas** | Estoure por cor |
-| **Blocos** | O clássico que não para |
-| **Come-Come** | Fuja dos fantasmas |
-| **Nave** | Atire em tudo |
+| Jogo                      | Em uma frase                       |
+| ------------------------- | ---------------------------------- |
+| **Salve o Doguinho**      | Desenhe e proteja                  |
+| **Block Blast**           | Encaixe e limpe linhas             |
+| **Sudoku**                | Lógica com números                 |
+| **Road Fighter**          | Corrida sem fim                    |
+| **2048**                  | Junte os números                   |
+| **Flappy Bee**            | Toque para voar                    |
+| **Snake**                 | Coma e cresça                      |
+| **Stack**                 | Empilhe sem errar                  |
+| **Fruit Merge**           | Junte as frutas                    |
+| **Grau 3D**               | Empine e não caia                  |
+| **Luta de Rua**           | Vença todos os rivais              |
+| **Bombinhas**             | Exploda e ache a saída             |
+| **Turma da Luta**         | Cada um com seu poder              |
+| **Corre Turma**           | Corra, pule e desvie               |
+| **Turma Crush**           | Junte 3 iguais                     |
+| **Lenhador**              | Corte sem levar galhada            |
+| **Toque Rápido**          | Não erre a peça                    |
+| **Acerta o Alvo**         | Lápis no biscoito                  |
+| **Pula Pula**             | Suba cada vez mais                 |
+| **Atravessa**             | Rua, rio e águia                   |
+| **Hexa Pilhas**           | Junte 10 da mesma cor              |
+| **Quebra-Tijolos**        | Rebata e quebre tudo               |
+| **Memória da Turma**      | Ache os pares                      |
+| **Pula Cor**              | Passe pela sua cor                 |
+| **Jogo do Milhão**        | Rumo ao milhão!                    |
+| **Memória: Aventura**     | 30 fases com estrelas              |
+| **Bolha Gulosa**          | Coma e cresça                      |
+| **Paciência**             | O clássico das cartas              |
+| **Última Carta**          | Cores, +2 e coringas               |
+| **Território**            | Feche a volta e conquiste          |
+| **Torre Helix**           | Gire a torre e desça               |
+| **Zigue-Zague**           | Vire na hora certa                 |
+| **Ponte Certa**           | Segure e solte                     |
+| **Cor Certa**             | A cor bate com a palavra?          |
+| **Conta Rápida**          | Resolva antes do tempo             |
+| **Cesto Maluco**          | Pegue as frutas, fuja das bombas   |
+| **Sequência**             | Repita a ordem das luzes           |
+| **Relâmpago**             | Toque no verde, rápido!            |
+| **Trio de Peças**         | Junte 3 iguais, não lote a bandeja |
+| **Inverte**               | Vire a gravidade                   |
+| **Balão**                 | Segure para subir                  |
+| **Toupeira**              | Acerte, mas não a bomba            |
+| **Corta Frutas**          | Deslize e fatie                    |
+| **Gelo**                  | Deslize até a bandeira             |
+| **Velha Infinita**        | Só 3 peças por vez                 |
+| **Ligue 4**               | Alinhe 4 contra o robô             |
+| **Campo Minado**          | Limpe sem explodir                 |
+| **Atira Bolhas**          | Estoure por cor                    |
+| **Blocos**                | O clássico que não para            |
+| **Come-Come**             | Fuja dos fantasmas                 |
+| **Nave**                  | Atire em tudo                      |
+| **Líquidos Mágicos**      | Separe as cores nos tubos          |
+| **Ricochete Infinito**    | Mire e quebre os números           |
+| **Sobrevivente da Horda** | Evolua magias contra todos         |
 
 O jogador escolhe um apelido uma vez no menu e ele vale para todos os rankings.
 

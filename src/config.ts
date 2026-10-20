@@ -107,6 +107,9 @@ export const SceneKeys = {
   Blocos: 'Blocos',
   ComeCome: 'ComeCome',
   Nave: 'Nave',
+  Liquidos: 'Liquidos',
+  Ricochete: 'Ricochete',
+  Horda: 'Horda',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

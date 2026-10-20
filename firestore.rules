@@ -26,6 +26,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /telemetry_sessions/{sessionId} {
+      allow read: if true;
+
+      allow create, update: if request.auth != null
+        && request.resource.data.player == request.auth.uid
+        && validSession(request.resource.data);
+
+      allow delete: if false;
+    }
+
     function gameIds() {
       return ['doguinho', 'blockblast', 'sudoku', 'roadfighter',
               'game2048', 'flappybee', 'snake', 'stack', 'fruitmerge', 'grau', 'luta', 'bomba', 'turma', 'corre', 'crush',
@@ -35,7 +45,7 @@ service cloud.firestore {
               'helix', 'zigue', 'ponte', 'corcerta', 'conta', 'cesto',
               'sequencia', 'relampago', 'trio', 'inverte', 'balao', 'toupeira',
               'corta', 'gelo', 'velha', 'ligue4', 'minas', 'bolhas',
-              'blocos', 'comecome', 'nave'];
+              'blocos', 'comecome', 'nave', 'liquidos', 'ricochete', 'horda'];
     }
 
     function campaignIds() {
@@ -48,6 +58,17 @@ service cloud.firestore {
         && d.name is string && d.name.size() > 0 && d.name.size() <= 16
         && d.score is int && d.score >= 0 && d.score <= 100000000
         && d.details is map && d.details.size() <= 6
+        && d.date == request.time;
+    }
+
+    function validSession(d) {
+      return d.keys().hasOnly(['player', 'name', 'gameId', 'durationSec', 'score', 'startedAt', 'date'])
+        && d.keys().hasAll(['player', 'name', 'gameId', 'durationSec', 'score', 'startedAt', 'date'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 16
+        && d.gameId in gameIds()
+        && d.durationSec is int && d.durationSec >= 1 && d.durationSec <= 43200
+        && d.score is int && d.score >= 0 && d.score <= 100000000
+        && d.startedAt is string && d.startedAt.size() <= 40
         && d.date == request.time;
     }
   }

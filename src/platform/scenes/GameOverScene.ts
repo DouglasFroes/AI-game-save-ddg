@@ -37,6 +37,7 @@ export class GameOverScene extends Phaser.Scene {
 
   create(data: GameOverData): void {
     const services = getServices(this);
+    services.sessionTracker.completeRun(data.gameId, data.record?.score ?? 0);
     const game = getGame(data.gameId);
     const cx = GAME_WIDTH / 2;
     const cy = GAME_HEIGHT / 2 + 20;

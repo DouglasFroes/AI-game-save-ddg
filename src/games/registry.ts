@@ -60,7 +60,10 @@ export type GameId =
   | 'bolhas'
   | 'blocos'
   | 'comecome'
-  | 'nave';
+  | 'nave'
+  | 'liquidos'
+  | 'ricochete'
+  | 'horda';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -876,6 +879,57 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'kills', label: 'Abates', x: 655 },
     ],
     personalBest: storedBest('nave'),
+  },
+  {
+    id: 'liquidos',
+    title: 'Líquidos Mágicos',
+    tagline: 'Separe as cores nos tubos',
+    icon: 'liquidos-icon',
+    emoji: '🧪',
+    color: 0x00b4d8,
+    shade: 0x141e30,
+    entryScene: SceneKeys.Liquidos,
+    load: () => import('./liquidos/LiquidosScene').then((m) => [m.LiquidosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'level', label: 'Fase', x: 575 },
+      { key: 'moves', label: 'Mov.', x: 655 },
+    ],
+    personalBest: storedBest('liquidos'),
+  },
+  {
+    id: 'ricochete',
+    title: 'Ricochete Infinito',
+    tagline: 'Mire e quebre os números',
+    icon: 'ricochete-icon',
+    emoji: '🎱',
+    color: 0xf72585,
+    shade: 0x1b263b,
+    entryScene: SceneKeys.Ricochete,
+    load: () => import('./ricochete/RicocheteScene').then((m) => [m.RicocheteScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 470, format: formatNumber },
+      { key: 'turns', label: 'Rodadas', x: 575 },
+      { key: 'balls', label: 'Bolas', x: 655 },
+    ],
+    personalBest: storedBest('ricochete'),
+  },
+  {
+    id: 'horda',
+    title: 'Sobrevivente da Horda',
+    tagline: 'Evolua magias contra todos',
+    icon: 'horda-icon',
+    emoji: '🧙‍♂️',
+    color: 0x7209b7,
+    shade: 0x111827,
+    entryScene: SceneKeys.Horda,
+    load: () => import('./horda/HordaScene').then((m) => [m.HordaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 455, format: formatNumber },
+      { key: 'kills', label: 'Abates', x: 560 },
+      { key: 'time', label: 'Tempo', x: 650, format: formatTime },
+    ],
+    personalBest: storedBest('horda'),
   },
 ];
 

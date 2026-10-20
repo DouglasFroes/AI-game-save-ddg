@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH } from '@/config';
 
 /** Shared procedural art (no image files). Each game generates its own sprites too. */
@@ -63,11 +63,11 @@ function makeBackground(scene: Phaser.Scene): void {
 }
 
 function drawStar(g: Phaser.GameObjects.Graphics, fill: number, stroke: number): void {
-  const pts: Phaser.Math.Vector2[] = [];
+  const pts: Array<{ x: number; y: number }> = [];
   for (let i = 0; i < 10; i++) {
     const r = i % 2 === 0 ? 29 : 13;
     const a = -Math.PI / 2 + (i * Math.PI) / 5;
-    pts.push(new Phaser.Math.Vector2(32 + Math.cos(a) * r, 33 + Math.sin(a) * r));
+    pts.push({ x: 32 + Math.cos(a) * r, y: 33 + Math.sin(a) * r });
   }
   g.fillStyle(fill).fillPoints(pts, true);
   g.lineStyle(4, stroke).strokePoints(pts, true);
