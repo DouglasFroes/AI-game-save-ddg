@@ -18,8 +18,6 @@ export interface Player {
   readonly num: number;
   readonly name: string;
   readonly role: Role;
-  /** A second position the player can also fill. */
-  readonly alt?: Role;
   readonly rating: number;
 }
 
@@ -95,21 +93,24 @@ export function slotsOf(formation: FormationId): Slot[] {
   return out;
 }
 
-/** Roles of a squad: counts per position (every formation can be filled from any squad). */
-const SQUAD_ROLES: ReadonlyArray<readonly [Role, number, Role?]> = [
-  ['GOL', 3],
-  ['LD', 2, 'ZAG'],
-  ['LE', 2, 'ZAG'],
-  ['ZAG', 4],
-  ['VOL', 2, 'MC'],
-  ['MC', 3, 'VOL'],
-  ['MEI', 2, 'MC'],
-  ['ME', 1, 'PE'],
-  ['MD', 1, 'PD'],
-  ['PE', 2, 'ME'],
-  ['PD', 2, 'MD'],
-  ['CA', 3],
-];
+/**
+ * Which player positions can fill a slot, best fit first. A slot always takes its own role
+ * first; the rest is the natural neighbours (a centre-back at full-back, a winger up front…).
+ */
+export const ACCEPTS: Readonly<Record<Role, readonly Role[]>> = {
+  GOL: ['GOL'],
+  ZAG: ['ZAG', 'LD', 'LE', 'VOL'],
+  LD: ['LD', 'LE', 'ZAG', 'MD'],
+  LE: ['LE', 'LD', 'ZAG', 'ME'],
+  VOL: ['VOL', 'MC', 'ZAG'],
+  MC: ['MC', 'VOL', 'MEI'],
+  MEI: ['MEI', 'MC', 'ME', 'MD'],
+  ME: ['ME', 'MD', 'MEI', 'PE', 'PD'],
+  MD: ['MD', 'ME', 'MEI', 'PD', 'PE'],
+  PE: ['PE', 'PD', 'ME', 'CA'],
+  PD: ['PD', 'PE', 'MD', 'CA'],
+  CA: ['CA', 'PE', 'PD', 'MEI'],
+};
 
 function hash(text: string): number {
   let h = 2166136261;
@@ -129,29 +130,41 @@ function mulberry(seed: number): Rng {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-/** The squad of a nation in a given Cup. Always the same for the same pair. */
-export function squadOf(nation: Team, year: number): Squad {
-  const strength = nation.cups[year] ?? 70;
-  const rng = mulberry(hash(`${nation.name}${year}`));
-  const surnames = nation.surnames.split(' ');
-  const taken = new Set<string>();
+const fold = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+/** Years of a team that have a roster, i.e. that can be drawn. */
+export const draftYears = (team: Team): number[] =>
+  Object.keys(team.cups)
+    .map(Number)
+    .filter((y) => team.cups[y]!.roster);
+
+/** Rating offset of a roster mark: `*` star, `~` reserve. */
+const TIER: Record<string, number> = { '*': 6, '': -1, '~': -7 };
+
+/** The squad of a team in a given year (the same every time): real names, rated from the year. */
+export function squadOf(team: Team, year: number): Squad {
+  const campaign = team.cups[year]!;
+  const rng = mulberry(hash(`${team.name}${year}`));
+  const seen = new Set<string>();
   const players: Player[] = [];
-  let num = 1;
-  for (const [role, count, alt] of SQUAD_ROLES) {
-    for (let i = 0; i < count; i++) {
-      let name: string;
-      do {
-        const initial = String.fromCharCode(65 + Math.floor(rng() * 26));
-        name = `${initial}. ${surnames[Math.floor(rng() * surnames.length)]}`;
-      } while (taken.has(name));
-      taken.add(name);
-      const spread = (rng() + rng() + rng() - 1.5) * 9;
-      const star = rng() < 0.14 ? 5 : 0;
-      const rating = Math.round(clamp(strength + spread + star - 2, 50, 97));
-      players.push({ num: num++, name, role, ...(rng() < 0.4 && alt ? { alt } : {}), rating });
+  for (const group of (campaign.roster ?? '').split(';')) {
+    const [roleText, names = ''] = group.split(':');
+    const role = roleText!.trim() as Role;
+    for (const raw of names.split(',')) {
+      const mark = /[*~]$/.exec(raw.trim())?.[0] ?? '';
+      const name = raw.trim().replace(/[*~]$/, '');
+      if (!name || seen.has(fold(name))) continue;
+      seen.add(fold(name));
+      const jitter = Math.round((rng() - 0.5) * 4);
+      const rating = Math.round(clamp(campaign.strength + TIER[mark]! + jitter, 52, 97));
+      players.push({ num: players.length + 1, name, role, rating });
     }
   }
-  return { nation: nation.name, flag: nation.flag, year, players };
+  return { nation: team.name, flag: team.flag, year, players };
 }
 
 export interface TeamStats {
@@ -238,16 +251,15 @@ export class SelecaoGame {
     return this.filled === this.slots.length;
   }
 
-  private pickEntry(nation?: Team, otherThan?: number): Squad {
-    const pool = nation
-      ? [nation]
-      : this.teams.filter(
-          (n) => !this.usedNations.has(n.name) || this.usedNations.size >= this.teams.length,
+  private pickEntry(team?: Team, otherThan?: number): Squad {
+    const drawable = this.teams.filter((n) => draftYears(n).length > 0);
+    const pool = team
+      ? [team]
+      : drawable.filter(
+          (n) => !this.usedNations.has(n.name) || this.usedNations.size >= drawable.length,
         );
     const n = pool[Math.floor(this.rng() * pool.length)]!;
-    const years = Object.keys(n.cups)
-      .map(Number)
-      .filter((y) => y !== otherThan);
+    const years = draftYears(n).filter((y) => y !== otherThan);
     const year = years[Math.floor(this.rng() * years.length)] ?? otherThan!;
     return squadOf(n, year);
   }
@@ -266,7 +278,7 @@ export class SelecaoGame {
     this.rerollsLeft--;
     this.usedNations.delete(cur.nation);
     const nation = this.teams.find((n) => n.name === cur.nation)!;
-    if (kind === 'cup' && Object.keys(nation.cups).length > 1) {
+    if (kind === 'cup' && draftYears(nation).length > 1) {
       this.current = this.pickEntry(nation, cur.year);
     } else {
       this.current = this.pickEntry();
@@ -276,9 +288,17 @@ export class SelecaoGame {
   }
 
   private openSlot(p: Player): number {
-    const exact = this.slots.findIndex((s, i) => !this.lineup[i] && s.role === p.role);
+    const open = (role: Role) => this.slots.findIndex((s, i) => !this.lineup[i] && s.role === role);
+    const exact = open(p.role);
     if (exact >= 0) return exact;
-    return p.alt ? this.slots.findIndex((s, i) => !this.lineup[i] && s.role === p.alt) : -1;
+    // No slot of his own position left: the first open slot that takes him.
+    return this.slots.findIndex((s, i) => !this.lineup[i] && ACCEPTS[s.role].includes(p.role));
+  }
+
+  /** The position a player would take on the pitch right now (null when no slot fits). */
+  fillsAs(p: Player): Role | null {
+    const i = this.openSlot(p);
+    return i >= 0 ? this.slots[i]!.role : null;
   }
 
   /** Players of the current team that fit an open slot. */
@@ -316,9 +336,13 @@ export class SelecaoGame {
   }
 
   /** Seven opponents of rising strength, picked from the same table of Cups. */
-  opponents(): Opponent[] {
+  opponents(boost = 0): Opponent[] {
     const all = this.teams.flatMap((n) =>
-      Object.entries(n.cups).map(([y, s]) => ({ nation: n, year: Number(y), strength: s })),
+      Object.entries(n.cups).map(([y, camp]) => ({
+        nation: n,
+        year: Number(y),
+        strength: camp.strength,
+      })),
     );
     const used = new Set<string>();
     return OPPONENT_TARGETS.map((target) => {
@@ -332,9 +356,9 @@ export class SelecaoGame {
         nation: best.nation.name,
         flag: best.nation.flag,
         year: best.year,
-        attack: best.strength + jitter(),
-        defence: best.strength + jitter(),
-        keeper: best.strength,
+        attack: best.strength + jitter() + boost,
+        defence: best.strength + jitter() + boost,
+        keeper: best.strength + boost,
       };
     });
   }
@@ -362,8 +386,8 @@ export class SelecaoGame {
   }
 
   /** Plays the knockout run until a loss (or the final). Needs a complete line-up. */
-  tournament(): Tournament {
-    const opps = this.opponents();
+  tournament(boost = 0): Tournament {
+    const opps = this.opponents(boost);
     const matches: MatchResult[] = [];
     for (let i = 0; i < MATCHES; i++) {
       const m = this.playMatch(STAGES[i]!, opps[i]!);

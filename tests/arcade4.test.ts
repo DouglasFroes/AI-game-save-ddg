@@ -1,6 +1,8 @@
 import { CLUBS } from '@/games/timesbr/data';
 import { NATIONS } from '@/games/selecao/data';
 import {
+  ACCEPTS,
+  draftYears,
   FORMATION_IDS,
   SelecaoGame,
   slotsOf,
@@ -337,7 +339,7 @@ describe('seleção dos sonhos', () => {
 
   it('squads are stable, with unique names, and nations are not repeated in a draft', () => {
     const nation = NATIONS[0]!;
-    const year = Number(Object.keys(nation.cups)[0]);
+    const year = draftYears(nation)[0]!;
     const a = squadOf(nation, year);
     expect(squadOf(nation, year)).toEqual(a);
     expect(new Set(a.players.map((p) => p.name)).size).toBe(a.players.length);
@@ -417,5 +419,53 @@ describe('time dos sonhos BR', () => {
       const t = g.tournament();
       expect(t.matches.every((m) => CLUBS.some((c) => c.name === m.opponent.nation))).toBe(true);
     }
+  });
+});
+
+describe('elencos reais', () => {
+  const campaigns = [...NATIONS, ...CLUBS].flatMap((team) =>
+    draftYears(team).map((year) => ({ team, year })),
+  );
+
+  it('every drawable campaign can fill any position of any formation', () => {
+    expect(campaigns.length).toBeGreaterThan(40);
+    const roles = new Set(FORMATION_IDS.flatMap((f) => slotsOf(f).map((s) => s.role)));
+    for (const { team, year } of campaigns) {
+      const squad = squadOf(team, year);
+      expect(squad.players.length, `${team.name} ${year}`).toBeGreaterThanOrEqual(12);
+      for (const role of roles)
+        expect(
+          squad.players.some((p) => ACCEPTS[role].includes(p.role)),
+          `${team.name} ${year} → ${role}`,
+        ).toBe(true);
+    }
+  });
+
+  it('rosters only use known positions and ratings stay in range', () => {
+    const known = new Set(Object.keys(ACCEPTS));
+    for (const { team, year } of campaigns)
+      for (const p of squadOf(team, year).players) {
+        expect(known.has(p.role), `${team.name} ${year} ${p.name}: ${p.role}`).toBe(true);
+        expect(p.rating).toBeGreaterThanOrEqual(52);
+        expect(p.rating).toBeLessThanOrEqual(97);
+      }
+  });
+
+  it('a defender can fill a missing full-back slot and says so', () => {
+    const g = new SelecaoGame(seeded(1), '4-3-3');
+    g.current = squadOf(
+      NATIONS.find((n) => n.name === 'Brasil')!,
+      2002,
+    );
+    const zag = g.current.players.find((p) => p.role === 'ZAG')!;
+    expect(g.fillsAs(zag)).toBe('ZAG');
+    g.pick(zag.num);
+    g.pick(g.current?.players.find((p) => p.role === 'ZAG' && p.num !== zag.num)?.num ?? -1);
+    g.current = squadOf(
+      NATIONS.find((n) => n.name === 'Brasil')!,
+      1994,
+    );
+    for (const p of g.current.players.filter((x) => x.role === 'ZAG')) g.pick(p.num);
+    expect(g.filled).toBeGreaterThanOrEqual(2);
   });
 });
