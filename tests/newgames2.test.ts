@@ -639,3 +639,18 @@ describe('Dados Loucos (dice roguelite)', () => {
     for (let r = 2; r < 12; r++) expect(targetFor(r)).toBeGreaterThan(targetFor(r - 1));
   });
 });
+
+describe('inverte: speed', () => {
+  it('keeps getting faster well past the first minute, up to a cap', async () => {
+    const { FlipSim, MAX_SPEED } = await import('@/games/inverte/core');
+    const sim = new FlipSim(() => 0.5);
+    const at = (t: number) => {
+      sim.time = t;
+      return sim.speed;
+    };
+    expect(at(10)).toBeGreaterThan(at(0));
+    expect(at(40)).toBeGreaterThan(at(20));
+    expect(at(70)).toBeGreaterThan(at(40));
+    expect(at(500)).toBe(MAX_SPEED);
+  });
+});
