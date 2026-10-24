@@ -64,9 +64,11 @@ export function placementFor(
  * Games not listed tie by date only.
  */
 export const TIEBREAK: Readonly<
-  Record<string, ReadonlyArray<{ key: string; order: 'asc' | 'desc' }>>
+  Record<string, ReadonlyArray<{ key: string; order: 'asc' | 'desc'; zeroIsWorst?: boolean }>>
 > = {
   stack: [{ key: 'perfects', order: 'desc' }],
+  // Same points: the faster best reaction wins.
+  relampago: [{ key: 'best', order: 'asc', zeroIsWorst: true }],
   timesbr: [
     { key: 'rerolls', order: 'asc' },
     { key: 'ovr', order: 'desc' },
@@ -83,11 +85,13 @@ export const TIEBREAK: Readonly<
 
 /** Negative when `a` ranks ahead of `b` on the game's tiebreaks, positive when behind, 0 if equal. */
 export function compareTies(gameId: string, a: ScoreDetails, b: ScoreDetails): number {
-  for (const { key, order } of TIEBREAK[gameId] ?? []) {
+  for (const { key, order, zeroIsWorst } of TIEBREAK[gameId] ?? []) {
     // A run lacking the number counts as the worst possible.
     const worst = order === 'asc' ? Infinity : -Infinity;
-    const x = a[key] ?? worst;
-    const y = b[key] ?? worst;
+    // `zeroIsWorst`: older runs stored 0 for "no value yet" (e.g. no reaction time).
+    const val = (d: ScoreDetails) => (zeroIsWorst && !d[key] ? worst : (d[key] ?? worst));
+    const x = val(a);
+    const y = val(b);
     if (x === y) continue;
     return (order === 'asc' ? x < y : x > y) ? -1 : 1;
   }

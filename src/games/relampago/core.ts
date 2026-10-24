@@ -1,5 +1,8 @@
 import type { Rnd } from '@/platform/rnd';
 
+/** Stored as the best reaction of a run without any hit, so it loses every tie. */
+export const NO_REACTION = 9999;
+
 export type ReflexPhase = 'wait' | 'go' | 'decoy' | 'over';
 export type ReflexEvent =
   | { type: 'go' }

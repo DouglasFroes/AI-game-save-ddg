@@ -3,7 +3,7 @@ import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '@/config';
 import { MiniScene } from '@/platform/ui/miniGame';
 import { addText } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
-import { ReflexSim, type ReflexEvent } from './core';
+import { NO_REACTION, ReflexSim, type ReflexEvent } from './core';
 
 const CX = GAME_WIDTH / 2;
 const FAIL_TITLE = {
@@ -87,7 +87,7 @@ export class RelampagoScene extends MiniScene {
           [bestMs ? `Melhor reação: ${bestMs} ms` : 'Sem reações'],
           {
             score,
-            details: { best: bestMs, rounds: round - 1 },
+            details: { best: bestMs || NO_REACTION, rounds: round - 1 },
           },
         );
         break;

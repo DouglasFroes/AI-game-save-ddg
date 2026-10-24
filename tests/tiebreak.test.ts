@@ -41,3 +41,35 @@ describe('desempate no ranking (Stack: perfeitos)', () => {
     expect(placementFor(board, 55, 20, { gameId: 'stack', details: { perfects: 10 } })).toBe(2);
   });
 });
+
+describe('desempate no ranking (Relâmpago: reação mais rápida)', () => {
+  const run = (name: string, best: number | undefined, date: string): LeaderboardEntry => ({
+    id: name,
+    player: name,
+    name,
+    score: 12,
+    details: best === undefined ? {} : { best },
+    date,
+  });
+
+  it('same points: the faster reaction ranks first, even if the run is newer', () => {
+    const board = [run('lento', 310, '2026-10-01'), run('rapido', 180, '2026-10-05')];
+    expect(rankEntries(board, 'relampago').map((e) => e.name)).toEqual(['rapido', 'lento']);
+  });
+
+  it('a run with no reaction time (0 or missing) loses the tie', () => {
+    const board = [
+      run('zero', 0, '2026-10-01'),
+      run('sem', undefined, '2026-10-02'),
+      run('ok', 400, '2026-10-03'),
+    ];
+    expect(rankEntries(board, 'relampago')[0]!.name).toBe('ok');
+  });
+
+  it('placement puts a slower tied run behind', () => {
+    const board = [run('a', 200, '2026-10-01')];
+    const tie = (best: number) => ({ gameId: 'relampago', details: { best } });
+    expect(placementFor(board, 12, 20, tie(150))).toBe(1);
+    expect(placementFor(board, 12, 20, tie(250))).toBe(2);
+  });
+});

@@ -6,6 +6,7 @@ import type { ScoreRecord } from '@/platform/bestScores';
 import { formatPrize } from '@/games/milhao/art';
 import { memoBest } from '@/games/memofases/best';
 import { formatShare } from '@/games/territorio/art';
+import { NO_REACTION } from '@/games/relampago/core';
 import { formatNumber, formatTime } from '@/platform/ranking';
 import type { Services } from '@/services';
 
@@ -678,7 +679,7 @@ export const GAMES: readonly GameDefinition[] = [
     load: () => import('./relampago/RelampagoScene').then((m) => [m.RelampagoScene]),
     columns: [
       { key: 'score', label: 'Pontos', x: 500, format: formatNumber },
-      { key: 'best', label: 'Reação', x: 640, format: (v) => `${v} ms` },
+      { key: 'best', label: 'Reação', x: 640, format: (v) => (v >= NO_REACTION ? '–' : `${v} ms`) },
     ],
     personalBest: storedBest('relampago'),
   },
