@@ -25,6 +25,8 @@ export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyDef>> = {
   expert: { label: 'Extremo', level: 4, holes: 58, basePoints: 16000, lives: 1, hints: false },
 };
 export const HINT_PENALTY = 400;
+/** Hints available in one game (levels that have the button at all). */
+export const HINTS_PER_GAME = 3;
 export const MISTAKE_PENALTY = 300;
 
 export const row = (i: number) => Math.floor(i / 9);

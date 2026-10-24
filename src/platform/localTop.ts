@@ -1,3 +1,4 @@
+import { boardId } from './boards';
 import type { ScoreDetails, ScoreRecord } from './bestScores';
 import { compareRuns, sanitizeDetails } from './leaderboard';
 import { readJson, writeJson, type KeyValueStore } from './storage';
@@ -12,7 +13,7 @@ export interface LocalRun {
   readonly date: string;
 }
 
-const key = (gameId: string) => `arcade.top.${gameId}`;
+const key = (gameId: string) => `arcade.top.${boardId(gameId)}`;
 
 function parseRun(raw: unknown): LocalRun | null {
   if (typeof raw !== 'object' || raw === null) return null;

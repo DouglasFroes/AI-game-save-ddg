@@ -1,3 +1,4 @@
+import { boardId } from './boards';
 import { readJson, writeJson, type KeyValueStore } from './storage';
 
 export type ScoreDetails = Readonly<Record<string, number>>;
@@ -7,7 +8,7 @@ export interface ScoreRecord {
   readonly details: ScoreDetails;
 }
 
-const key = (gameId: string) => `arcade.best.${gameId}`;
+const key = (gameId: string) => `arcade.best.${boardId(gameId)}`;
 
 function parseRecord(raw: unknown): ScoreRecord | null {
   if (typeof raw !== 'object' || raw === null) return null;

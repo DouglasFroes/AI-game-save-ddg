@@ -1,4 +1,5 @@
 import type { ScoreDetails } from './bestScores';
+import { boardId } from './boards';
 import type { Outbox } from './outbox';
 import { readJson, writeJson, type KeyValueStore } from './storage';
 
@@ -145,7 +146,7 @@ export function parseEntry(raw: unknown): LeaderboardEntry | null {
   };
 }
 
-const boardKey = (gameId: string) => `arcade.board.${gameId}`;
+const boardKey = (gameId: string) => `arcade.board.${boardId(gameId)}`;
 
 export class LocalLeaderboard implements LeaderboardRepository {
   constructor(private readonly store: KeyValueStore) {}

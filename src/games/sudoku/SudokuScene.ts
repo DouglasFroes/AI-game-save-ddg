@@ -8,6 +8,7 @@ import {
   box,
   col,
   DIFFICULTIES,
+  HINTS_PER_GAME,
   isComplete,
   makePuzzle,
   PEERS,
@@ -49,6 +50,7 @@ export class SudokuScene extends Phaser.Scene {
   private notesMode = false;
   private mistakes = 0;
   private hints = 0;
+  private hintButton!: Button;
   private elapsed = 0;
   private finished = false;
 
@@ -155,15 +157,12 @@ export class SudokuScene extends Phaser.Scene {
     };
     new Button(this, 140, TOOLS_Y, '⌫ Apagar', () => this.erase(), tool);
     this.notesButton = new Button(this, 360, TOOLS_Y, '✎ Notas', () => this.toggleNotes(), tool);
-    const hintButton = new Button(this, 580, TOOLS_Y, '💡 Dica', () => this.hint(), {
+    this.hintButton = new Button(this, 580, TOOLS_Y, '💡 Dica', () => this.hint(), {
       ...tool,
       color: COLORS.primary,
       shade: COLORS.primaryDark,
     });
-    if (!def.hints) {
-      hintButton.label.setText('💡 Sem dica');
-      hintButton.setEnabled(false);
-    }
+    this.updateHintButton();
 
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
       if (/^[1-9]$/.test(e.key)) this.input_(Number(e.key));
@@ -252,14 +251,28 @@ export class SudokuScene extends Phaser.Scene {
     this.render();
   }
 
+  /** Shows how many hints are left; the button turns off when there are none. */
+  private updateHintButton(): void {
+    if (!DIFFICULTIES[this.difficulty].hints) {
+      this.hintButton.label.setText('💡 Sem dica');
+      this.hintButton.setEnabled(false);
+      return;
+    }
+    const left = HINTS_PER_GAME - this.hints;
+    this.hintButton.label.setText(left > 0 ? `💡 Dica (${left})` : '💡 Sem dicas');
+    this.hintButton.setEnabled(left > 0);
+  }
+
   private hint(): void {
-    if (this.finished || !DIFFICULTIES[this.difficulty].hints) return;
+    if (this.finished || !DIFFICULTIES[this.difficulty].hints || this.hints >= HINTS_PER_GAME)
+      return;
     let i = this.selected;
     if (i < 0 || this.grid[i] === this.solution[i]) {
       i = this.grid.findIndex((n, k) => n !== this.solution[k]);
       if (i < 0) return;
     }
     this.hints++;
+    this.updateHintButton();
     this.selected = i;
     this.input_(this.solution[i]!);
   }

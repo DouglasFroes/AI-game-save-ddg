@@ -1,5 +1,6 @@
 import type * as FirestoreLite from 'firebase/firestore/lite';
 import type { LeaderboardEntry, RemoteLeaderboard } from './leaderboard';
+import { boardId } from './boards';
 import { parseEntry, rankEntries, TIEBREAK } from './leaderboard';
 
 /** Extra rows fetched on tiebreak boards so a tied entry just past the cut-off is not lost. */
@@ -100,7 +101,7 @@ export class FirebaseLeaderboard implements RemoteLeaderboard {
   async list(gameId: string, max: number): Promise<LeaderboardEntry[]> {
     const { fs, db } = await this.connect();
     const q = fs.query(
-      fs.collection(db, 'leaderboards', gameId, 'entries'),
+      fs.collection(db, 'leaderboards', boardId(gameId), 'entries'),
       fs.orderBy('score', 'desc'),
       fs.limit(TIEBREAK[gameId] ? max + TIE_MARGIN : max),
     );
@@ -121,7 +122,7 @@ export class FirebaseLeaderboard implements RemoteLeaderboard {
       details: entry.details,
       date: fs.serverTimestamp(),
     };
-    const entries = fs.collection(db, 'leaderboards', gameId, 'entries');
+    const entries = fs.collection(db, 'leaderboards', boardId(gameId), 'entries');
     // Campaign games keep one document per player, named after their uid.
     await withTimeout(
       replace

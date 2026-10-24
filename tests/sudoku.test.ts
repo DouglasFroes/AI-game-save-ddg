@@ -3,6 +3,7 @@ import {
   candidates,
   countSolutions,
   DIFFICULTIES,
+  HINTS_PER_GAME,
   isComplete,
   isValidPlacement,
   makePuzzle,
@@ -10,6 +11,10 @@ import {
   solve,
   sudokuScore,
 } from '@/games/sudoku/core';
+import { BestScores } from '@/platform/bestScores';
+import { boardId } from '@/platform/boards';
+import { LocalLeaderboard } from '@/platform/leaderboard';
+import { MemoryStore } from '@/platform/storage';
 
 function seeded(seed: number) {
   return () => {
@@ -68,5 +73,45 @@ describe('sudoku core', () => {
       expect(d.hints).toBe(true);
     }
     expect(sudokuScore('expert', 600, 0, 0)).toBeGreaterThan(sudokuScore('hard', 600, 0, 0));
+  });
+});
+
+describe('sudoku: ranking reset and hint limit', () => {
+  it('stores Sudoku scores on a fresh board, leaving the old one untouched', async () => {
+    const store = new MemoryStore();
+    store.set(
+      'arcade.board.sudoku',
+      JSON.stringify([
+        {
+          id: 'x',
+          player: 'p',
+          name: 'Velho',
+          score: 99999,
+          details: {},
+          date: '2026-01-01T00:00:00Z',
+        },
+      ]),
+    );
+    store.set('arcade.best.sudoku', JSON.stringify({ score: 99999, details: {} }));
+    await expect(new LocalLeaderboard(store).list('sudoku', 10)).resolves.toEqual([]);
+    expect(new BestScores(store).get('sudoku')).toBeNull();
+    expect(boardId('sudoku')).toBe('sudoku2');
+    expect(boardId('snake')).toBe('snake');
+    const board = new LocalLeaderboard(store);
+    await board.submit('sudoku', {
+      id: 'n',
+      player: 'p',
+      name: 'Novo',
+      score: 10,
+      details: {},
+      date: '2026-10-01T00:00:00Z',
+    });
+    expect((await board.list('sudoku', 10)).map((e) => e.name)).toEqual(['Novo']);
+    expect(store.get('arcade.board.sudoku2')).toBeTruthy();
+  });
+
+  it('allows a few hints per game', () => {
+    expect(HINTS_PER_GAME).toBeGreaterThan(0);
+    expect(HINTS_PER_GAME).toBeLessThanOrEqual(5);
   });
 });
