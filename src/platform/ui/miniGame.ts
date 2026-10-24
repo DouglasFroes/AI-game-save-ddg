@@ -7,6 +7,8 @@ import type { GameOverData } from '@/platform/scenes/GameOverScene';
 import { getServices } from '@/services';
 import { addText, iconButton } from './widgets';
 
+const EMOJI_FONTS = `${FONT_FAMILY}, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"`;
+
 /** Hub icon: a rounded gradient square with a big emoji. */
 export function emojiIcon(
   scene: Phaser.Scene,
@@ -24,9 +26,23 @@ export function emojiIcon(
     ctx.beginPath();
     ctx.roundRect(0, 0, 150, 150, 22);
     ctx.fill();
-    ctx.font = `84px ${FONT_FAMILY}`;
+    // Soft top gloss so the tile reads as a glossy icon.
+    const gloss = ctx.createLinearGradient(0, 0, 0, 75);
+    gloss.addColorStop(0, 'rgba(255,255,255,0.28)');
+    gloss.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gloss;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, 150, 75, [22, 22, 0, 0]);
+    ctx.fill();
+    // WebKit (iOS) draws nothing for a colour emoji while a gradient is the fill, so reset it to
+    // a solid colour and name the emoji fonts explicitly.
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `84px ${EMOJI_FONTS}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.35)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 4;
     ctx.fillText(emoji, 75, 80);
   });
 }
@@ -40,7 +56,7 @@ export function emojiText(
   size: number,
 ): Phaser.GameObjects.Text {
   return scene.add
-    .text(x, y, emoji, { fontFamily: FONT_FAMILY, fontSize: `${size}px`, resolution: 2 })
+    .text(x, y, emoji, { fontFamily: EMOJI_FONTS, fontSize: `${size}px`, resolution: 2 })
     .setOrigin(0.5);
 }
 
