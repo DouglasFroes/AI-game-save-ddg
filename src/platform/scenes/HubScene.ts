@@ -250,13 +250,15 @@ export class HubScene extends Phaser.Scene {
       this.tweens.add({ targets: this.bar, y: 0, duration: 700, delay: 150, ease: 'Back.easeOut' });
     }
 
-    // A friend's link goes straight into the game (the URL is cleaned so a refresh shows the hub).
+    // A friend's link opens that game's details sheet (the URL is cleaned so a refresh shows the hub).
     const openLinked = () => {
       const linked = pendingLink ? GAMES.find((g) => g.id === pendingLink) : undefined;
       if (!linked) return;
       pendingLink = null;
       window.history.replaceState(null, '', window.location.pathname);
-      this.time.delayedCall(300, () => this.open(linked));
+      this.time.delayedCall(300, () => {
+        if (this.sys.isActive()) this.openSheet(linked);
+      });
     };
     // No name, no hub: the player has to say who they are before touching anything else.
     if (profile.get().name) openLinked();
