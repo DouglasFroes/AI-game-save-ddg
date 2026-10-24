@@ -63,7 +63,17 @@ export type GameId =
   | 'nave'
   | 'liquidos'
   | 'ricochete'
-  | 'horda';
+  | 'horda'
+  | 'gancho'
+  | 'orbita'
+  | 'cadeia'
+  | 'escorrega'
+  | 'plinko'
+  | 'tinta'
+  | 'espelhos'
+  | 'masmorra'
+  | 'pinball'
+  | 'dados';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -930,6 +940,170 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'time', label: 'Tempo', x: 650, format: formatTime },
     ],
     personalBest: storedBest('horda'),
+  },
+  {
+    id: 'gancho',
+    title: 'Gancho Elástico',
+    tagline: 'Balance sobre a lava',
+    icon: 'gancho-icon',
+    emoji: '🕸️',
+    color: 0xf97316,
+    shade: 0x431407,
+    entryScene: SceneKeys.Gancho,
+    load: () => import('./gancho/GanchoScene').then((m) => [m.GanchoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 455, format: formatNumber },
+      { key: 'meters', label: 'Metros', x: 560, format: formatNumber },
+      { key: 'stars', label: 'Estrelas', x: 650 },
+    ],
+    personalBest: storedBest('gancho'),
+  },
+  {
+    id: 'orbita',
+    title: 'Órbita',
+    tagline: 'Salte de planeta em planeta',
+    icon: 'orbita-icon',
+    emoji: '🪐',
+    color: 0x6366f1,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Orbita,
+    load: () => import('./orbita/OrbitaScene').then((m) => [m.OrbitaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      { key: 'planets', label: 'Planetas', x: 625 },
+    ],
+    personalBest: storedBest('orbita'),
+  },
+  {
+    id: 'cadeia',
+    title: 'Reação em Cadeia',
+    tagline: 'Um toque, mil explosões',
+    icon: 'cadeia-icon',
+    emoji: '💥',
+    color: 0xf43f5e,
+    shade: 0x4c0519,
+    entryScene: SceneKeys.Cadeia,
+    load: () => import('./cadeia/CadeiaScene').then((m) => [m.CadeiaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 455, format: formatNumber },
+      { key: 'level', label: 'Fase', x: 560 },
+      { key: 'chain', label: 'Cadeia', x: 650 },
+    ],
+    personalBest: storedBest('cadeia'),
+  },
+  {
+    id: 'escorrega',
+    title: 'Escorrega',
+    tagline: 'Deslize no gelo até a saída',
+    icon: 'escorrega-icon',
+    emoji: '🧊',
+    color: 0x38bdf8,
+    shade: 0x0c4a6e,
+    entryScene: SceneKeys.Escorrega,
+    load: () => import('./escorrega/EscorregaScene').then((m) => [m.EscorregaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 625 },
+    ],
+    personalBest: storedBest('escorrega'),
+  },
+  {
+    id: 'plinko',
+    title: 'Chuva de Bolas',
+    tagline: 'Plinko com upgrades',
+    icon: 'plinko-icon',
+    emoji: '🎱',
+    color: 0xa855f7,
+    shade: 0x3b0764,
+    entryScene: SceneKeys.Plinko,
+    load: () => import('./plinko/PlinkoScene').then((m) => [m.PlinkoScene]),
+    columns: [
+      { key: 'score', label: 'Moedas', x: 480, format: formatNumber },
+      { key: 'round', label: 'Rodada', x: 625 },
+    ],
+    personalBest: storedBest('plinko'),
+  },
+  {
+    id: 'tinta',
+    title: 'Mistura',
+    tagline: 'Acerte a cor do pedido',
+    icon: 'tinta-icon',
+    emoji: '🎨',
+    color: 0xec4899,
+    shade: 0x500724,
+    entryScene: SceneKeys.Tinta,
+    load: () => import('./tinta/TintaScene').then((m) => [m.TintaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 455, format: formatNumber },
+      { key: 'orders', label: 'Pedidos', x: 560 },
+      { key: 'perfect', label: 'Perfeitos', x: 650 },
+    ],
+    personalBest: storedBest('tinta'),
+  },
+  {
+    id: 'espelhos',
+    title: 'Espelhos',
+    tagline: 'Guie o laser até os cristais',
+    icon: 'espelhos-icon',
+    emoji: '🔦',
+    color: 0x22d3ee,
+    shade: 0x083344,
+    entryScene: SceneKeys.Espelhos,
+    load: () => import('./espelhos/EspelhosScene').then((m) => [m.EspelhosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 625 },
+    ],
+    personalBest: storedBest('espelhos'),
+  },
+  {
+    id: 'masmorra',
+    title: 'Masmorra de Cartas',
+    tagline: 'Escolha bem cada carta',
+    icon: 'masmorra-icon',
+    emoji: '🃏',
+    color: 0x84cc16,
+    shade: 0x1a2e05,
+    entryScene: SceneKeys.Masmorra,
+    load: () => import('./masmorra/MasmorraScene').then((m) => [m.MasmorraScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 455, format: formatNumber },
+      { key: 'depth', label: 'Andar', x: 560 },
+      { key: 'kills', label: 'Abates', x: 650 },
+    ],
+    personalBest: storedBest('masmorra'),
+  },
+  {
+    id: 'pinball',
+    title: 'Pinball Neon',
+    tagline: 'Flippers, bumpers e combos',
+    icon: 'pinball-icon',
+    emoji: '🕹️',
+    color: 0xfacc15,
+    shade: 0x422006,
+    entryScene: SceneKeys.Pinball,
+    load: () => import('./pinball/PinballScene').then((m) => [m.PinballScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      { key: 'multi', label: 'Multi', x: 625 },
+    ],
+    personalBest: storedBest('pinball'),
+  },
+  {
+    id: 'dados',
+    title: 'Dados Loucos',
+    tagline: 'Combos, mult e coringas',
+    icon: 'dados-icon',
+    emoji: '🎲',
+    color: 0xf59e0b,
+    shade: 0x451a03,
+    entryScene: SceneKeys.Dados,
+    load: () => import('./dados/DadosScene').then((m) => [m.DadosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      { key: 'rounds', label: 'Rodadas', x: 625 },
+    ],
+    personalBest: storedBest('dados'),
   },
 ];
 

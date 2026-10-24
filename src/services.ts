@@ -7,14 +7,15 @@ import { BestScores } from '@/platform/bestScores';
 import { Favorites } from '@/platform/favorites';
 import { FirebaseLeaderboard, readFirebaseSettings } from '@/platform/firebaseLeaderboard';
 import { FirebaseTelemetry } from '@/platform/firebaseTelemetry';
-import { LocalLeaderboard, ResilientLeaderboard } from '@/platform/leaderboard';
+import { LocalLeaderboard, ResilientLeaderboard, type PendingScore } from '@/platform/leaderboard';
+import { Outbox } from '@/platform/outbox';
 import { LocalTop } from '@/platform/localTop';
 import { ProfileRepository } from '@/platform/profile';
 import { RankWatch } from '@/platform/rankWatch';
 import { Recents } from '@/platform/recents';
 import { PlaySessionTracker } from '@/platform/sessionTracker';
 import { BrowserStore } from '@/platform/storage';
-import { LocalTelemetry, ResilientTelemetry } from '@/platform/telemetry';
+import { LocalTelemetry, ResilientTelemetry, type PlaySession } from '@/platform/telemetry';
 
 const KNOWN_GAMES = new Set<string>(GAMES.map((g) => g.id));
 export const isKnownGameId = (id: string): id is GameId => KNOWN_GAMES.has(id);
@@ -49,15 +50,19 @@ export function createServices(env: Record<string, unknown> = import.meta.env): 
     new LocalLeaderboard(store),
     firebase ? new FirebaseLeaderboard(firebase) : null,
     profile.get().playerId,
+    undefined,
+    new Outbox<PendingScore>(store, 'arcade.outbox.scores'),
   );
   const telemetry = new ResilientTelemetry(
     new LocalTelemetry(store, isKnownGameId),
     firebase ? new FirebaseTelemetry(firebase, isKnownGameId) : null,
     () => profile.get(),
+    undefined,
+    new Outbox<PlaySession>(store, 'arcade.outbox.sessions'),
   );
   const sessionTracker = new PlaySessionTracker(telemetry);
   const sfx = new Sfx();
-  sfx.muted = profile.get().muted;
+  sfx.configure(profile.get());
   return {
     profile,
     best: new BestScores(store),

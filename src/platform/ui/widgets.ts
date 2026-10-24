@@ -10,6 +10,8 @@ export interface TextOptions {
   align?: 'left' | 'center' | 'right';
   wrapWidth?: number;
   weight?: 'normal' | 'bold';
+  /** Overrides the shared font family (the hub uses its own display font). */
+  family?: string;
 }
 
 /** Crisp, consistently styled text. */
@@ -22,7 +24,7 @@ export function addText(
   opts: TextOptions = {},
 ): Phaser.GameObjects.Text {
   const text = scene.add.text(x, y, value, {
-    fontFamily: FONT_FAMILY,
+    fontFamily: opts.family ?? FONT_FAMILY,
     fontSize: `${size}px`,
     fontStyle: opts.weight ?? 'bold',
     color: opts.color ?? COLORS.text,

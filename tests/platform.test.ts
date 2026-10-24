@@ -13,7 +13,7 @@ import {
   type RemoteLeaderboard,
 } from '@/platform/leaderboard';
 import { LocalTop } from '@/platform/localTop';
-import { ProfileRepository } from '@/platform/profile';
+import { MIN_VOLUME, parseProfile, ProfileRepository } from '@/platform/profile';
 import { autoSubmit, formatTime } from '@/platform/ranking';
 import { MemoryStore, writeJson } from '@/platform/storage';
 import type { Services } from '@/services';
@@ -122,6 +122,30 @@ describe('profile and best scores', () => {
     const p = new ProfileRepository(store).get();
     expect(p).toMatchObject({ playerId: 'old', name: 'Bia', muted: true });
     expect(new ProfileRepository(store).update({ name: 'Cris' }).name).toBe('Cris');
+  });
+
+  it('starts with every sound on and remembers each switch separately', () => {
+    const store = new MemoryStore();
+    expect(new ProfileRepository(store).get()).toMatchObject({
+      muted: false,
+      uiSounds: true,
+      gameSounds: true,
+      vibration: true,
+      volume: 1,
+    });
+    new ProfileRepository(store).update({ gameSounds: false, volume: 0.4 });
+    expect(new ProfileRepository(store).get()).toMatchObject({
+      muted: false,
+      uiSounds: true,
+      gameSounds: false,
+      volume: 0.4,
+    });
+  });
+
+  it('keeps the volume inside its range', () => {
+    expect(parseProfile({ playerId: 'a', volume: 7 })?.volume).toBe(1);
+    expect(parseProfile({ playerId: 'a', volume: 0 })?.volume).toBe(MIN_VOLUME);
+    expect(parseProfile({ playerId: 'a', volume: 'loud' })?.volume).toBe(1);
   });
 
   it('only stores better scores', () => {

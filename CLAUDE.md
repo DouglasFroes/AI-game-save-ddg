@@ -4,7 +4,7 @@ Mobile-first arcade of web games (Salve o Doguinho, Block Blast, Sudoku, Road Fi
 Snake, Stack, Fruit Merge, Grau 3D, Luta de Rua, Bombinhas, Turma da Luta, Corre Turma, Turma Crush, Lenhador,
 Toque Rápido, Acerta o Alvo, Pula Pula, Atravessa, Hexa Pilhas, Quebra-Tijolos,
 Memória da Turma, Pula Cor, Jogo do Milhão, Memória: Aventura, Bolha Gulosa, Paciência, Última Carta, Território,
-Torre Helix, Zigue-Zague, Ponte Certa, Cor Certa, Conta Rápida, Cesto Maluco, Sequência, Relâmpago, Trio de Peças, Inverte, Balão, Toupeira, Corta Frutas, Gelo, Velha Infinita, Ligue 4, Campo Minado, Atira Bolhas, Blocos, Come-Come, Nave, Líquidos Mágicos, Ricochete Infinito, Sobrevivente da Horda), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
+Torre Helix, Zigue-Zague, Ponte Certa, Cor Certa, Conta Rápida, Cesto Maluco, Sequência, Relâmpago, Trio de Peças, Inverte, Balão, Toupeira, Corta Frutas, Gelo, Velha Infinita, Ligue 4, Campo Minado, Atira Bolhas, Blocos, Come-Come, Nave, Líquidos Mágicos, Ricochete Infinito, Sobrevivente da Horda, Gancho Elástico, Órbita, Reação em Cadeia, Escorrega, Chuva de Bolas, Mistura, Espelhos, Masmorra de Cartas, Pinball Neon, Dados Loucos), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
 (+ Three.js, only in Grau 3D) + Firebase (anonymous auth + Firestore). Node 22.13+.
 
 ## Commands
@@ -18,6 +18,11 @@ Torre Helix, Zigue-Zague, Ponte Certa, Cor Certa, Conta Rápida, Cesto Maluco, S
 See [docs/patterns/game-architecture.md](docs/patterns/game-architecture.md): shared `src/platform`
 (hub, profile, ranking, generic GameOver/Leaderboard scenes) + one folder per game in `src/games`, each
 with a pure, unit-tested `core`. Games plug in via `src/games/registry.ts`.
+
+## Game feel
+
+Shared effects for new games (particles, shockwave, flash, banner, tutorial hint, ambient dust) live in
+`src/platform/ui/juice.ts`; see [docs/patterns/game-juice.md](docs/patterns/game-juice.md).
 
 ## Conventions
 

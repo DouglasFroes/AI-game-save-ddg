@@ -70,6 +70,16 @@ export const GAME_CATEGORY: Readonly<Record<GameId, CategoryId>> = {
   liquidos: 'puzzle',
   ricochete: 'acao',
   horda: 'acao',
+  gancho: 'acao',
+  orbita: 'reflexo',
+  cadeia: 'puzzle',
+  escorrega: 'puzzle',
+  plinko: 'mesa',
+  tinta: 'reflexo',
+  espelhos: 'puzzle',
+  masmorra: 'mesa',
+  pinball: 'acao',
+  dados: 'mesa',
 };
 
 /** Games shown under a filter. `favorites` is the starred ids (the order given is kept). */
@@ -81,6 +91,13 @@ export function filterGames<T extends { readonly id: GameId }>(
   if (filter === 'todos') return [...games];
   if (filter === 'favoritos') return games.filter((g) => favorites.includes(g.id));
   return games.filter((g) => GAME_CATEGORY[g.id] === filter);
+}
+
+/** "Bom dia" until noon, "Boa tarde" until 6 pm, "Boa noite" after that (and through the night). */
+export function greeting(hour: number): string {
+  if (hour >= 5 && hour < 12) return 'Bom dia';
+  if (hour >= 12 && hour < 18) return 'Boa tarde';
+  return 'Boa noite';
 }
 
 /** A stable pick for the day, so "continue playing" has something to suggest on a first visit. */

@@ -1,5 +1,6 @@
 import type { GameId } from '@/games/registry';
 import { sanitizeName } from './leaderboard';
+import type { Outbox } from './outbox';
 import { createId, readJson, writeJson, type KeyValueStore } from './storage';
 
 /** Max local sessions retained on the device so localStorage never bloats. */
@@ -175,10 +176,26 @@ export class ResilientTelemetry {
     private readonly remote: RemoteTelemetry | null,
     private readonly getProfile: () => { playerId: string; name: string },
     private readonly now: () => Date = () => new Date(),
+    /** Sessions the server hasn't received yet (played offline); sent by `flush()`. */
+    private readonly outbox: Outbox<PlaySession> | null = null,
   ) {}
 
   get hasRemote(): boolean {
     return this.remote !== null;
+  }
+
+  /** Sends the sessions recorded while offline. Safe to call at any time; returns how many went. */
+  async flush(): Promise<number> {
+    const { remote, outbox } = this;
+    if (!remote || !outbox || outbox.size === 0) return 0;
+    try {
+      const uid = await remote.playerId();
+      // Sessions are stored by id on the server, so a retried one just overwrites itself.
+      return await outbox.drain((s) => remote.record({ ...s, playerId: uid }));
+    } catch (err) {
+      console.warn('Telemetria ainda sem conexão.', err);
+      return 0;
+    }
   }
 
   async recordSession(input: {
@@ -215,10 +232,12 @@ export class ResilientTelemetry {
         // Update local entry with the canonical remote playerId so merged views don't split the user.
         await this.local.record(remoteSession);
         this.online = true;
+        void this.flush();
         return remoteSession;
       } catch (err) {
         console.warn('Telemetria remota indisponível, sessão salva localmente.', err);
         this.online = false;
+        this.outbox?.add(baseSession);
       }
     }
     return baseSession;

@@ -63,6 +63,16 @@ export const SCENE_TO_GAME: Readonly<Record<string, GameId>> = {
   [SceneKeys.Liquidos]: 'liquidos',
   [SceneKeys.Ricochete]: 'ricochete',
   [SceneKeys.Horda]: 'horda',
+  [SceneKeys.Gancho]: 'gancho',
+  [SceneKeys.Orbita]: 'orbita',
+  [SceneKeys.Cadeia]: 'cadeia',
+  [SceneKeys.Escorrega]: 'escorrega',
+  [SceneKeys.Plinko]: 'plinko',
+  [SceneKeys.Tinta]: 'tinta',
+  [SceneKeys.Espelhos]: 'espelhos',
+  [SceneKeys.Masmorra]: 'masmorra',
+  [SceneKeys.Pinball]: 'pinball',
+  [SceneKeys.Dados]: 'dados',
 };
 
 interface ActiveRun {

@@ -45,7 +45,9 @@ service cloud.firestore {
               'helix', 'zigue', 'ponte', 'corcerta', 'conta', 'cesto',
               'sequencia', 'relampago', 'trio', 'inverte', 'balao', 'toupeira',
               'corta', 'gelo', 'velha', 'ligue4', 'minas', 'bolhas',
-              'blocos', 'comecome', 'nave', 'liquidos', 'ricochete', 'horda'];
+              'blocos', 'comecome', 'nave', 'liquidos', 'ricochete', 'horda',
+              'gancho', 'orbita', 'cadeia', 'escorrega', 'plinko', 'tinta',
+              'espelhos', 'masmorra', 'pinball', 'dados'];
     }
 
     function campaignIds() {

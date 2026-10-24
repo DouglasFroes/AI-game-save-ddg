@@ -110,6 +110,16 @@ export const SceneKeys = {
   Liquidos: 'Liquidos',
   Ricochete: 'Ricochete',
   Horda: 'Horda',
+  Gancho: 'Gancho',
+  Orbita: 'Orbita',
+  Cadeia: 'Cadeia',
+  Escorrega: 'Escorrega',
+  Plinko: 'Plinko',
+  Tinta: 'Tinta',
+  Espelhos: 'Espelhos',
+  Masmorra: 'Masmorra',
+  Pinball: 'Pinball',
+  Dados: 'Dados',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

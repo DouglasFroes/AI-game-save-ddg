@@ -12,7 +12,15 @@ export type IconKind =
   | 'pencil'
   | 'play'
   | 'close'
-  | 'crown';
+  | 'crown'
+  | 'home'
+  | 'grid'
+  | 'plus'
+  | 'check'
+  | 'bookmark'
+  | 'chevron'
+  | 'bolt'
+  | 'gamepad';
 
 type Pt = readonly [number, number];
 
@@ -156,6 +164,67 @@ export function drawIcon(
         [0.46, 0],
         [-0.3, 0.42],
       ]);
+      break;
+    case 'plus':
+      g.lineStyle(s * 0.14, color);
+      g.lineBetween(-0.38 * s, 0, 0.38 * s, 0);
+      g.lineBetween(0, -0.38 * s, 0, 0.38 * s);
+      break;
+    case 'check':
+      g.lineStyle(s * 0.14, color);
+      g.lineBetween(-0.4 * s, 0.02 * s, -0.12 * s, 0.3 * s);
+      g.lineBetween(-0.12 * s, 0.3 * s, 0.4 * s, -0.3 * s);
+      break;
+    case 'home':
+      g.lineStyle(s * 0.11, color);
+      g.lineBetween(-0.46 * s, 0.02 * s, 0, -0.42 * s);
+      g.lineBetween(0, -0.42 * s, 0.46 * s, 0.02 * s);
+      g.lineBetween(-0.32 * s, -0.1 * s, -0.32 * s, 0.42 * s);
+      g.lineBetween(0.32 * s, -0.1 * s, 0.32 * s, 0.42 * s);
+      g.lineBetween(-0.32 * s, 0.42 * s, 0.32 * s, 0.42 * s);
+      g.fillRect(-0.09 * s, 0.14 * s, 0.18 * s, 0.28 * s);
+      break;
+    case 'grid':
+      for (const [gx, gy] of [
+        [-0.44, -0.44],
+        [0.06, -0.44],
+        [-0.44, 0.06],
+        [0.06, 0.06],
+      ] as const) {
+        g.fillRoundedRect(gx * s, gy * s, 0.38 * s, 0.38 * s, 0.08 * s);
+      }
+      break;
+    case 'bookmark':
+      poly(g, s, [
+        [-0.28, -0.42],
+        [0.28, -0.42],
+        [0.28, 0.42],
+        [0, 0.2],
+        [-0.28, 0.42],
+      ]);
+      break;
+    case 'chevron':
+      g.lineStyle(s * 0.14, color);
+      g.lineBetween(-0.16 * s, -0.34 * s, 0.18 * s, 0);
+      g.lineBetween(0.18 * s, 0, -0.16 * s, 0.34 * s);
+      break;
+    case 'bolt':
+      poly(g, s, [
+        [0.1, -0.5],
+        [-0.3, 0.06],
+        [-0.02, 0.06],
+        [-0.12, 0.5],
+        [0.3, -0.1],
+        [0.02, -0.1],
+      ]);
+      break;
+    case 'gamepad':
+      g.fillRoundedRect(-0.5 * s, -0.26 * s, s, 0.52 * s, 0.22 * s);
+      g.fillStyle(0x000000, 0.55);
+      g.fillRect(-0.34 * s, -0.04 * s, 0.22 * s, 0.07 * s);
+      g.fillRect(-0.265 * s, -0.115 * s, 0.07 * s, 0.22 * s);
+      g.fillCircle(0.22 * s, -0.06 * s, 0.06 * s);
+      g.fillCircle(0.34 * s, 0.06 * s, 0.06 * s);
       break;
     case 'close':
       g.lineStyle(s * 0.14, color);

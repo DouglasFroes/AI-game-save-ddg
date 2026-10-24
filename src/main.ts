@@ -7,6 +7,7 @@ import { GameOverScene } from '@/platform/scenes/GameOverScene';
 import { HubScene } from '@/platform/scenes/HubScene';
 import { LeaderboardScene } from '@/platform/scenes/LeaderboardScene';
 import { bindBrowserLifecycle } from '@/platform/sessionTracker';
+import { bindConnectivitySync } from '@/platform/sync';
 import { createServices, provideServices } from '@/services';
 
 const services = createServices();
@@ -34,6 +35,8 @@ if (isAdminRoute()) {
 
   provideServices(game, services);
   bindBrowserLifecycle(services.sessionTracker);
+  // Runs played offline are already saved on the device; send them once the connection is back.
+  bindConnectivitySync(services);
 
   fullscreenOnFirstTap();
 

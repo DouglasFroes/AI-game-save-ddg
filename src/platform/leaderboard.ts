@@ -1,4 +1,5 @@
 import type { ScoreDetails } from './bestScores';
+import type { Outbox } from './outbox';
 import { readJson, writeJson, type KeyValueStore } from './storage';
 
 export interface LeaderboardEntry {
@@ -152,6 +153,14 @@ export interface Submission {
 
 export type SubmitResult = 'global' | 'local';
 
+/** A run saved on the device while the global board was out of reach. */
+export interface PendingScore {
+  readonly gameId: string;
+  /** Carries the device's player id; the real (Firebase) id is filled in when it is sent. */
+  readonly entry: LeaderboardEntry;
+  readonly replace: boolean;
+}
+
 /**
  * Uses the global (remote) board when it answers and always keeps a local copy as fallback.
  * Local entries use the device id; remote entries use the id the backend assigns.
@@ -167,10 +176,33 @@ export class ResilientLeaderboard {
     private readonly remote: RemoteLeaderboard | null,
     private readonly localId: string,
     private readonly now: () => Date = () => new Date(),
+    /** Runs that couldn't reach the global board yet; sent by `flush()` once the device is online. */
+    private readonly outbox: Outbox<PendingScore> | null = null,
   ) {}
 
   get hasRemote(): boolean {
     return this.remote !== null;
+  }
+
+  /** Runs saved on the device that are still waiting to be sent to the global board. */
+  get pendingCount(): number {
+    return this.outbox?.size ?? 0;
+  }
+
+  /** Sends the runs that were played offline. Safe to call at any time; returns how many went. */
+  async flush(): Promise<number> {
+    const { remote, outbox } = this;
+    if (!remote || !outbox || outbox.size === 0) return 0;
+    try {
+      const uid = await remote.playerId();
+      this.remoteId = uid;
+      return await outbox.drain((p) =>
+        remote.submit(p.gameId, { ...p.entry, player: uid }, p.replace),
+      );
+    } catch (err) {
+      console.warn('Ainda sem conexão com o ranking global.', err);
+      return 0;
+    }
   }
 
   isMine(entry: LeaderboardEntry): boolean {
@@ -261,14 +293,25 @@ export class ResilientLeaderboard {
       date: this.now().toISOString(),
     };
     const id = `${base.date}-${Math.random().toString(36).slice(2, 8)}`;
-    await this.local.submit(gameId, { ...base, id, player: this.localId }, replace);
+    const entry = { ...base, id, player: this.localId };
+    await this.local.submit(gameId, entry, replace);
     if (!this.remote) return 'local';
     try {
       this.remoteId = await this.remote.playerId();
       await this.remote.submit(gameId, { ...base, id, player: this.remoteId }, replace);
+      // The connection works: this is also a good moment to send anything left from offline play.
+      void this.flush();
       return 'global';
     } catch (err) {
-      console.warn('Não foi possível enviar ao ranking global.', err);
+      console.warn(
+        'Não foi possível enviar ao ranking global; fica para quando voltar a conexão.',
+        err,
+      );
+      // A campaign total supersedes the older queued ones; every other run is kept on its own.
+      this.outbox?.add(
+        { gameId, entry, replace },
+        replace ? (q) => q.gameId === gameId : undefined,
+      );
       return 'local';
     }
   }

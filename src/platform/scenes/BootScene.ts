@@ -22,6 +22,7 @@ import { generateUltimaTextures } from '@/games/ultima/art';
 import { generateTerritorioTextures } from '@/games/territorio/art';
 import { GAMES } from '@/games/registry';
 import { emojiIcon } from '@/platform/ui/miniGame';
+import { loadHubFont } from '@/platform/fonts';
 import { generate2048Textures } from '@/games/game2048/art';
 import { generateSnakeTextures } from '@/games/snake/art';
 import { generateStackTextures } from '@/games/stack/art';
@@ -66,6 +67,9 @@ export class BootScene extends Phaser.Scene {
     generateTerritorioTextures(this);
     for (const game of GAMES)
       if (game.emoji) emojiIcon(this, game.icon, game.emoji, game.color, game.shade);
-    this.scene.start(SceneKeys.Hub);
+    // The hub paints its art with the display font, so give it a moment to arrive.
+    void loadHubFont().then(() => {
+      if (this.sys.isActive()) this.scene.start(SceneKeys.Hub);
+    });
   }
 }

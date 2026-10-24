@@ -5,6 +5,7 @@ import {
   filterGames,
   GAME_CATEGORY,
   gameOfTheDay,
+  greeting,
   type CategoryId,
 } from '@/platform/hubCategories';
 import { Recents } from '@/platform/recents';
@@ -59,6 +60,16 @@ describe('hub categories', () => {
     const picked = games.slice(1, 3).map((g) => g.id);
     expect(filterGames(games, 'favoritos', picked).map((g) => g.id)).toEqual(picked);
     for (const g of filterGames(GAMES, 'puzzle', [])) expect(GAME_CATEGORY[g.id]).toBe('puzzle');
+  });
+
+  it('greets by the hour of the day', () => {
+    expect(greeting(5)).toBe('Bom dia');
+    expect(greeting(11)).toBe('Bom dia');
+    expect(greeting(12)).toBe('Boa tarde');
+    expect(greeting(17)).toBe('Boa tarde');
+    expect(greeting(18)).toBe('Boa noite');
+    expect(greeting(0)).toBe('Boa noite');
+    expect(greeting(4)).toBe('Boa noite');
   });
 
   it('picks the same game of the day all day and moves on the next day', () => {
