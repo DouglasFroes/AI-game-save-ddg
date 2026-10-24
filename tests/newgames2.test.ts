@@ -651,6 +651,11 @@ describe('inverte: speed', () => {
     expect(at(10)).toBeGreaterThan(at(0));
     expect(at(40)).toBeGreaterThan(at(20));
     expect(at(70)).toBeGreaterThan(at(40));
+    expect(at(80)).toBeGreaterThan(at(70));
     expect(at(500)).toBe(MAX_SPEED);
+    sim.time = 0;
+    const first = sim.level;
+    sim.time = 30;
+    expect(sim.level).toBeGreaterThan(first);
   });
 });

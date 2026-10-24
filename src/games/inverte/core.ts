@@ -4,7 +4,8 @@ export const FIELD_W = 720;
 export const PLAYER_X = 150;
 export const PLAYER_R = 26;
 const FLIP_SECONDS = 0.2;
-export const MAX_SPEED = 900;
+export const MAX_SPEED = 1300;
+const SPEED_STEP = 88;
 
 export interface Spike {
   /** Left edge on screen. */
@@ -30,9 +31,14 @@ export class FlipSim {
     this.fill();
   }
 
-  /** Keeps climbing for about two minutes (a linear ramp topped out after 37 s and felt stuck). */
+  /** Speeds up all the time (11 px/s every second) until the cap, about a minute and a half in. */
   get speed(): number {
-    return Math.min(MAX_SPEED, 340 + 60 * Math.sqrt(this.time));
+    return Math.min(MAX_SPEED, 340 + 11 * this.time);
+  }
+
+  /** Speed step shown to the player: a new one every 8 seconds. */
+  get level(): number {
+    return 1 + Math.floor((this.speed - 340) / SPEED_STEP);
   }
 
   get score(): number {

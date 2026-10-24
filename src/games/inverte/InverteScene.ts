@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
+import { banner, flash } from '@/platform/ui/juice';
 import { MiniScene } from '@/platform/ui/miniGame';
 import { addText } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
@@ -14,6 +15,8 @@ export class InverteScene extends MiniScene {
   private sim = new FlipSim();
   private g!: Phaser.GameObjects.Graphics;
   private hint?: Phaser.GameObjects.Text;
+  private level = 1;
+  private levelText!: Phaser.GameObjects.Text;
 
   constructor() {
     super(SceneKeys.Inverte, 'inverte', [0x03045e, 0x0077b6]);
@@ -21,7 +24,12 @@ export class InverteScene extends MiniScene {
 
   create(): void {
     this.sim = new FlipSim();
+    this.level = 1;
     this.frame();
+    this.levelText = addText(this, GAME_WIDTH / 2, 150, '⚡ Velocidade 1', 26, {
+      color: '#ffd23f',
+      stroke: '#0b1430',
+    }).setDepth(50);
     this.g = this.add.graphics();
     this.hint = addText(this, GAME_WIDTH / 2, 680, 'Toque para inverter a gravidade', 38, {
       color: '#ffffff',
@@ -49,6 +57,13 @@ export class InverteScene extends MiniScene {
       });
     }
     this.setScore(this.sim.score);
+    if (this.sim.level > this.level) {
+      this.level = this.sim.level;
+      this.levelText.setText(`⚡ Velocidade ${this.level}`);
+      banner(this, 'MAIS RÁPIDO!', '#ffd23f', 640);
+      flash(this, 0xffd23f, 0.16, 200);
+      getServices(this).sfx.play('win');
+    }
     this.draw();
   }
 
