@@ -14,3 +14,12 @@ export function gameIdFromSearch(search: string, isGame: (id: string) => boolean
   const id = new URLSearchParams(search).get(GAME_PARAM);
   return id && isGame(id) ? id : null;
 }
+
+/**
+ * Formats the text + URL into a single share message so WhatsApp / Android / iOS share targets
+ * preserve both the score challenge text and the clickable link.
+ */
+export function formatShareMessage(text: string, url: string): string {
+  const clean = text.trim();
+  return clean ? `${clean}\n${url}` : url;
+}

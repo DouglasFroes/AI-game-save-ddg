@@ -1,14 +1,14 @@
 {
-  "name": "Fliperama — jogos grátis no celular",
+  "name": "Fliperama — +60 jogos grátis no celular",
   "short_name": "Fliperama",
-  "description": "Jogos grátis no celular, cada um com ranking global.",
+  "description": "Mais de 60 jogos grátis no celular, cada um com ranking global ao vivo.",
   "start_url": "/",
   "scope": "/",
   "display": "fullscreen",
   "display_override": ["fullscreen", "standalone"],
   "orientation": "portrait",
-  "background_color": "#1d2b53",
-  "theme_color": "#1d2b53",
+  "background_color": "#06070f",
+  "theme_color": "#06070f",
   "icons": [
     { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },

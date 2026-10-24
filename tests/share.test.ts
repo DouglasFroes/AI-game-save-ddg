@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gameIdFromSearch, gameLink } from '@/platform/shareLink';
+import { formatShareMessage, gameIdFromSearch, gameLink } from '@/platform/shareLink';
 
 describe('share links', () => {
   it('builds a link that keeps the site path', () => {
@@ -19,5 +19,19 @@ describe('share links', () => {
     expect(gameIdFromSearch('', known)).toBeNull();
     expect(gameIdFromSearch('?jogo=naoexiste', known)).toBeNull();
     expect(gameIdFromSearch('?jogo=', known)).toBeNull();
+  });
+
+  it('combines challenge text and url on separate lines so share sheets keep both', () => {
+    expect(
+      formatShareMessage(
+        'Fiz 1.200 pontos em Stack no Fliperama! Consegue me superar? 🏆',
+        'https://play.hubdsf.com.br/?jogo=stack',
+      ),
+    ).toBe(
+      'Fiz 1.200 pontos em Stack no Fliperama! Consegue me superar? 🏆\nhttps://play.hubdsf.com.br/?jogo=stack',
+    );
+    expect(formatShareMessage('  ', 'https://play.hubdsf.com.br/?jogo=stack')).toBe(
+      'https://play.hubdsf.com.br/?jogo=stack',
+    );
   });
 });

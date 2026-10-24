@@ -1,26 +1,31 @@
 import type Phaser from 'phaser';
 import { GAME_WIDTH } from '@/config';
 import { HUB_FONT } from '@/platform/fonts';
-import { gameLink } from '@/platform/shareLink';
+import { formatShareMessage, gameLink } from '@/platform/shareLink';
 import { UI } from '@/platform/ui/hubTheme';
 import { addText } from '@/platform/ui/widgets';
 
 export type ShareResult = 'shared' | 'copied' | 'cancelled' | 'failed';
 
-/** Native share sheet when the browser has one (phones), otherwise copies the message + link. */
+/**
+ * Native share sheet when the browser has one (phones), otherwise copies the message + link.
+ * Combines `text` and `url` into a single `text` payload so WhatsApp and OS share sheets never
+ * strip the score/challenge message while still generating the link preview.
+ */
 export async function shareGame(id: string, title: string, text: string): Promise<ShareResult> {
   const url = gameLink(id);
+  const fullText = formatShareMessage(text, url);
   try {
     if (typeof navigator.share === 'function') {
-      await navigator.share({ title, text, url });
+      await navigator.share({ title, text: fullText });
       return 'shared';
     }
-    await navigator.clipboard.writeText(`${text} ${url}`);
+    await navigator.clipboard.writeText(fullText);
     return 'copied';
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
     try {
-      await navigator.clipboard.writeText(`${text} ${url}`);
+      await navigator.clipboard.writeText(fullText);
       return 'copied';
     } catch {
       return 'failed';
