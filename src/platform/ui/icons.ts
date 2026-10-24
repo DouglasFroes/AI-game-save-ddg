@@ -19,6 +19,12 @@ export type IconKind =
   | 'check'
   | 'bookmark'
   | 'chevron'
+  | 'back'
+  | 'retry'
+  | 'medal'
+  | 'globe'
+  | 'flame'
+  | 'sparkle'
   | 'bolt'
   | 'gamepad';
 
@@ -207,6 +213,82 @@ export function drawIcon(
       g.lineStyle(s * 0.14, color);
       g.lineBetween(-0.16 * s, -0.34 * s, 0.18 * s, 0);
       g.lineBetween(0.18 * s, 0, -0.16 * s, 0.34 * s);
+      break;
+    case 'back':
+      g.lineStyle(s * 0.14, color);
+      g.lineBetween(0.16 * s, -0.34 * s, -0.18 * s, 0);
+      g.lineBetween(-0.18 * s, 0, 0.16 * s, 0.34 * s);
+      break;
+    case 'retry':
+      g.lineStyle(s * 0.13, color);
+      g.beginPath()
+        .arc(0, 0.02 * s, 0.34 * s, -Math.PI * 0.85, Math.PI * 0.72)
+        .strokePath();
+      poly(g, s, [
+        [0.14, -0.44],
+        [0.44, -0.32],
+        [0.24, -0.08],
+      ]);
+      break;
+    case 'medal':
+      poly(g, s, [
+        [-0.26, -0.46],
+        [-0.06, -0.46],
+        [0.02, -0.1],
+        [-0.14, -0.1],
+      ]);
+      poly(g, s, [
+        [0.06, -0.46],
+        [0.26, -0.46],
+        [0.14, -0.1],
+        [-0.02, -0.1],
+      ]);
+      g.fillCircle(0, 0.14 * s, 0.3 * s);
+      g.fillStyle(0x000000, 0.35);
+      poly(
+        g,
+        s * 0.42,
+        starPoints(0.5, 0.22).map(([px, py]) => [px, py + 0.33] as const),
+      );
+      break;
+    case 'globe':
+      g.lineStyle(Math.max(2, s * 0.09), color);
+      g.strokeCircle(0, 0, 0.42 * s);
+      g.strokeEllipse(0, 0, 0.42 * s, 0.84 * s);
+      g.lineBetween(-0.4 * s, -0.12 * s, 0.4 * s, -0.12 * s);
+      g.lineBetween(-0.4 * s, 0.12 * s, 0.4 * s, 0.12 * s);
+      break;
+    case 'flame':
+      poly(g, s, [
+        [0.04, -0.48],
+        [0.28, -0.14],
+        [0.36, 0.14],
+        [0.2, 0.44],
+        [-0.18, 0.44],
+        [-0.36, 0.16],
+        [-0.28, -0.16],
+        [-0.1, -0.04],
+      ]);
+      g.fillStyle(0x000000, 0.32);
+      poly(g, s, [
+        [0.02, -0.06],
+        [0.16, 0.16],
+        [0.06, 0.38],
+        [-0.1, 0.38],
+        [-0.16, 0.18],
+      ]);
+      break;
+    case 'sparkle':
+      poly(g, s, [
+        [0, -0.48],
+        [0.13, -0.13],
+        [0.48, 0],
+        [0.13, 0.13],
+        [0, 0.48],
+        [-0.13, 0.13],
+        [-0.48, 0],
+        [-0.13, -0.13],
+      ]);
       break;
     case 'bolt':
       poly(g, s, [

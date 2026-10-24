@@ -1,6 +1,8 @@
 import type Phaser from 'phaser';
-import { COLORS, GAME_WIDTH } from '@/config';
+import { GAME_WIDTH } from '@/config';
+import { HUB_FONT } from '@/platform/fonts';
 import { gameLink } from '@/platform/shareLink';
+import { UI } from '@/platform/ui/hubTheme';
 import { addText } from '@/platform/ui/widgets';
 
 export type ShareResult = 'shared' | 'copied' | 'cancelled' | 'failed';
@@ -43,10 +45,27 @@ export async function shareWithToast(
   const result = await shareGame(id, title, text);
   const message = MESSAGES[result];
   if (!message || !scene.sys.isActive()) return;
-  const toast = addText(scene, GAME_WIDTH / 2, 1180, message, 28, {
-    color: COLORS.textLight,
-    stroke: '#1d2b53',
-    strokeThickness: 7,
-  }).setDepth(1000);
-  scene.time.delayedCall(2200, () => toast.destroy());
+  const label = addText(scene, 0, 0, message, 24, {
+    color: UI.white,
+    family: HUB_FONT,
+  });
+  const w = Math.min(660, label.width + 64);
+  const h = label.height + 36;
+  const pill = scene.add.container(GAME_WIDTH / 2, 1180).setDepth(1100);
+  const bg = scene.add.graphics();
+  bg.fillStyle(0x0c0e22, 0.96).fillRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+  bg.lineStyle(2, UI.cyan, 0.75).strokeRoundedRect(-w / 2, -h / 2, w, h, h / 2);
+  pill.add([bg, label]);
+  pill.setAlpha(0).setY(1204);
+  scene.tweens.add({ targets: pill, alpha: 1, y: 1180, duration: 240, ease: 'Back.easeOut' });
+  scene.time.delayedCall(2200, () => {
+    if (!pill.active) return;
+    scene.tweens.add({
+      targets: pill,
+      alpha: 0,
+      y: 1200,
+      duration: 200,
+      onComplete: () => pill.destroy(),
+    });
+  });
 }

@@ -421,3 +421,363 @@ export function fadeArt(scene: Phaser.Scene, w: number, h: number, fromTop: bool
     ctx.fillRect(0, 0, w, h);
   });
 }
+
+const MEDAL_PALETTE = {
+  1: {
+    rimTop: 0xfff3b0,
+    rimMid: 0xffc300,
+    rimBot: 0x9e5800,
+    wellTop: 0xd97706,
+    wellBot: 0x78350f,
+    ribbonL: 0xff3b6b,
+    ribbonR: 0xc9184a,
+    glow: 0xffd166,
+    text: '#fffbeb',
+  },
+  2: {
+    rimTop: 0xffffff,
+    rimMid: 0xcbd5e1,
+    rimBot: 0x475569,
+    wellTop: 0x64748b,
+    wellBot: 0x1e293b,
+    ribbonL: 0x38e1ff,
+    ribbonR: 0x0284c7,
+    glow: 0xd5dbff,
+    text: '#f8fafc',
+  },
+  3: {
+    rimTop: 0xffedd5,
+    rimMid: 0xf97316,
+    rimBot: 0x7c2d12,
+    wellTop: 0xb45309,
+    wellBot: 0x451a03,
+    ribbonL: 0x8b5cf6,
+    ribbonR: 0x5b21b6,
+    glow: 0xffb27a,
+    text: '#fff7ed',
+  },
+} as const;
+
+/** 3D metallic medal with a dual-tone ribbon, beveled rim, recessed coin face and rank numeral. */
+export function medalArt(scene: Phaser.Scene, tier: 1 | 2 | 3, size: number): string {
+  const key = `hub-medal-${tier}-${size}`;
+  const pad = 12;
+  const full = size + pad * 2;
+  return canvasTexture(scene, key, full, full, (ctx) => {
+    const p = MEDAL_PALETTE[tier];
+    const cx = full / 2;
+    const cy = full / 2 + size * 0.08;
+    const r = size * 0.38;
+
+    // V-ribbon behind the coin
+    const rw = r * 0.62;
+    const topY = cy - r * 1.32;
+    ctx.fillStyle = css(p.ribbonL);
+    ctx.beginPath();
+    ctx.moveTo(cx - rw * 1.15, topY);
+    ctx.lineTo(cx - rw * 0.1, topY);
+    ctx.lineTo(cx + rw * 0.1, cy - r * 0.2);
+    ctx.lineTo(cx - rw * 0.75, cy - r * 0.2);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = css(p.ribbonR);
+    ctx.beginPath();
+    ctx.moveTo(cx + rw * 0.1, topY);
+    ctx.lineTo(cx + rw * 1.15, topY);
+    ctx.lineTo(cx + rw * 0.75, cy - r * 0.2);
+    ctx.lineTo(cx - rw * 0.1, cy - r * 0.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3D drop shadow and outer metallic lip
+    ctx.shadowColor = css(p.glow, 0.55);
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = css(p.rimBot);
+    ctx.beginPath();
+    ctx.arc(cx, cy + 3, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+
+    // Beveled metallic outer coin
+    const rim = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+    rim.addColorStop(0, css(p.rimTop));
+    rim.addColorStop(0.45, css(p.rimMid));
+    rim.addColorStop(1, css(p.rimBot));
+    ctx.fillStyle = rim;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Recessed inner disc
+    const ir = r * 0.74;
+    const well = ctx.createLinearGradient(cx, cy - ir, cx, cy + ir);
+    well.addColorStop(0, css(p.wellBot));
+    well.addColorStop(1, css(p.wellTop));
+    ctx.fillStyle = well;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ir, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner bright ring
+    ctx.strokeStyle = css(p.rimTop, 0.75);
+    ctx.lineWidth = Math.max(1.5, size * 0.03);
+    ctx.beginPath();
+    ctx.arc(cx, cy, ir, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Diagonal specular sheen
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+    const sheen = ctx.createLinearGradient(cx - r, cy - r, cx + r * 0.4, cy + r * 0.4);
+    sheen.addColorStop(0, 'rgba(255,255,255,0.42)');
+    sheen.addColorStop(0.45, 'rgba(255,255,255,0.0)');
+    ctx.fillStyle = sheen;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    ctx.restore();
+
+    // Embossed rank numeral
+    ctx.font = `800 ${Math.round(r * 1.08)}px ${HUB_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillText(String(tier), cx, cy + 2.5);
+    ctx.fillStyle = p.text;
+    ctx.fillText(String(tier), cx, cy + 1);
+  });
+}
+
+/** 3D perspective podium pedestal with an illuminated top stage, neon rails and watermark numeral. */
+export function podiumPedestalArt(
+  scene: Phaser.Scene,
+  w: number,
+  h: number,
+  tier: 1 | 2 | 3,
+  occupied: boolean,
+): string {
+  const key = `hub-podium-${tier}-${w}x${h}-${occupied ? 'on' : 'off'}`;
+  return canvasTexture(scene, key, w, h, (ctx) => {
+    const p = MEDAL_PALETTE[tier];
+    const deckH = 22;
+    const inset = 14;
+    const alpha = occupied ? 1 : 0.42;
+
+    // Slanted 3D top deck
+    ctx.beginPath();
+    ctx.moveTo(inset, 2);
+    ctx.lineTo(w - inset, 2);
+    ctx.lineTo(w - 2, deckH);
+    ctx.lineTo(2, deckH);
+    ctx.closePath();
+    const deck = ctx.createLinearGradient(0, 2, 0, deckH);
+    deck.addColorStop(0, css(p.rimMid, 0.32 * alpha));
+    deck.addColorStop(1, css(p.glow, 0.68 * alpha));
+    ctx.fillStyle = deck;
+    ctx.fill();
+    ctx.strokeStyle = css(p.rimTop, 0.75 * alpha);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Front vertical pillar face
+    roundRect(ctx, 2, deckH, w - 4, h - deckH - 2, [0, 0, 22, 22]);
+    ctx.save();
+    ctx.clip();
+    const body = ctx.createLinearGradient(0, deckH, 0, h);
+    body.addColorStop(0, css(mix(p.rimMid, UI.glass, 0.52), 0.92 * alpha));
+    body.addColorStop(0.45, css(mix(p.wellTop, UI.bg, 0.65), 0.92 * alpha));
+    body.addColorStop(1, css(UI.bg, 0.96));
+    ctx.fillStyle = body;
+    ctx.fillRect(0, deckH, w, h - deckH);
+
+    // Top edge glow bleed down the pillar
+    const topGlow = ctx.createRadialGradient(w / 2, deckH, 4, w / 2, deckH, w * 0.65);
+    topGlow.addColorStop(0, css(p.glow, 0.5 * alpha));
+    topGlow.addColorStop(1, css(p.glow, 0));
+    ctx.fillStyle = topGlow;
+    ctx.fillRect(0, deckH, w, h - deckH);
+
+    // Giant watermark rank number on the front face
+    ctx.font = `800 ${Math.round(Math.min(w, h - deckH) * 0.64)}px ${HUB_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const numGrad = ctx.createLinearGradient(0, deckH + 10, 0, h - 10);
+    numGrad.addColorStop(0, css(p.rimTop, 0.34 * alpha));
+    numGrad.addColorStop(1, css(p.rimMid, 0.04 * alpha));
+    ctx.fillStyle = numGrad;
+    ctx.fillText(String(tier), w / 2, deckH + (h - deckH) * 0.52);
+    ctx.restore();
+
+    // Neon rim around pillar front
+    roundRect(ctx, 2, deckH, w - 4, h - deckH - 2, [0, 0, 22, 22]);
+    const rim = ctx.createLinearGradient(0, deckH, 0, h);
+    rim.addColorStop(0, css(p.rimTop, 0.85 * alpha));
+    rim.addColorStop(0.5, css(p.glow, 0.3 * alpha));
+    rim.addColorStop(1, css(p.glow, 0.05));
+    ctx.strokeStyle = rim;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  });
+}
+
+/**
+ * Tactile 3D arcade button: soft outer glow, extruded 3D bottom lip, vibrant gradient face,
+ * top glossy reflection and corner specular glints.
+ */
+export function button3DArt(
+  scene: Phaser.Scene,
+  w: number,
+  h: number,
+  colors: readonly number[],
+  lipColor: number,
+  glow: boolean,
+): string {
+  const pad = glow ? GLOW_PAD : 8;
+  const lip = Math.max(6, Math.round(h * 0.085));
+  const key = `hub-btn3d-${w}x${h}-${colors.join('.')}-${lipColor}-${glow ? 'g' : 'f'}`;
+  return canvasTexture(scene, key, w + pad * 2, h + lip + pad * 2, (ctx) => {
+    const r = Math.min(32, h / 2);
+    const faceH = h;
+    const mid = colors[Math.floor(colors.length / 2)] ?? UI.violet;
+
+    if (glow) {
+      ctx.shadowColor = css(mid, 0.72);
+      ctx.shadowBlur = 34;
+      ctx.shadowOffsetY = 10;
+      roundRect(ctx, pad, pad, w, faceH + lip, ALL(r));
+      ctx.fillStyle = css(mid);
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+    } else {
+      ctx.fillStyle = 'rgba(0,0,0,0.42)';
+      roundRect(ctx, pad + 2, pad + lip + 4, w - 4, faceH, ALL(r));
+      ctx.fill();
+    }
+
+    // 3D extruded bottom lip
+    roundRect(ctx, pad, pad + lip, w, faceH, ALL(r));
+    ctx.fillStyle = css(lipColor);
+    ctx.fill();
+
+    // Main top face
+    roundRect(ctx, pad, pad, w, faceH, ALL(r));
+    ctx.fillStyle = ramp(ctx, pad, pad, pad + w, pad + faceH, colors);
+    ctx.fill();
+
+    // Top-half glossy reflection & bottom inner shade
+    ctx.save();
+    roundRect(ctx, pad, pad, w, faceH, ALL(r));
+    ctx.clip();
+    const gloss = ctx.createLinearGradient(0, pad, 0, pad + faceH * 0.52);
+    gloss.addColorStop(0, 'rgba(255,255,255,0.38)');
+    gloss.addColorStop(1, 'rgba(255,255,255,0.02)');
+    ctx.fillStyle = gloss;
+    ctx.fillRect(pad + 10, pad + 3, w - 20, faceH * 0.46);
+
+    // Specular corner glint pill
+    ctx.fillStyle = 'rgba(255,255,255,0.48)';
+    roundRect(ctx, pad + 22, pad + 8, Math.min(48, w * 0.14), 6, ALL(3));
+    ctx.fill();
+    ctx.restore();
+
+    // Crisp rim highlight
+    roundRect(ctx, pad + 1.5, pad + 1.5, w - 3, faceH - 3, ALL(r - 1.5));
+    const rim = ctx.createLinearGradient(0, pad, 0, pad + faceH);
+    rim.addColorStop(0, 'rgba(255,255,255,0.58)');
+    rim.addColorStop(0.5, 'rgba(255,255,255,0.16)');
+    rim.addColorStop(1, 'rgba(0,0,0,0.22)');
+    ctx.strokeStyle = rim;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  });
+}
+
+/** Radial sunburst rays texture for celebratory backdrops (tint + ADD blend). */
+export function sunburstArt(scene: Phaser.Scene, size = 380): string {
+  return canvasTexture(scene, `hub-sunburst-${size}`, size, size, (ctx) => {
+    const r = size / 2;
+    const rays = 14;
+    ctx.save();
+    ctx.translate(r, r);
+    for (let i = 0; i < rays; i++) {
+      const a0 = (i * Math.PI * 2) / rays;
+      const a1 = a0 + Math.PI / rays;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, r, a0, a1);
+      ctx.closePath();
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255,255,255,0.42)');
+      g.addColorStop(0.55, 'rgba(255,255,255,0.14)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
+    ctx.restore();
+  });
+}
+
+/** 3D faceted star (golden when `lit`, dark recessed glass when unlit). */
+export function star3DArt(scene: Phaser.Scene, size: number, lit: boolean): string {
+  const key = `hub-star3d-${size}-${lit ? 'on' : 'off'}`;
+  const pad = 10;
+  const full = size + pad * 2;
+  return canvasTexture(scene, key, full, full, (ctx) => {
+    const cx = full / 2;
+    const cy = full / 2;
+    const outer = size * 0.48;
+    const inner = size * 0.22;
+    const pts: Array<[number, number]> = [];
+    for (let i = 0; i < 10; i++) {
+      const rad = i % 2 === 0 ? outer : inner;
+      const a = -Math.PI / 2 + (i * Math.PI) / 5;
+      pts.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad]);
+    }
+    const trace = (dy = 0) => {
+      ctx.beginPath();
+      pts.forEach(([px, py], i) => (i === 0 ? ctx.moveTo(px, py + dy) : ctx.lineTo(px, py + dy)));
+      ctx.closePath();
+    };
+
+    if (lit) {
+      ctx.shadowColor = 'rgba(255, 209, 102, 0.75)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 3;
+      trace(3);
+      ctx.fillStyle = '#9e5800';
+      ctx.fill();
+      ctx.shadowColor = 'transparent';
+
+      trace(0);
+      const grad = ctx.createLinearGradient(cx, cy - outer, cx, cy + outer);
+      grad.addColorStop(0, '#fff7bf');
+      grad.addColorStop(0.45, '#ffd166');
+      grad.addColorStop(1, '#f59e0b');
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Facet ridges from center to vertices
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 10; i += 2) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(pts[i]![0], pts[i]![1]);
+        ctx.stroke();
+      }
+      trace(0);
+      ctx.strokeStyle = '#fffbeb';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else {
+      trace(0);
+      ctx.fillStyle = 'rgba(18, 22, 48, 0.78)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  });
+}

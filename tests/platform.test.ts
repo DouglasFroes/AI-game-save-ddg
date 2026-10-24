@@ -16,6 +16,14 @@ import { LocalTop } from '@/platform/localTop';
 import { MIN_VOLUME, parseProfile, ProfileRepository } from '@/platform/profile';
 import { autoSubmit, formatTime } from '@/platform/ranking';
 import { MemoryStore, writeJson } from '@/platform/storage';
+import {
+  avatarColorFor,
+  computeRunAchievements,
+  computeRunStars,
+  formatRunColumns,
+  formatRunDate,
+  parseStatLine,
+} from '@/platform/ui/arcadeFormat';
 import type { Services } from '@/services';
 
 const entry = (id: string, score: number, date = '2026-01-01T00:00:00.000Z'): LeaderboardEntry => ({
@@ -297,5 +305,78 @@ describe('automatic ranking and local top 10', () => {
     expect(list.map((r) => r.score)).toEqual([999, 400, 300, 120, 90, 80, 70, 60, 50, 10]);
     expect(places[3]).toBe(1); // 999 was the best when added
     expect(places[11]).toBeNull(); // 1 didn't make it
+  });
+});
+
+describe('ranking and game-over UI formatting helpers', () => {
+  it('parses stat lines into uppercase labels and values', () => {
+    expect(parseStatLine('Distância: 1,2 km')).toEqual({
+      label: 'DISTÂNCIA',
+      value: '1,2 km',
+    });
+    expect(parseStatLine('Vitória impecável')).toEqual({
+      label: 'DESTAQUE',
+      value: 'Vitória impecável',
+    });
+  });
+
+  it('separates primary score column and extra detail columns', () => {
+    const cols = formatRunColumns(
+      [
+        { key: 'score', label: 'Pontos', x: 460 },
+        { key: 'time', label: 'Tempo', x: 650, format: formatTime },
+      ],
+      1450,
+      { time: 95 },
+    );
+    expect(cols.primary).toEqual({ label: 'PONTOS', value: (1450).toLocaleString('pt-BR') });
+    expect(cols.extras).toEqual([{ label: 'Tempo', value: '1:35' }]);
+
+    const dogCols = formatRunColumns(
+      [
+        { key: 'stars', label: '★', x: 450 },
+        { key: 'inkSaved', label: 'Tinta', x: 640, format: (v) => `${v}%` },
+      ],
+      3000,
+      { stars: 42, inkSaved: 81 },
+    );
+    expect(dogCols.primary).toEqual({ label: 'ESTRELAS', value: '★ 42' });
+    expect(dogCols.extras).toEqual([{ label: 'Tinta', value: '81%' }]);
+  });
+
+  it('formats run dates safely', () => {
+    expect(formatRunDate('not-a-date')).toEqual({ short: '-', full: '-' });
+    const valid = formatRunDate('2026-10-24T14:05:00.000Z');
+    expect(valid.short).toMatch(/^\d{2}\/\d{2}$/);
+    expect(valid.full).toMatch(/^\d{2}\/\d{2} · \d{2}:\d{2}$/);
+  });
+
+  it('computes 0 to 3 performance stars and run achievements', () => {
+    expect(computeRunStars(0, 100, false, null, false)).toBe(0);
+    expect(computeRunStars(500, 400, true, 1, true)).toBe(3);
+    expect(computeRunStars(300, 400, false, 4, true)).toBe(2);
+    expect(computeRunStars(100, 400, false, 9, true)).toBe(1);
+
+    const badges = computeRunAchievements({
+      hasRecord: true,
+      score: 1200,
+      previousBest: 1000,
+      newBest: true,
+      localPlace: 1,
+      globalRank: 2,
+    });
+    expect(badges.map((b) => b.id)).toEqual(['new-record', 'global-top', 'personal-podium']);
+
+    const noRecordBadges = computeRunAchievements({
+      hasRecord: false,
+      score: 0,
+      previousBest: 800,
+      newBest: false,
+      localPlace: null,
+      globalRank: null,
+    });
+    expect(noRecordBadges).toHaveLength(2);
+    expect(avatarColorFor('Ana')).toBeTypeOf('number');
+    expect(avatarColorFor('')).toBeTypeOf('number');
   });
 });
