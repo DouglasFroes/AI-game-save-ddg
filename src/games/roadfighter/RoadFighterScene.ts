@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '@/config';
 import { Tex } from '@/platform/art/textures';
 import { formatNumber } from '@/platform/ranking';
+import { banner } from '@/platform/ui/juice';
 import type { GameOverData } from '@/platform/scenes/GameOverScene';
 import { addText, iconButton } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
@@ -30,6 +31,8 @@ export class RoadFighterScene extends Phaser.Scene {
     hearts: Phaser.GameObjects.Image[];
   };
   private keys?: Phaser.Types.Input.Keyboard.CursorKeys;
+  /** Highest 50 km/h milestone announced so far. */
+  private milestone = 2;
 
   constructor() {
     super(SceneKeys.RoadFighter);
@@ -37,6 +40,7 @@ export class RoadFighterScene extends Phaser.Scene {
 
   init(): void {
     this.sim = new RoadSim();
+    this.milestone = 2;
     this.running = false;
     this.steerX = null;
     this.drag = null;
@@ -260,7 +264,13 @@ export class RoadFighterScene extends Phaser.Scene {
 
     this.hud.meters.setText(`${formatNumber(sim.meters)} m`);
     this.hud.score.setText(`${formatNumber(sim.score)} pts`);
-    this.hud.speed.setText(`${Math.round(sim.speed * 0.25)} km/h`);
+    const kmh = Math.round(sim.speed * 0.25);
+    this.hud.speed.setText(`${kmh} km/h`);
+    // Every 50 km/h (above 100) the player is told the car is getting faster.
+    if (this.running && Math.floor(kmh / 50) > this.milestone) {
+      this.milestone = Math.floor(kmh / 50);
+      banner(this, `${this.milestone * 50} km/h!`, '#ffd23f', 520);
+    }
     this.hud.hearts.forEach((h, i) => h.setAlpha(i < sim.lives ? 1 : 0.2));
     const ratio = sim.fuel / MAX_FUEL;
     this.hud.fuel

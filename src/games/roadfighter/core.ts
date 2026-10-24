@@ -17,7 +17,7 @@ export const FUEL_W = 44;
 export const FUEL_H = 56;
 
 export const START_SPEED = 420;
-export const MAX_SPEED = 1150;
+export const MAX_SPEED = 1400;
 export const MAX_FUEL = 100;
 export const START_LIVES = 3;
 export const PIXELS_PER_METER = 10;
@@ -29,6 +29,8 @@ const FUEL_REFILL = 32;
 /** Bumper-to-bumper distance a car keeps behind the one ahead in its lane. */
 const FOLLOW_GAP = 40;
 const SPAWN_Y = -200;
+/** Extra vertical room around traffic the player needs to weave through (a car's height). */
+const PASS_GAP = CAR_H;
 
 export type CarKind = 'blue' | 'yellow' | 'red' | 'truck';
 
@@ -72,7 +74,7 @@ export function overlaps(a: Box, b: Box, margin = 6): boolean {
 }
 
 export const speedFor = (distance: number): number =>
-  Math.min(MAX_SPEED, START_SPEED + distance * 0.012);
+  Math.min(MAX_SPEED, START_SPEED + distance * 0.0125);
 
 /** Distance (px) between traffic waves: shorter as the game speeds up. */
 export function spawnGap(speed: number): number {
@@ -185,23 +187,48 @@ export class RoadSim {
   }
 
   /**
-   * Faster cars brake behind slower ones in the same lane instead of driving through them.
-   * Front to back (smaller y = further ahead), so a queue settles in one pass.
+   * Keeps traffic orderly, front to back (smaller y = further ahead): a faster car brakes behind a
+   * slower one in its lane instead of driving through it, and a car about to line up with the
+   * others into a wall across the whole road brakes behind them as well. Each rule only ever
+   * pushes a car back (and slows it to the speed of what it queues behind), so one pass settles.
    */
   private keepDistance(): void {
-    const byFront = [...this.cars].sort((a, b) => a.y - b.y);
-    for (let j = 1; j < byFront.length; j++) {
-      const car = byFront[j]!;
-      for (let i = 0; i < j; i++) {
-        const ahead = byFront[i]!;
-        if (Math.abs(car.x - ahead.x) >= (car.w + ahead.w) / 2) continue;
-        const minY = ahead.y + (car.h + ahead.h) / 2 + FOLLOW_GAP;
-        if (car.y < minY) {
-          car.y = minY;
-          car.speed = Math.min(car.speed, ahead.speed);
+    const placed: Car[] = [];
+    for (const car of [...this.cars].sort((a, b) => a.y - b.y)) {
+      for (let guard = 0; guard < 12; guard++) {
+        let moved = false;
+        for (const ahead of placed) {
+          if (Math.abs(car.x - ahead.x) >= (car.w + ahead.w) / 2) continue;
+          const minY = ahead.y + (car.h + ahead.h) / 2 + FOLLOW_GAP;
+          if (car.y < minY) {
+            car.y = minY;
+            car.speed = Math.min(car.speed, ahead.speed);
+            moved = true;
+          }
         }
+        const wall = this.closesRoad(car, placed);
+        if (wall) {
+          car.y = Math.max(...wall.map((o) => o.y + (o.h + car.h) / 2 + PASS_GAP));
+          car.speed = Math.min(car.speed, ...wall.map((o) => o.speed));
+          moved = true;
+        }
+        if (!moved) break;
       }
+      placed.push(car);
     }
+  }
+
+  /** The lanes a car touches (two while it is changing lanes). */
+  private lanesOf(c: Box): number[] {
+    return [0, 1, 2, 3].filter((l) => Math.abs(c.x - laneX(l)) < (c.w + CAR_W) / 2 - 6);
+  }
+
+  /** Whether `box` would close the road: with the traffic around it, every lane is taken. */
+  private closesRoad(box: Box, others: readonly Car[]): Car[] | null {
+    const near = others.filter((o) => Math.abs(o.y - box.y) < (o.h + box.h) / 2 + PASS_GAP);
+    const lanes = new Set<number>(this.lanesOf(box));
+    for (const o of near) for (const l of this.lanesOf(o)) lanes.add(l);
+    return lanes.size >= LANES ? near : null;
   }
 
   private pickKind(): CarKind {
@@ -222,7 +249,8 @@ export class RoadSim {
       const truck = kind === 'truck';
       const w = truck ? TRUCK_W : CAR_W;
       const h = truck ? TRUCK_H : CAR_H;
-      if (this.blocked({ x: laneX(lane), y: SPAWN_Y, w, h })) continue;
+      const spot = { x: laneX(lane), y: SPAWN_Y, w, h };
+      if (this.blocked(spot) || this.closesRoad(spot, this.cars)) continue;
       this.cars.push({
         id: ++this.ids,
         kind,

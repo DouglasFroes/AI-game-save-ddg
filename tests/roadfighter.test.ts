@@ -32,6 +32,9 @@ describe('road fighter', () => {
   it('speeds up with distance up to a cap', () => {
     expect(speedFor(0)).toBe(START_SPEED);
     expect(speedFor(1e9)).toBe(MAX_SPEED);
+    // Still climbing after two minutes of play (about 12 km), not stuck at a plateau.
+    expect(speedFor(60000)).toBeGreaterThan(speedFor(30000));
+    expect(speedFor(90000)).toBeGreaterThan(speedFor(60000));
   });
 
   it('keeps the car on the road', () => {
@@ -107,4 +110,32 @@ describe('road fighter', () => {
       }
     }
   });
+});
+
+describe('road fighter: the road is never closed', () => {
+  /** A y where a player-sized car would touch traffic in every lane at once (null when passable). */
+  const wallY = (sim: RoadSim): number | null => {
+    for (let y = -150; y <= PLAYER_Y + 150; y += 10) {
+      let closed = true;
+      for (let lane = 0; lane < 4 && closed; lane++) {
+        const me = { x: laneX(lane), y, w: CAR_W, h: CAR_H };
+        closed = sim.cars.some((c) => overlaps(me, c));
+      }
+      if (closed) return y;
+    }
+    return null;
+  };
+
+  it('always leaves a lane free, at every moment, for a long and fast run', () => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      const sim = new RoadSim(seeded(seed));
+      for (let t = 0; t < 200 * 60; t++) {
+        sim.invulnerable = 999;
+        sim.fuel = MAX_FUEL;
+        sim.step(1 / 60, null);
+        const y = wallY(sim);
+        if (y !== null) expect.fail(`seed ${seed}, frame ${t}: every lane is blocked at y=${y}`);
+      }
+    }
+  }, 60_000);
 });
