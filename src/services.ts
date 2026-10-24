@@ -11,6 +11,7 @@ import { LocalLeaderboard, ResilientLeaderboard } from '@/platform/leaderboard';
 import { LocalTop } from '@/platform/localTop';
 import { ProfileRepository } from '@/platform/profile';
 import { RankWatch } from '@/platform/rankWatch';
+import { Recents } from '@/platform/recents';
 import { PlaySessionTracker } from '@/platform/sessionTracker';
 import { BrowserStore } from '@/platform/storage';
 import { LocalTelemetry, ResilientTelemetry } from '@/platform/telemetry';
@@ -30,6 +31,8 @@ export interface Services {
   readonly sessionTracker: PlaySessionTracker;
   /** Games starred in the hub. */
   readonly favorites: Favorites;
+  /** Games opened last, for "continue playing" in the hub. */
+  readonly recents: Recents;
   /** The player's places on the global boards, to tell them when someone passes them. */
   readonly rankWatch: RankWatch;
   readonly sfx: Sfx;
@@ -63,6 +66,7 @@ export function createServices(env: Record<string, unknown> = import.meta.env): 
     telemetry,
     sessionTracker,
     favorites: new Favorites(store),
+    recents: new Recents(store),
     rankWatch: new RankWatch(store),
     sfx,
     dogProgress: new ProgressRepository(store),
