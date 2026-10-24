@@ -2,6 +2,12 @@ import type { Rnd } from '@/platform/rnd';
 
 export const COLS = 7;
 export const ROWS = 9;
+/** The clock never holds more than this, so the bar always shows the real time left. */
+export const MAX_TIME = 60;
+
+/** Seconds earned for reaching the flag: shrinks as the boards go by, never below 6. */
+export const bonusFor = (level: number): number => Math.max(6, 14 - level);
+
 export type Dir = 'up' | 'down' | 'left' | 'right';
 
 const STEP: Record<Dir, readonly [number, number]> = {
@@ -88,7 +94,9 @@ export function generateIce(levelNo: number, rnd: Rnd): IceLevel {
 /** "Gelo": slide across the ice until you stop on the flag; boards keep coming against the clock. */
 export class IceSim {
   level = 0;
-  time = 60;
+  time = MAX_TIME;
+  /** Seconds the last solved board added. */
+  lastBonus = 0;
   moves = 0;
   totalMoves = 0;
   perfect = 0;
@@ -124,9 +132,10 @@ export class IceSim {
     const reached = to === this.board.goal;
     if (reached) {
       this.solved = true;
+      this.lastBonus = bonusFor(this.level);
       this.level++;
       if (this.moves <= this.board.min) this.perfect++;
-      this.time += 14;
+      this.time = Math.min(MAX_TIME, this.time + this.lastBonus);
     }
     return { path, reached };
   }

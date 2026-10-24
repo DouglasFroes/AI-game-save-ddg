@@ -4,7 +4,7 @@ import { bindSwipe } from '@/platform/ui/swipe';
 import { emojiText, MiniScene } from '@/platform/ui/miniGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
-import { COLS, IceSim, ROWS } from './core';
+import { COLS, IceSim, MAX_TIME, ROWS } from './core';
 
 const CELL = 92;
 const OX = (GAME_WIDTH - COLS * CELL) / 2;
@@ -21,6 +21,7 @@ export class GeloScene extends MiniScene {
   private penguin!: Phaser.GameObjects.Text;
   private bar!: Phaser.GameObjects.Graphics;
   private info!: Phaser.GameObjects.Text;
+  private clock!: Phaser.GameObjects.Text;
   private moving = false;
 
   constructor() {
@@ -33,6 +34,10 @@ export class GeloScene extends MiniScene {
     this.frame();
     this.bar = this.add.graphics();
     this.info = addText(this, GAME_WIDTH / 2, 230, '', 34, { color: '#ffffff', stroke: '#0b1430' });
+    this.clock = addText(this, GAME_WIDTH / 2 + 330, 183, '', 30, {
+      color: '#ffffff',
+      stroke: '#0b1430',
+    });
     this.board = this.add.graphics();
     this.flag = emojiText(this, 0, 0, '🚩', 64).setDepth(2);
     this.penguin = emojiText(this, 0, 0, '🐧', 70).setDepth(4);
@@ -97,7 +102,7 @@ export class GeloScene extends MiniScene {
         this.pop(
           GAME_WIDTH / 2,
           700,
-          this.sim.moves <= this.sim.board.min ? 'PERFEITO! +15s' : 'Chegou! +14s',
+          `${this.sim.moves <= this.sim.board.min ? 'PERFEITO!' : 'Chegou!'} +${this.sim.lastBonus}s`,
           '#ffe066',
         );
         this.tweens.add({
@@ -124,13 +129,16 @@ export class GeloScene extends MiniScene {
   override update(_t: number, deltaMs: number): void {
     if (this.ended) return;
     this.sim.step(Math.min(deltaMs, 50) / 1000);
-    const frac = Phaser.Math.Clamp(this.sim.time / 60, 0, 1);
+    const frac = Phaser.Math.Clamp(this.sim.time / MAX_TIME, 0, 1);
     this.bar
       .clear()
       .fillStyle(0x000000, 0.4)
       .fillRoundedRect(GAME_WIDTH / 2 - 300, 170, 600, 26, 13)
       .fillStyle(frac > 0.25 ? 0xffd23f : 0xff4d4d)
       .fillRoundedRect(GAME_WIDTH / 2 - 300, 170, Math.max(26, 600 * frac), 26, 13);
+    this.clock
+      .setText(`${Math.ceil(Math.max(0, this.sim.time))}s`)
+      .setColor(frac > 0.25 ? '#ffffff' : '#ff8080');
     if (this.sim.dead && !this.moving) {
       this.finish('Acabou o tempo!', [`Tabuleiros: ${this.sim.level}`], {
         score: this.sim.score,

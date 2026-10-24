@@ -659,3 +659,22 @@ describe('inverte: speed', () => {
     expect(sim.level).toBeGreaterThan(first);
   });
 });
+
+describe('gelo: clock', () => {
+  it('never holds more than the maximum and the bonus shrinks with the boards', async () => {
+    const { IceSim, MAX_TIME, bonusFor, slide, COLS } = await import('@/games/gelo/core');
+    expect(bonusFor(0)).toBe(14);
+    expect(bonusFor(3)).toBeLessThan(bonusFor(0));
+    expect(bonusFor(50)).toBe(6);
+    const sim = new IceSim(() => 0.5);
+    // Put the flag one slide away from the penguin and solve it right away.
+    sim.board = { walls: new Array<boolean>(63).fill(false), start: 0, goal: COLS - 1, min: 1 };
+    sim.pos = 0;
+    expect(slide(sim.board.walls, sim.board.goal, 0, 'right').to).toBe(COLS - 1);
+    expect(sim.swipe('right')?.reached).toBe(true);
+    expect(sim.time).toBe(MAX_TIME);
+    sim.nextBoard();
+    sim.step(10);
+    expect(sim.time).toBe(MAX_TIME - 10);
+  });
+});

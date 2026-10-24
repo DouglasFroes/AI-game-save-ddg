@@ -121,6 +121,7 @@ describe('gelo', () => {
     const sim = new IceSim(seeded(5));
     sim.board = { walls: [...open], start: 0, goal: GCOLS - 1, min: 1 };
     sim.pos = 0;
+    sim.step(20); // some time spent, so the bonus has room to show
     const t = sim.time;
     expect(sim.swipe('up')).toBeNull();
     expect(sim.swipe('right')?.reached).toBe(true);
