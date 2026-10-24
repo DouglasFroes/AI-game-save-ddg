@@ -69,6 +69,11 @@ export const TIEBREAK: Readonly<
   stack: [{ key: 'perfects', order: 'desc' }],
   // Same points: the faster best reaction wins.
   relampago: [{ key: 'best', order: 'asc', zeroIsWorst: true }],
+  // Same points: fewer re-rolls, then the better squad.
+  brasileirao: [
+    { key: 'rerolls', order: 'asc' },
+    { key: 'ovr', order: 'desc' },
+  ],
   timesbr: [
     { key: 'rerolls', order: 'asc' },
     { key: 'ovr', order: 'desc' },

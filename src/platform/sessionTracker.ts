@@ -75,6 +75,7 @@ export const SCENE_TO_GAME: Readonly<Record<string, GameId>> = {
   [SceneKeys.Dados]: 'dados',
   [SceneKeys.Selecao]: 'selecao',
   [SceneKeys.TimesBr]: 'timesbr',
+  [SceneKeys.Brasileirao]: 'brasileirao',
 };
 
 interface ActiveRun {

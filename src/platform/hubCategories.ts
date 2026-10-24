@@ -82,6 +82,7 @@ export const GAME_CATEGORY: Readonly<Record<GameId, CategoryId>> = {
   dados: 'mesa',
   selecao: 'mesa',
   timesbr: 'mesa',
+  brasileirao: 'mesa',
 };
 
 /** Games shown under a filter. `favorites` is the starred ids (the order given is kept). */

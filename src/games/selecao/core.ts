@@ -218,6 +218,86 @@ function poisson(lambda: number, rng: Rng): number {
   return k - 1;
 }
 
+export const LEAGUE_TEAMS = 20;
+export const LEAGUE_ROUNDS = (LEAGUE_TEAMS - 1) * 2;
+const HOME_EDGE = 2.5;
+/** Rivals play above their cup strength: a league is longer and tougher than one knockout run. */
+const LEAGUE_BOOST = 4;
+
+export interface LeagueTeam {
+  readonly name: string;
+  readonly flag: string;
+  /** 0 for your own side. */
+  readonly year: number;
+  readonly attack: number;
+  readonly defence: number;
+  readonly me: boolean;
+}
+
+export interface TableRow {
+  /** Index into `Season.teams`. */
+  readonly team: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  gf: number;
+  ga: number;
+  points: number;
+}
+
+export interface LeagueMatch {
+  readonly home: number;
+  readonly away: number;
+  readonly homeGoals: number;
+  readonly awayGoals: number;
+}
+
+export interface LeagueRound {
+  readonly number: number;
+  readonly matches: readonly LeagueMatch[];
+  /** The table after this round, best first. */
+  readonly table: readonly TableRow[];
+}
+
+/** A whole league season: every fixture, the table after each round and the final summary. */
+export interface Season {
+  readonly teams: readonly LeagueTeam[];
+  readonly rounds: readonly LeagueRound[];
+  readonly final: readonly TableRow[];
+  /** Your final place (1 = champion). */
+  readonly position: number;
+  readonly points: number;
+  readonly wins: number;
+  readonly draws: number;
+  readonly losses: number;
+  readonly goalDiff: number;
+  readonly champion: boolean;
+  readonly score: number;
+}
+
+const sortTable = (rows: readonly TableRow[]): TableRow[] =>
+  [...rows].sort(
+    (a, b) => b.points - a.points || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf || a.team - b.team,
+  );
+
+/** Round-robin fixtures (circle method): 19 rounds, then the same pairs with the venues swapped. */
+export function leagueFixtures(n = LEAGUE_TEAMS): Array<Array<[number, number]>> {
+  const ring = Array.from({ length: n }, (_, i) => i);
+  const first: Array<Array<[number, number]>> = [];
+  for (let r = 0; r < n - 1; r++) {
+    const round: Array<[number, number]> = [];
+    for (let i = 0; i < n / 2; i++) {
+      const a = ring[i]!;
+      const b = ring[n - 1 - i]!;
+      round.push((r + i) % 2 === 0 ? [a, b] : [b, a]);
+    }
+    first.push(round);
+    ring.splice(1, 0, ring.pop()!);
+  }
+  return [...first, ...first.map((round) => round.map(([h, a]): [number, number] => [a, h]))];
+}
+
 export class SelecaoGame {
   readonly slots: Slot[];
   /** The player filling each slot (same order as `slots`), null while empty. */
@@ -403,6 +483,110 @@ export class SelecaoGame {
       wins,
       champion,
       goalDiff,
+      score: Math.round(base * (this.mode === 'almanaque' ? 1.5 : 1)),
+    };
+  }
+
+  /** The 19 rivals of a league season: as many different clubs as possible, in random strengths. */
+  private leagueRivals(): LeagueTeam[] {
+    const all = this.teams.flatMap((n) =>
+      Object.entries(n.cups).map(([y, camp]) => ({ n, year: Number(y), strength: camp.strength })),
+    );
+    all.sort(() => this.rng() - 0.5);
+    const picked: typeof all = [];
+    const clubs = new Set<string>();
+    for (const e of all)
+      if (picked.length < LEAGUE_TEAMS - 1 && !clubs.has(e.n.name)) {
+        clubs.add(e.n.name);
+        picked.push(e);
+      }
+    for (const e of all)
+      if (picked.length < LEAGUE_TEAMS - 1 && !picked.includes(e)) picked.push(e);
+    const jitter = () => (this.rng() - 0.5) * 6;
+    return picked.map((e) => ({
+      name: e.n.name,
+      flag: e.n.flag,
+      year: e.year,
+      attack: e.strength + LEAGUE_BOOST + jitter(),
+      defence: e.strength + LEAGUE_BOOST + jitter(),
+      me: false,
+    }));
+  }
+
+  private leagueGoals(home: LeagueTeam, away: LeagueTeam): [number, number] {
+    return [
+      poisson(BASE_GOALS * Math.exp((home.attack + HOME_EDGE - away.defence) / 18), this.rng),
+      poisson(BASE_GOALS * Math.exp((away.attack - home.defence - HOME_EDGE) / 18), this.rng),
+    ];
+  }
+
+  /** Plays a 38-round league (everyone twice) with your line-up against 19 rivals. */
+  season(): Season {
+    const me = this.stats;
+    const teams: LeagueTeam[] = [
+      { name: 'Seu time', flag: '⭐', year: 0, attack: me.attack, defence: me.defence, me: true },
+      ...this.leagueRivals(),
+    ];
+    const rows: TableRow[] = teams.map((_, team) => ({
+      team,
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      gf: 0,
+      ga: 0,
+      points: 0,
+    }));
+    const rounds = leagueFixtures(teams.length).map((fixtures, i): LeagueRound => {
+      const matches = fixtures.map(([home, away]): LeagueMatch => {
+        const [homeGoals, awayGoals] = this.leagueGoals(teams[home]!, teams[away]!);
+        const h = rows[home]!;
+        const a = rows[away]!;
+        h.played++;
+        a.played++;
+        h.gf += homeGoals;
+        h.ga += awayGoals;
+        a.gf += awayGoals;
+        a.ga += homeGoals;
+        if (homeGoals > awayGoals) {
+          h.won++;
+          h.points += 3;
+          a.lost++;
+        } else if (homeGoals < awayGoals) {
+          a.won++;
+          a.points += 3;
+          h.lost++;
+        } else {
+          h.drawn++;
+          a.drawn++;
+          h.points++;
+          a.points++;
+        }
+        return { home, away, homeGoals, awayGoals };
+      });
+      return {
+        number: i + 1,
+        matches,
+        table: sortTable(rows).map((r) => ({ ...r })),
+      };
+    });
+    const final = rounds[rounds.length - 1]!.table;
+    const position = final.findIndex((r) => r.team === 0) + 1;
+    const mine = final[position - 1]!;
+    const goalDiff = mine.gf - mine.ga;
+    const bonus = position === 1 ? 2000 : position <= 4 ? 1000 : position <= 6 ? 500 : 0;
+    const base = mine.points * 100 + Math.max(0, goalDiff) * 5 + bonus;
+    return {
+      teams,
+      rounds,
+      final,
+      position,
+      points: mine.points,
+      wins: mine.won,
+      draws: mine.drawn,
+      losses: mine.lost,
+      goalDiff,
+      champion: position === 1,
       score: Math.round(base * (this.mode === 'almanaque' ? 1.5 : 1)),
     };
   }

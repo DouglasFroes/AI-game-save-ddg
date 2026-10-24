@@ -76,7 +76,8 @@ export type GameId =
   | 'pinball'
   | 'dados'
   | 'selecao'
-  | 'timesbr';
+  | 'timesbr'
+  | 'brasileirao';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -1142,6 +1143,23 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'rerolls', label: 'Sorteios', x: 655 },
     ],
     personalBest: storedBest('timesbr'),
+  },
+  {
+    id: 'brasileirao',
+    title: 'Brasileirão dos Sonhos',
+    tagline: '38 rodadas de pontos corridos',
+    icon: 'brasileirao-icon',
+    emoji: '🏟️',
+    color: 0x1d4ed8,
+    shade: 0x14532d,
+    entryScene: SceneKeys.Brasileirao,
+    load: () => import('./brasileirao/BrasileiraoScene').then((m) => [m.BrasileiraoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'points', label: 'Pts', x: 565 },
+      { key: 'pos', label: 'Posição', x: 650, format: (v) => `${v}º` },
+    ],
+    personalBest: storedBest('brasileirao'),
   },
 ];
 

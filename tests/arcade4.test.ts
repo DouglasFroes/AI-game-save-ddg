@@ -4,6 +4,7 @@ import {
   ACCEPTS,
   draftYears,
   FORMATION_IDS,
+  leagueFixtures,
   SelecaoGame,
   slotsOf,
   squadOf,
@@ -467,5 +468,66 @@ describe('elencos reais', () => {
     );
     for (const p of g.current.players.filter((x) => x.role === 'ZAG')) g.pick(p.num);
     expect(g.filled).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('brasileirão dos sonhos', () => {
+  const build = (seed: number) => {
+    const g = new SelecaoGame(seeded(seed), '4-3-3', 'equilibrado', 'classico', CLUBS);
+    while (!g.complete) {
+      g.draw();
+      g.pick(g.eligible().sort((a, b) => b.rating - a.rating)[0]!.num);
+    }
+    return g;
+  };
+
+  it('fixtures: everyone plays everyone twice, once per venue, one game each per round', () => {
+    const rounds = leagueFixtures();
+    expect(rounds).toHaveLength(38);
+    const seen = new Map<string, number>();
+    for (const round of rounds) {
+      const teams = round.flat();
+      expect(new Set(teams).size).toBe(20);
+      for (const [h, a] of round) seen.set(`${h}-${a}`, (seen.get(`${h}-${a}`) ?? 0) + 1);
+    }
+    expect(seen.size).toBe(20 * 19);
+    expect([...seen.values()].every((n) => n === 1)).toBe(true);
+  });
+
+  it('plays 38 rounds with a consistent table and 19 distinct rivals', () => {
+    for (let seed = 1; seed < 12; seed++) {
+      const s = build(seed).season();
+      expect(s.rounds).toHaveLength(38);
+      expect(s.teams).toHaveLength(20);
+      expect(new Set(s.teams.slice(1).map((t) => t.name)).size).toBe(19);
+      for (const row of s.final) {
+        expect(row.played).toBe(38);
+        expect(row.won + row.drawn + row.lost).toBe(38);
+        expect(row.points).toBe(row.won * 3 + row.drawn);
+      }
+      expect(s.final.reduce((n, r) => n + r.gf, 0)).toBe(s.final.reduce((n, r) => n + r.ga, 0));
+      expect(s.final[s.position - 1]!.team).toBe(0);
+      expect(s.champion).toBe(s.position === 1);
+      for (let i = 1; i < s.final.length; i++)
+        expect(s.final[i - 1]!.points).toBeGreaterThanOrEqual(s.final[i]!.points);
+      expect(s.score).toBeGreaterThanOrEqual(s.points * 100);
+    }
+  });
+
+  it('a better squad finishes higher on average', () => {
+    const avg = (best: boolean) => {
+      let total = 0;
+      for (let seed = 1; seed < 25; seed++) {
+        const g = new SelecaoGame(seeded(seed), '4-3-3', 'equilibrado', 'classico', CLUBS);
+        while (!g.complete) {
+          g.draw();
+          const o = g.eligible().sort((a, b) => a.rating - b.rating);
+          g.pick((best ? o[o.length - 1]! : o[0]!).num);
+        }
+        total += g.season().points;
+      }
+      return total;
+    };
+    expect(avg(true)).toBeGreaterThan(avg(false));
   });
 });

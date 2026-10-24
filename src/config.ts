@@ -122,6 +122,7 @@ export const SceneKeys = {
   Dados: 'Dados',
   Selecao: 'Selecao',
   TimesBr: 'TimesBr',
+  Brasileirao: 'Brasileirao',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

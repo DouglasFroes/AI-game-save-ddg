@@ -213,5 +213,8 @@ export const CLUBS: readonly Nation[] = [
   { name: 'Sport', flag: '🦁', cups: { 1987: c(78), 2008: c(66) } },
   { name: 'Goiás', flag: '💚', cups: { 1999: c(68), 2010: c(64) } },
   { name: 'Coritiba', flag: '🤍', cups: { 1985: c(74), 2011: c(68) } },
+  { name: 'Bragantino', flag: '🐂', cups: { 2021: c(75) } },
+  { name: 'Fortaleza', flag: '🦁', cups: { 2023: c(75) } },
+  { name: 'Ceará', flag: '⚫', cups: { 2020: c(68) } },
   { name: 'Vitória', flag: '🛡️', cups: { 1993: c(66), 2010: c(65) } },
 ];

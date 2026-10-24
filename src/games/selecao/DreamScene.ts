@@ -8,6 +8,7 @@ import { getServices } from '@/services';
 import {
   draftYears,
   FORMATION_IDS,
+  LEAGUE_ROUNDS,
   MATCHES,
   REROLLS,
   SelecaoGame,
@@ -17,6 +18,8 @@ import {
   type Mode,
   type Player,
   type Role,
+  type LeagueRound,
+  type Season,
   type Slot,
   type Style,
   type Team,
@@ -34,6 +37,8 @@ export interface DreamConfig {
   readonly title: string;
   readonly champion: string;
   readonly tagline: string;
+  /** `cup`: seven knockout games; `league`: 38 rounds, everyone plays everyone twice. */
+  readonly format?: 'cup' | 'league';
 }
 
 const CX = GAME_WIDTH / 2;
@@ -539,6 +544,10 @@ export abstract class DreamScene extends MiniScene {
   // ---------------------------------------------------------------- tournament
 
   private startTournament(): void {
+    if (this.cfg.format === 'league') {
+      this.startLeague();
+      return;
+    }
     const g = this.run;
     const result = g.tournament((this.series.round - 1) * ROUND_BOOST);
     const v = this.reset();
@@ -624,6 +633,208 @@ export abstract class DreamScene extends MiniScene {
       );
     };
     play(0);
+  }
+
+  // ---------------------------------------------------------------- league
+
+  /** 38 rounds played one after the other (tap "Pular" to jump to the final table). */
+  private startLeague(): void {
+    const g = this.run;
+    const season = g.season();
+    const v = this.reset();
+    const stats = g.stats;
+    const ROWS_Y = 392;
+    const ROW = 33;
+
+    const badge = this.add.graphics();
+    badge.fillStyle(0x000000, 0.35).fillCircle(80, 178, 48);
+    badge.fillStyle(0xfef3c7).fillCircle(80, 172, 48);
+    const roundText = addText(this, 150, 150, 'Rodada 0 de 38', 30, { color: '#ffffff' }).setOrigin(
+      0,
+      0.5,
+    );
+    const posText = addText(this, 150, 196, 'Prepare-se…', 24, {
+      color: GOLD,
+      weight: 'normal',
+    }).setOrigin(0, 0.5);
+    const place = addText(this, 640, 172, '–', 70, { color: '#fde047', stroke: '#052e16' });
+    v.add([
+      badge,
+      addText(this, 80, 166, String(stats.overall), 42, { color: '#052e16' }),
+      addText(this, 80, 196, 'NOTA', 13, { color: '#c2410c' }),
+      roundText,
+      posText,
+      place,
+    ]);
+    const bar = this.add.graphics();
+    v.add(bar);
+
+    // The last game of yours.
+    const last = this.card(CX, 292, 640, 84, 0x14532d);
+    const lastText = addText(this, -300, 0, '', 24, {
+      color: '#ffffff',
+      wrapWidth: 440,
+      align: 'left',
+    }).setOrigin(0, 0.5);
+    const lastScore = addText(this, 300, 0, '', 38, { color: '#ffffff' }).setOrigin(1, 0.5);
+    last.add([lastText, lastScore]);
+    v.add(last);
+
+    // The table: one container per team, moved to its place after each round.
+    const ui = season.teams.map((t, i) => {
+      const bg = this.add.graphics();
+      const mine = t.me;
+      bg.fillStyle(mine ? 0xfde047 : 0x000000, mine ? 0.9 : 0.22).fillRoundedRect(
+        40,
+        -15,
+        640,
+        30,
+        8,
+      );
+      const color = mine ? '#052e16' : '#ffffff';
+      const pos = addText(this, 74, 0, '', 17, { color }).setOrigin(0.5);
+      const name = addText(this, 104, 0, `${t.flag} ${t.me ? t.name : `${t.name} ${t.year}`}`, 18, {
+        color,
+        align: 'left',
+      }).setOrigin(0, 0.5);
+      const played = addText(this, 520, 0, '0', 17, { color, weight: 'normal' }).setOrigin(0.5);
+      const gd = addText(this, 585, 0, '0', 17, { color, weight: 'normal' }).setOrigin(0.5);
+      const pts = addText(this, 650, 0, '0', 19, { color }).setOrigin(0.5);
+      const c = this.add.container(0, ROWS_Y + i * ROW, [bg, pos, name, played, gd, pts]);
+      v.add(c);
+      return { c, pos, played, gd, pts, idx: i };
+    });
+    const heads = ['J', 'SG', 'PTS'].map((t, i) =>
+      addText(this, [520, 585, 650][i]!, ROWS_Y - 30, t, 16, { color: '#bbf7d0' }),
+    );
+    v.add(heads);
+    // Zones: Libertadores (top 4), Sul-Americana (5–6), relegation (bottom 4).
+    const zones = this.add.graphics();
+    const zoneColor = (p: number) => (p < 4 ? 0x4ade80 : p < 6 ? 0x38bdf8 : p >= 16 ? 0xf87171 : 0);
+    v.add(zones);
+
+    const showRound = (r: LeagueRound, animate: boolean) => {
+      roundText.setText(`Rodada ${r.number} de ${LEAGUE_ROUNDS}`);
+      bar.clear();
+      bar.fillStyle(0x000000, 0.3).fillRoundedRect(40, 232, 640, 12, 6);
+      bar
+        .fillStyle(0xfde047)
+        .fillRoundedRect(40, 232, Math.max(12, (640 * r.number) / LEAGUE_ROUNDS), 12, 6);
+      zones.clear();
+      r.table.forEach((row, pos) => {
+        const u = ui[row.team]!;
+        u.pos.setText(String(pos + 1));
+        u.played.setText(String(row.played));
+        u.gd.setText(String(row.gf - row.ga > 0 ? `+${row.gf - row.ga}` : row.gf - row.ga));
+        u.pts.setText(String(row.points));
+        const y = ROWS_Y + pos * ROW;
+        if (animate) this.tweens.add({ targets: u.c, y, duration: 200, ease: 'Cubic.easeOut' });
+        else u.c.setY(y);
+        const zc = zoneColor(pos);
+        if (zc) zones.fillStyle(zc).fillRect(40, y - 15, 5, 30);
+        if (row.team === 0) {
+          const where = pos === 0 ? 'Líder!' : `${pos + 1}º lugar`;
+          place.setText(`${pos + 1}º`);
+          posText.setText(`${where} · ${row.points} pts · ${row.won}V ${row.drawn}E ${row.lost}D`);
+        }
+      });
+      const m = r.matches.find((x) => x.home === 0 || x.away === 0)!;
+      const home = m.home === 0;
+      const mine = home ? m.homeGoals : m.awayGoals;
+      const theirs = home ? m.awayGoals : m.homeGoals;
+      const rival = season.teams[home ? m.away : m.home]!;
+      lastText.setText(
+        `Rodada ${r.number} · ${home ? 'em casa' : 'fora'}\n${rival.flag} ${rival.name} ${rival.year}`,
+      );
+      lastScore
+        .setText(`${mine} × ${theirs}`)
+        .setColor(mine > theirs ? '#86efac' : mine < theirs ? '#fca5a5' : '#fde68a');
+      if (animate) {
+        this.tweens.add({
+          targets: lastScore,
+          scale: { from: 1.4, to: 1 },
+          duration: 220,
+          ease: 'Back.easeOut',
+        });
+        const { sfx } = getServices(this);
+        if (mine > theirs) {
+          sfx.play('click');
+          burst(this, 600, 292, 0x86efac, 8);
+        } else if (mine < theirs) this.cameras.main.shake(90, 0.003);
+      }
+    };
+
+    let next = 0;
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      timer.remove();
+      skip.destroy();
+      this.time.delayedCall(season.champion ? 300 : 900, () => {
+        if (season.champion) {
+          flash(this, 0xfde047, 0.35, 400);
+          for (let i = 0; i < 4; i++)
+            this.time.delayedCall(i * 220, () =>
+              burst(this, 120 + Math.random() * 480, 300, 0xfde047, 22, {
+                gravity: 300,
+                speed: 420,
+              }),
+            );
+        }
+        this.time.delayedCall(season.champion ? 1500 : 600, () => this.endLeague(season));
+      });
+    };
+    const timer = this.time.addEvent({
+      delay: 330,
+      loop: true,
+      callback: () => {
+        showRound(season.rounds[next]!, true);
+        next++;
+        if (next >= season.rounds.length) done();
+      },
+    });
+    const skip = new Button(
+      this,
+      CX,
+      1180,
+      'PULAR ⏭ ver resultado',
+      () => {
+        if (finished) return;
+        showRound(season.rounds[season.rounds.length - 1]!, false);
+        done();
+      },
+      { width: 520, height: 84, fontSize: 28, color: OFF, shade: OFF_DARK },
+    );
+    v.add(skip);
+  }
+
+  private endLeague(season: Season): void {
+    const g = this.run;
+    const pos = season.position;
+    const title = season.champion
+      ? this.cfg.champion
+      : `${pos}º lugar${pos <= 4 ? ' · Libertadores' : pos <= 6 ? ' · Sul-Americana' : pos >= 17 ? ' · Rebaixado' : ''}`;
+    this.finish(
+      title,
+      [
+        `${season.points} pts · ${season.wins}V ${season.draws}E ${season.losses}D`,
+        `Saldo de gols: ${season.goalDiff} · Nota ${g.stats.overall} · ${g.formation}`,
+        `Sorteios usados: ${g.rerollsUsed}${g.mode === 'almanaque' ? ' · modo De almanaque' : ''}`,
+      ],
+      {
+        score: season.score,
+        details: {
+          points: season.points,
+          pos,
+          rerolls: g.rerollsUsed,
+          ovr: g.stats.overall,
+          mode: g.mode === 'almanaque' ? 1 : 0,
+          gd: season.goalDiff,
+        },
+      },
+      300,
+    );
   }
 
   /** Goals appear one by one (ours and theirs mixed), then the penalties if the game was level. */

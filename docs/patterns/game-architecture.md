@@ -34,7 +34,8 @@ src/
                        TurmaScene.ts (subclass: the kids, each with a power) · kidView.ts · turma.ts
     helix/ zigue/ ponte/ corcerta/ conta/ cesto/ sequencia/ relampago/ trio/ hexa/ inverte/ balao/ toupeira/
     selecao/ timesbr/  data.ts (teams × seasons) · selecao/core.ts (pure draft + tournament sim, shared) ·
-                       selecao/DreamScene.ts (shared UI) · <Name>Scene.ts (thin config)
+                       selecao/DreamScene.ts (shared UI) · <Name>Scene.ts (thin config);
+                       brasileirao/ = same draft, then a 38-round league (`format: 'league'`)
     corta/ gelo/ velha/ ligue4/ minas/ bolhas/ blocos/ comecome/ nave/
                        core.ts (pure) · <Name>Scene.ts extending MiniScene (platform/ui/miniGame.ts:
                        background, back button, score, finish() -> GameOver). Hub icon = `emoji` field
