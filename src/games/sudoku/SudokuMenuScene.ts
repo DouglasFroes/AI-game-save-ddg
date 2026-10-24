@@ -7,11 +7,12 @@ import { DIFFICULTIES, type Difficulty } from './core';
 import type { SudokuData } from './SudokuScene';
 import { SUDOKU_ICON } from './art';
 
-const ORDER: readonly Difficulty[] = ['easy', 'medium', 'hard'];
+const ORDER: readonly Difficulty[] = ['easy', 'medium', 'hard', 'expert'];
 const COLORS_BY_LEVEL = [
   [COLORS.success, COLORS.successDark],
   [COLORS.primary, COLORS.primaryDark],
   [COLORS.danger, COLORS.dangerDark],
+  [0x9b5de5, 0x7038b8],
 ] as const;
 
 export class SudokuMenuScene extends Phaser.Scene {
@@ -23,7 +24,7 @@ export class SudokuMenuScene extends Phaser.Scene {
     const { best } = getServices(this);
     const cx = GAME_WIDTH / 2;
     addBackground(this);
-    panel(this, cx, 560, 640, 820);
+    panel(this, cx, 600, 640, 940);
     this.add.image(cx, 280, SUDOKU_ICON).setScale(1.1);
     addText(this, cx, 420, 'Sudoku', 64);
     addText(this, cx, 480, 'Preencha 1 a 9 sem repetir na linha,\ncoluna ou quadrado.', 26, {
@@ -37,17 +38,17 @@ export class SudokuMenuScene extends Phaser.Scene {
       new Button(
         this,
         cx,
-        600 + i * 130,
-        def.label,
+        590 + i * 116,
+        d === 'expert' ? `${def.label} · 1 vida` : def.label,
         () => this.scene.start(SceneKeys.Sudoku, { difficulty: d } satisfies SudokuData),
-        { width: 480, height: 104, color, shade },
+        { width: 480, height: 96, color, shade },
       );
     });
     const record = best.get('sudoku');
     addText(
       this,
       cx,
-      930,
+      1040,
       record ? `Recorde: ${formatNumber(record.score)} pontos` : 'Ainda sem recorde',
       28,
       {

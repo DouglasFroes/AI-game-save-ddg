@@ -2,24 +2,28 @@
 
 export type Grid = number[];
 export type Rng = () => number;
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
 
 export interface DifficultyDef {
   readonly label: string;
-  /** Numeric id stored in the ranking (1..3). */
+  /** Numeric id stored in the ranking (1..4). */
   readonly level: number;
   /** How many cells to empty (fewer may remain if uniqueness would break). */
   readonly holes: number;
   readonly basePoints: number;
+  /** Mistakes allowed before the game is lost. */
+  readonly lives: number;
+  /** Whether the hint button is available. */
+  readonly hints: boolean;
 }
 
 export const DIFFICULTIES: Readonly<Record<Difficulty, DifficultyDef>> = {
-  easy: { label: 'Fácil', level: 1, holes: 38, basePoints: 3000 },
-  medium: { label: 'Médio', level: 2, holes: 47, basePoints: 6000 },
-  hard: { label: 'Difícil', level: 3, holes: 54, basePoints: 10000 },
+  easy: { label: 'Fácil', level: 1, holes: 38, basePoints: 3000, lives: 3, hints: true },
+  medium: { label: 'Médio', level: 2, holes: 47, basePoints: 6000, lives: 3, hints: true },
+  hard: { label: 'Difícil', level: 3, holes: 54, basePoints: 10000, lives: 3, hints: true },
+  // One life, no hints: the first mistake ends the run.
+  expert: { label: 'Extremo', level: 4, holes: 58, basePoints: 16000, lives: 1, hints: false },
 };
-
-export const MAX_MISTAKES = 3;
 export const HINT_PENALTY = 400;
 export const MISTAKE_PENALTY = 300;
 

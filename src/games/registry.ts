@@ -92,7 +92,7 @@ export interface GameDefinition {
   personalBest(services: Services): ScoreRecord | null;
 }
 
-const LEVEL_NAMES = ['', 'Fácil', 'Médio', 'Difícil'];
+const LEVEL_NAMES = ['', 'Fácil', 'Médio', 'Difícil', 'Extremo'];
 
 const storedBest = (id: GameId) => (s: Services) => s.best.get(id);
 

@@ -10,7 +10,6 @@ import {
   DIFFICULTIES,
   isComplete,
   makePuzzle,
-  MAX_MISTAKES,
   PEERS,
   row,
   sudokuScore,
@@ -156,11 +155,15 @@ export class SudokuScene extends Phaser.Scene {
     };
     new Button(this, 140, TOOLS_Y, '⌫ Apagar', () => this.erase(), tool);
     this.notesButton = new Button(this, 360, TOOLS_Y, '✎ Notas', () => this.toggleNotes(), tool);
-    new Button(this, 580, TOOLS_Y, '💡 Dica', () => this.hint(), {
+    const hintButton = new Button(this, 580, TOOLS_Y, '💡 Dica', () => this.hint(), {
       ...tool,
       color: COLORS.primary,
       shade: COLORS.primaryDark,
     });
+    if (!def.hints) {
+      hintButton.label.setText('💡 Sem dica');
+      hintButton.setEnabled(false);
+    }
 
     this.input.keyboard?.on('keydown', (e: KeyboardEvent) => {
       if (/^[1-9]$/.test(e.key)) this.input_(Number(e.key));
@@ -239,7 +242,7 @@ export class SudokuScene extends Phaser.Scene {
     this.cameras.main.shake(120, 0.004);
     this.time.delayedCall(600, () => this.render());
     this.render(false);
-    if (this.mistakes >= MAX_MISTAKES) this.lose();
+    if (this.mistakes >= DIFFICULTIES[this.difficulty].lives) this.lose();
   }
 
   private erase(): void {
@@ -250,7 +253,7 @@ export class SudokuScene extends Phaser.Scene {
   }
 
   private hint(): void {
-    if (this.finished) return;
+    if (this.finished || !DIFFICULTIES[this.difficulty].hints) return;
     let i = this.selected;
     if (i < 0 || this.grid[i] === this.solution[i]) {
       i = this.grid.findIndex((n, k) => n !== this.solution[k]);
@@ -302,7 +305,10 @@ export class SudokuScene extends Phaser.Scene {
       });
     }
 
-    this.mistakesText.setText(`Erros ${this.mistakes}/${MAX_MISTAKES}`);
+    const lives = DIFFICULTIES[this.difficulty].lives;
+    this.mistakesText.setText(
+      lives === 1 ? `Vidas ${lives - this.mistakes}` : `Erros ${this.mistakes}/${lives}`,
+    );
     const counts = new Array(10).fill(0);
     for (const n of this.grid) counts[n]++;
     this.padButtons.forEach((b, k) => b.setEnabled(counts[k + 1] < 9));
@@ -343,10 +349,13 @@ export class SudokuScene extends Phaser.Scene {
 
   private lose(): void {
     this.finished = true;
+    const oneLife = DIFFICULTIES[this.difficulty].lives === 1;
     this.endWith({
       gameId: 'sudoku',
-      title: 'Três erros!',
-      lines: ['Tente de novo com calma.', 'Use as notas ✎ para marcar opções.'],
+      title: oneLife ? 'Um erro e acabou!' : 'Três erros!',
+      lines: oneLife
+        ? ['No Extremo só existe uma vida.', 'Use as notas ✎ e confira antes de jogar.']
+        : ['Tente de novo com calma.', 'Use as notas ✎ para marcar opções.'],
       record: null,
       parent: SceneKeys.Sudoku,
       retry: {

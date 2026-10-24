@@ -32,7 +32,7 @@ describe('sudoku core', () => {
     expect(isValidSolution(g!)).toBe(true);
   });
 
-  it.each(['easy', 'medium', 'hard'] as const)('generates a unique %s puzzle', (d) => {
+  it.each(['easy', 'medium', 'hard', 'expert'] as const)('generates a unique %s puzzle', (d) => {
     const { puzzle, solution } = makePuzzle(d, seeded(42));
     expect(isValidSolution(solution)).toBe(true);
     expect(countSolutions(puzzle)).toBe(1);
@@ -56,5 +56,17 @@ describe('sudoku core', () => {
     expect(sudokuScore('medium', 300, 0, 0)).toBeGreaterThan(sudokuScore('medium', 600, 0, 0));
     expect(sudokuScore('medium', 300, 2, 1)).toBeLessThan(sudokuScore('medium', 300, 0, 0));
     expect(sudokuScore('easy', 99999, 3, 9)).toBe(100);
+  });
+
+  it('expert is the last level: one life, no hints, the highest payout', () => {
+    const { expert, hard, easy, medium } = DIFFICULTIES;
+    expect(expert.lives).toBe(1);
+    expect(expert.hints).toBe(false);
+    expect(expert.level).toBe(hard.level + 1);
+    for (const d of [easy, medium, hard]) {
+      expect(d.lives).toBe(3);
+      expect(d.hints).toBe(true);
+    }
+    expect(sudokuScore('expert', 600, 0, 0)).toBeGreaterThan(sudokuScore('hard', 600, 0, 0));
   });
 });
