@@ -1,3 +1,11 @@
+import { NATIONS } from '@/games/selecao/data';
+import {
+  FORMATION_IDS,
+  SelecaoGame,
+  slotsOf,
+  squadOf,
+  type FormationId,
+} from '@/games/selecao/core';
 import { placementFor, rankEntries, type LeaderboardEntry } from '@/platform/leaderboard';
 import { describe, expect, it } from 'vitest';
 import { BolhaSim, EAT_RATIO, radiusOf, speedOf } from '@/games/bolha/core';
@@ -293,5 +301,104 @@ describe('campaign ranking', () => {
     await board.autoSubmit('bolha', { name: 'Eu', score: 300, details: {} });
     await board.autoSubmit('bolha', { name: 'Eu', score: 200, details: {} });
     expect((await local.list('bolha', 20)).map((e) => e.score)).toEqual([300, 200]);
+  });
+});
+
+describe('seleção dos sonhos', () => {
+  const run = (seed: number, formation: FormationId = '4-3-3') => {
+    const g = new SelecaoGame(seeded(seed), formation, 'equilibrado');
+    while (!g.complete) {
+      g.draw();
+      const best = g.eligible().sort((a, b) => b.rating - a.rating)[0]!;
+      g.pick(best.num);
+    }
+    return g;
+  };
+
+  it('every formation has 11 slots and can always be filled from any draw', () => {
+    for (const f of FORMATION_IDS) {
+      expect(slotsOf(f)).toHaveLength(11);
+      for (let seed = 1; seed < 15; seed++) {
+        const g = new SelecaoGame(seeded(seed), f);
+        let picks = 0;
+        while (!g.complete) {
+          g.draw();
+          const options = g.eligible();
+          expect(options.length).toBeGreaterThan(0);
+          g.pick(options[0]!.num);
+          picks++;
+        }
+        expect(picks).toBe(11);
+        expect(g.lineup.every(Boolean)).toBe(true);
+      }
+    }
+  });
+
+  it('squads are stable, with unique names, and nations are not repeated in a draft', () => {
+    const nation = NATIONS[0]!;
+    const year = Number(Object.keys(nation.cups)[0]);
+    const a = squadOf(nation, year);
+    expect(squadOf(nation, year)).toEqual(a);
+    expect(new Set(a.players.map((p) => p.name)).size).toBe(a.players.length);
+    const g = new SelecaoGame(seeded(3));
+    const seen = new Set<string>();
+    while (!g.complete) {
+      seen.add(g.draw().nation);
+      g.pick(g.eligible()[0]!.num);
+    }
+    expect(seen.size).toBe(11);
+  });
+
+  it('re-rolls are limited and only work on a drawn team', () => {
+    const g = new SelecaoGame(seeded(4));
+    expect(g.reroll('nation')).toBe(false);
+    g.draw();
+    expect([g.reroll('nation'), g.reroll('cup'), g.reroll('nation'), g.reroll('cup')]).toEqual([
+      true,
+      true,
+      true,
+      false,
+    ]);
+    expect(g.rerollsUsed).toBe(3);
+  });
+
+  it('plays up to seven matches, stops at the first loss, and scores wins', () => {
+    for (let seed = 1; seed < 40; seed++) {
+      const t = run(seed).tournament();
+      expect(t.matches.length).toBeLessThanOrEqual(7);
+      expect(t.wins).toBe(t.matches.filter((m) => m.win).length);
+      if (!t.champion) expect(t.matches[t.matches.length - 1]!.win).toBe(false);
+      expect(t.score).toBeGreaterThanOrEqual(t.wins * 1000);
+    }
+  });
+
+  it('better squads win more often than worse ones', () => {
+    const wins = (best: boolean) => {
+      let total = 0;
+      for (let seed = 1; seed < 60; seed++) {
+        const g = new SelecaoGame(seeded(seed));
+        while (!g.complete) {
+          g.draw();
+          const sorted = g.eligible().sort((a, b) => a.rating - b.rating);
+          g.pick((best ? sorted[sorted.length - 1]! : sorted[0]!).num);
+        }
+        total += g.tournament().wins;
+      }
+      return total;
+    };
+    expect(wins(true)).toBeGreaterThan(wins(false));
+  });
+
+  it('ranking ties go to fewer re-rolls, then the higher overall', () => {
+    const e = (name: string, rerolls: number, ovr: number, date: string): LeaderboardEntry => ({
+      id: name,
+      player: name,
+      name,
+      score: 5000,
+      details: { rerolls, ovr },
+      date,
+    });
+    const board = [e('a', 2, 90, '1'), e('b', 0, 70, '2'), e('c', 0, 80, '3')];
+    expect(rankEntries(board, 'selecao').map((x) => x.name)).toEqual(['c', 'b', 'a']);
   });
 });

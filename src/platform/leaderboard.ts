@@ -66,6 +66,10 @@ export const TIEBREAK: Readonly<
   Record<string, ReadonlyArray<{ key: string; order: 'asc' | 'desc' }>>
 > = {
   stack: [{ key: 'perfects', order: 'desc' }],
+  selecao: [
+    { key: 'rerolls', order: 'asc' },
+    { key: 'ovr', order: 'desc' },
+  ],
   milhao: [
     { key: 'helps', order: 'asc' },
     { key: 'time', order: 'asc' },

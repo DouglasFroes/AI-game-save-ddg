@@ -73,6 +73,7 @@ export const SCENE_TO_GAME: Readonly<Record<string, GameId>> = {
   [SceneKeys.Masmorra]: 'masmorra',
   [SceneKeys.Pinball]: 'pinball',
   [SceneKeys.Dados]: 'dados',
+  [SceneKeys.Selecao]: 'selecao',
 };
 
 interface ActiveRun {

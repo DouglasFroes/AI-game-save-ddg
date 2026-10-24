@@ -73,7 +73,8 @@ export type GameId =
   | 'espelhos'
   | 'masmorra'
   | 'pinball'
-  | 'dados';
+  | 'dados'
+  | 'selecao';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -1105,6 +1106,23 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'rounds', label: 'Rodadas', x: 625 },
     ],
     personalBest: storedBest('dados'),
+  },
+  {
+    id: 'selecao',
+    title: 'Seleção dos Sonhos',
+    tagline: 'Monte o time e vença 7 jogos',
+    icon: 'selecao-icon',
+    emoji: '🏆',
+    color: 0x16a34a,
+    shade: 0x052e16,
+    entryScene: SceneKeys.Selecao,
+    load: () => import('./selecao/SelecaoScene').then((m) => [m.SelecaoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'rerolls', label: 'Sorteios', x: 655 },
+    ],
+    personalBest: storedBest('selecao'),
   },
 ];
 
