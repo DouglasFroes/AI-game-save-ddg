@@ -121,6 +121,7 @@ export const SceneKeys = {
   Pinball: 'Pinball',
   Dados: 'Dados',
   Selecao: 'Selecao',
+  TimesBr: 'TimesBr',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

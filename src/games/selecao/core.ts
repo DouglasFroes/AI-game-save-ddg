@@ -6,6 +6,9 @@
  */
 import { NATIONS, type Nation } from './data';
 
+/** Anything that can be drawn: a national team (or a club) with the seasons it can come from. */
+export type Team = Nation;
+
 export type Rng = () => number;
 
 export type Role =
@@ -127,7 +130,7 @@ function mulberry(seed: number): Rng {
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 /** The squad of a nation in a given Cup. Always the same for the same pair. */
-export function squadOf(nation: Nation, year: number): Squad {
+export function squadOf(nation: Team, year: number): Squad {
   const strength = nation.cups[year] ?? 70;
   const rng = mulberry(hash(`${nation.name}${year}`));
   const surnames = nation.surnames.split(' ');
@@ -216,6 +219,8 @@ export class SelecaoGame {
     readonly formation: FormationId = '4-3-3',
     readonly style: Style = 'equilibrado',
     readonly mode: Mode = 'classico',
+    /** The teams that can be drawn (and that the opponents come from). */
+    private readonly teams: readonly Team[] = NATIONS,
   ) {
     this.slots = slotsOf(formation);
     this.lineup = this.slots.map(() => null);
@@ -233,11 +238,11 @@ export class SelecaoGame {
     return this.filled === this.slots.length;
   }
 
-  private pickEntry(nation?: Nation, otherThan?: number): Squad {
+  private pickEntry(nation?: Team, otherThan?: number): Squad {
     const pool = nation
       ? [nation]
-      : NATIONS.filter(
-          (n) => !this.usedNations.has(n.name) || this.usedNations.size >= NATIONS.length,
+      : this.teams.filter(
+          (n) => !this.usedNations.has(n.name) || this.usedNations.size >= this.teams.length,
         );
     const n = pool[Math.floor(this.rng() * pool.length)]!;
     const years = Object.keys(n.cups)
@@ -260,7 +265,7 @@ export class SelecaoGame {
     if (!cur || this.rerollsLeft <= 0 || this.complete) return false;
     this.rerollsLeft--;
     this.usedNations.delete(cur.nation);
-    const nation = NATIONS.find((n) => n.name === cur.nation)!;
+    const nation = this.teams.find((n) => n.name === cur.nation)!;
     if (kind === 'cup' && Object.keys(nation.cups).length > 1) {
       this.current = this.pickEntry(nation, cur.year);
     } else {
@@ -312,7 +317,7 @@ export class SelecaoGame {
 
   /** Seven opponents of rising strength, picked from the same table of Cups. */
   opponents(): Opponent[] {
-    const all = NATIONS.flatMap((n) =>
+    const all = this.teams.flatMap((n) =>
       Object.entries(n.cups).map(([y, s]) => ({ nation: n, year: Number(y), strength: s })),
     );
     const used = new Set<string>();

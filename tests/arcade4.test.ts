@@ -1,3 +1,4 @@
+import { CLUBS } from '@/games/timesbr/data';
 import { NATIONS } from '@/games/selecao/data';
 import {
   FORMATION_IDS,
@@ -400,5 +401,21 @@ describe('seleção dos sonhos', () => {
     });
     const board = [e('a', 2, 90, '1'), e('b', 0, 70, '2'), e('c', 0, 80, '3')];
     expect(rankEntries(board, 'selecao').map((x) => x.name)).toEqual(['c', 'b', 'a']);
+  });
+});
+
+describe('time dos sonhos BR', () => {
+  it('drafts from Brazilian clubs and fills every formation', () => {
+    for (const f of FORMATION_IDS) {
+      const g = new SelecaoGame(seeded(9), f, 'ofensivo', 'almanaque', CLUBS);
+      const seen = new Set<string>();
+      while (!g.complete) {
+        seen.add(g.draw().nation);
+        g.pick(g.eligible()[0]!.num);
+      }
+      for (const club of seen) expect(CLUBS.some((c) => c.name === club)).toBe(true);
+      const t = g.tournament();
+      expect(t.matches.every((m) => CLUBS.some((c) => c.name === m.opponent.nation))).toBe(true);
+    }
   });
 });

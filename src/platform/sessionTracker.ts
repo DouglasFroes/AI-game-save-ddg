@@ -74,6 +74,7 @@ export const SCENE_TO_GAME: Readonly<Record<string, GameId>> = {
   [SceneKeys.Pinball]: 'pinball',
   [SceneKeys.Dados]: 'dados',
   [SceneKeys.Selecao]: 'selecao',
+  [SceneKeys.TimesBr]: 'timesbr',
 };
 
 interface ActiveRun {

@@ -33,7 +33,8 @@ src/
     luta/              core.ts (pure fight rules + powers) · ai.ts (CPU) · ladder.ts · fighterView.ts · LutaScene.ts
                        TurmaScene.ts (subclass: the kids, each with a power) · kidView.ts · turma.ts
     helix/ zigue/ ponte/ corcerta/ conta/ cesto/ sequencia/ relampago/ trio/ hexa/ inverte/ balao/ toupeira/
-    selecao/           data.ts (nations × Cups) · core.ts (pure draft + tournament sim) · SelecaoScene.ts
+    selecao/ timesbr/  data.ts (teams × seasons) · selecao/core.ts (pure draft + tournament sim, shared) ·
+                       selecao/DreamScene.ts (shared UI) · <Name>Scene.ts (thin config)
     corta/ gelo/ velha/ ligue4/ minas/ bolhas/ blocos/ comecome/ nave/
                        core.ts (pure) · <Name>Scene.ts extending MiniScene (platform/ui/miniGame.ts:
                        background, back button, score, finish() -> GameOver). Hub icon = `emoji` field

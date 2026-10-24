@@ -74,7 +74,8 @@ export type GameId =
   | 'masmorra'
   | 'pinball'
   | 'dados'
-  | 'selecao';
+  | 'selecao'
+  | 'timesbr';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -1123,6 +1124,23 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'rerolls', label: 'Sorteios', x: 655 },
     ],
     personalBest: storedBest('selecao'),
+  },
+  {
+    id: 'timesbr',
+    title: 'Time dos Sonhos BR',
+    tagline: 'Craques dos clubes do Brasil',
+    icon: 'timesbr-icon',
+    emoji: '⚽',
+    color: 0xeab308,
+    shade: 0x14532d,
+    entryScene: SceneKeys.TimesBr,
+    load: () => import('./timesbr/TimesBrScene').then((m) => [m.TimesBrScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'rerolls', label: 'Sorteios', x: 655 },
+    ],
+    personalBest: storedBest('timesbr'),
   },
 ];
 
