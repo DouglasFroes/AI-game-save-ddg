@@ -3,7 +3,9 @@
  * R$ 1 milhão. Before answering the player may stop (keeps what they have); a wrong answer
  * leaves them with half of it, and missing the final question loses everything.
  * Helps, once each: Cartas (removes 1–3 wrong answers), Universitários (three hints),
- * Placas (audience votes) and three skips.
+ * Placas (audience votes) and three skips. The level (fácil, normal, difícil) shifts how hard the
+ * questions are and how long each one lasts. Ranking ties go to who used fewer helps (a skip
+ * counts as one), then to who took less total time.
  */
 import { QUESTIONS, type Question } from './questions';
 
@@ -18,9 +20,19 @@ export const QUESTION_COUNT = LADDER.length;
 export const SKIPS = 3;
 export const ANSWER_TIME = 40;
 
+export type Level = 'easy' | 'normal' | 'hard';
+export const LEVELS: Readonly<Record<Level, { label: string; tierShift: number; time: number }>> = {
+  easy: { label: 'Fácil', tierShift: -1, time: 60 },
+  normal: { label: 'Normal', tierShift: 0, time: ANSWER_TIME },
+  hard: { label: 'Difícil', tierShift: 1, time: 25 },
+};
+export const LEVEL_ORDER: readonly Level[] = ['easy', 'normal', 'hard'];
+
 /** Difficulty of each step: easy up to R$ 5 mil, medium up to 50 mil, hard, then the final one. */
-export const tierOf = (step: number): Question['tier'] =>
-  step < 5 ? 1 : step < 10 ? 2 : step < 15 ? 3 : 4;
+export const tierOf = (step: number, level: Level = 'normal'): Question['tier'] => {
+  const base = step < 5 ? 1 : step < 10 ? 2 : step < 15 ? 3 : 4;
+  return Math.min(4, Math.max(1, base + LEVELS[level].tierShift)) as Question['tier'];
+};
 
 export type Help = 'cartas' | 'universitarios' | 'placas';
 export type EndReason = 'won' | 'stopped' | 'wrong' | 'timeout';
@@ -43,7 +55,9 @@ export class MilhaoGame {
   removed = new Set<number>();
   skipsLeft = SKIPS;
   readonly used = new Set<Help>();
-  time = ANSWER_TIME;
+  time: number;
+  /** Total seconds spent answering (the ranking's second tiebreak). */
+  elapsed = 0;
   over = false;
   end: EndReason | null = null;
   prize = 0;
@@ -52,7 +66,9 @@ export class MilhaoGame {
   constructor(
     private readonly rng: Rng = Math.random,
     private readonly bank: readonly Question[] = QUESTIONS,
+    readonly level: Level = 'normal',
   ) {
+    this.time = LEVELS[level].time;
     this.next();
   }
 
@@ -63,20 +79,25 @@ export class MilhaoGame {
     return { right: LADDER[this.step]!, stop, wrong: final ? 0 : Math.floor(stop / 2) };
   }
 
+  /** Helps used so far (the ranking's first tiebreak): each help and each skip counts one. */
+  get helps(): number {
+    return this.used.size + (SKIPS - this.skipsLeft);
+  }
+
   /** Screen position (0–3) of the right answer. */
   get rightPosition(): number {
     return this.order.indexOf(this.question.answer);
   }
 
   private next(): void {
-    const tier = tierOf(this.step);
+    const tier = tierOf(this.step, this.level);
     let pool = this.bank.filter((q) => q.tier === tier && !this.seen.has(q.text));
     if (pool.length === 0) pool = this.bank.filter((q) => q.tier === tier);
     this.question = pool[Math.floor(this.rng() * pool.length)]!;
     this.seen.add(this.question.text);
     this.order = [0, 1, 2, 3].sort(() => this.rng() - 0.5);
     this.removed = new Set();
-    this.time = ANSWER_TIME;
+    this.time = LEVELS[this.level].time;
   }
 
   private finish(end: EndReason, prize: number): void {
@@ -153,6 +174,7 @@ export class MilhaoGame {
   /** Advances the answer clock; true when time just ran out. */
   tick(dt: number): boolean {
     if (this.over) return false;
+    this.elapsed += Math.min(dt, this.time);
     this.time = Math.max(0, this.time - dt);
     if (this.time > 0) return false;
     this.finish('timeout', this.prizes.wrong);

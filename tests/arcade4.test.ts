@@ -1,3 +1,4 @@
+import { placementFor, rankEntries, type LeaderboardEntry } from '@/platform/leaderboard';
 import { describe, expect, it } from 'vitest';
 import { BolhaSim, EAT_RATIO, radiusOf, speedOf } from '@/games/bolha/core';
 import {
@@ -11,7 +12,13 @@ import {
   starsFor,
   summary,
 } from '@/games/memofases/core';
-import { LADDER, MilhaoGame, QUESTION_COUNT, tierOf } from '@/games/milhao/core';
+import {
+  LADDER,
+  LEVELS as MILHAO_LEVELS,
+  MilhaoGame,
+  QUESTION_COUNT,
+  tierOf,
+} from '@/games/milhao/core';
 import { QUESTIONS } from '@/games/milhao/questions';
 import { LocalLeaderboard, ResilientLeaderboard } from '@/platform/leaderboard';
 import { MemoryStore } from '@/platform/storage';
@@ -89,6 +96,46 @@ describe('jogo do milhão', () => {
     for (let i = 0; i < 3; i++) g.answer(g.rightPosition);
     expect(g.tick(100)).toBe(true);
     expect([g.end, g.prize]).toEqual(['timeout', 1_500]);
+  });
+});
+
+describe('jogo do milhão: níveis e desempate', () => {
+  it('level shifts question tier and answer time', () => {
+    expect([0, 5, 10, 15].map((i) => tierOf(i, 'easy'))).toEqual([1, 1, 2, 3]);
+    expect([0, 5, 10, 15].map((i) => tierOf(i, 'hard'))).toEqual([2, 3, 4, 4]);
+    const hard = new MilhaoGame(seeded(1), QUESTIONS, 'hard');
+    expect(hard.question.tier).toBe(2);
+    expect(hard.time).toBe(MILHAO_LEVELS.hard.time);
+  });
+
+  it('counts helps (skips included) and total answering time', () => {
+    const g = new MilhaoGame(seeded(4));
+    g.tick(5);
+    g.cartas();
+    g.skip();
+    g.tick(7);
+    expect(g.helps).toBe(2);
+    expect(g.elapsed).toBe(12);
+  });
+
+  it('ties rank fewer helps first, then less time, then the older run', () => {
+    const run = (name: string, helps: number, time: number, date: string): LeaderboardEntry => ({
+      id: name,
+      player: name,
+      name,
+      score: 1_000_000,
+      details: { helps, time },
+      date,
+    });
+    const board = [
+      run('lento', 0, 300, '2026-10-01'),
+      run('ajudado', 1, 100, '2026-10-01'),
+      run('rapido', 0, 200, '2026-10-03'),
+    ];
+    expect(rankEntries(board, 'milhao').map((e) => e.name)).toEqual(['rapido', 'lento', 'ajudado']);
+    expect(
+      placementFor(board, 1_000_000, 20, { gameId: 'milhao', details: { helps: 0, time: 250 } }),
+    ).toBe(2);
   });
 });
 

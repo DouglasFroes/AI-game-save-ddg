@@ -471,8 +471,9 @@ export const GAMES: readonly GameDefinition[] = [
     entryScene: SceneKeys.Milhao,
     load: () => import('./milhao/MilhaoScene').then((m) => [m.MilhaoScene]),
     columns: [
-      { key: 'score', label: 'Prêmio', x: 520, format: formatPrize },
-      { key: 'hits', label: 'Acertos', x: 650 },
+      { key: 'score', label: 'Prêmio', x: 450, format: formatPrize },
+      { key: 'helps', label: 'Ajudas', x: 565 },
+      { key: 'time', label: 'Tempo', x: 650, format: formatTime },
     ],
     personalBest: storedBest('milhao'),
   },
