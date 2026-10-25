@@ -48,7 +48,8 @@ service cloud.firestore {
               'blocos', 'comecome', 'nave', 'liquidos', 'ricochete', 'horda',
               'gancho', 'orbita', 'cadeia', 'escorrega', 'plinko', 'tinta',
               'espelhos', 'masmorra', 'pinball', 'dados', 'selecao', 'timesbr', 'brasileirao', 'sudoku2', 'milhao2',
-              'penalti', 'golfe', 'tenis', 'basquete', 'boliche', 'curling', 'skate', 'boxe', 'ciclismo', 'esqui'];
+              'penalti', 'golfe', 'tenis', 'basquete', 'boliche', 'curling', 'skate', 'boxe', 'ciclismo', 'esqui',
+              'arqueiro', 'galeria', 'sniper'];
     }
 
     function campaignIds() {

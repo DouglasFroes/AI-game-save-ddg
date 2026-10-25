@@ -86,6 +86,12 @@ export const TIEBREAK: Readonly<
     { key: 'helps', order: 'asc' },
     { key: 'time', order: 'asc' },
   ],
+  arqueiro: [{ key: 'bullseyes', order: 'desc' }],
+  galeria: [{ key: 'accuracy', order: 'desc' }],
+  sniper: [
+    { key: 'xs', order: 'desc' },
+    { key: 'tens', order: 'desc' },
+  ],
 };
 
 /** Negative when `a` ranks ahead of `b` on the game's tiebreaks, positive when behind, 0 if equal. */

@@ -94,6 +94,9 @@ export const GAME_CATEGORY: Readonly<Record<GameId, CategoryId>> = {
   boxe: 'esporte',
   ciclismo: 'esporte',
   esqui: 'esporte',
+  arqueiro: 'esporte',
+  galeria: 'reflexo',
+  sniper: 'esporte',
 };
 
 /** Games shown under a filter. `favorites` is the starred ids (the order given is kept). */

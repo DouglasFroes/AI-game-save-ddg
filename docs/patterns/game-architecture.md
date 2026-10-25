@@ -36,7 +36,7 @@ src/
     selecao/ timesbr/  data.ts (teams × seasons) · selecao/core.ts (pure draft + tournament sim, shared) ·
                        selecao/DreamScene.ts (shared UI) · <Name>Scene.ts (thin config);
                        brasileirao/ = same draft, then a 38-round league (`format: 'league'`)
-    penalti/ golfe/ tenis/ basquete/ boliche/ curling/ skate/ boxe/ ciclismo/ esqui/
+    penalti/ golfe/ tenis/ basquete/ boliche/ curling/ skate/ boxe/ ciclismo/ esqui/ arqueiro/ galeria/ sniper/
                        sports (hub category `esporte`): each its own pure core (physics/rules, unit-tested in
                        tests/esportes.test.ts, including bots that prove the game can be won) + a scene
     corta/ gelo/ velha/ ligue4/ minas/ bolhas/ blocos/ comecome/ nave/

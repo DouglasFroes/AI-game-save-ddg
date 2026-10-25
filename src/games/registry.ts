@@ -87,7 +87,10 @@ export type GameId =
   | 'skate'
   | 'boxe'
   | 'ciclismo'
-  | 'esqui';
+  | 'esqui'
+  | 'arqueiro'
+  | 'galeria'
+  | 'sniper';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -1345,6 +1348,54 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'missed', label: 'Perdidos', x: 655 },
     ],
     personalBest: storedBest('esqui'),
+  },
+  {
+    id: 'arqueiro',
+    title: 'Arqueiro Infinito',
+    tagline: 'Flechas até errar 3 vezes',
+    icon: 'arqueiro-icon',
+    emoji: '🏹',
+    color: 0x16a34a,
+    shade: 0x14532d,
+    entryScene: SceneKeys.Arqueiro,
+    load: () => import('./arqueiro/ArqueiroScene').then((m) => [m.ArqueiroScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'hits', label: 'Acertos', x: 565, format: formatNumber },
+    ],
+    personalBest: storedBest('arqueiro'),
+  },
+  {
+    id: 'galeria',
+    title: 'Galeria de Tiro',
+    tagline: 'Patos sim, coelhos não',
+    icon: 'galeria-icon',
+    emoji: '🦆',
+    color: 0x9333ea,
+    shade: 0x3b0764,
+    entryScene: SceneKeys.Galeria,
+    load: () => import('./galeria/GaleriaScene').then((m) => [m.GaleriaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'accuracy', label: 'Precisão', x: 565, format: (v) => `${v}%` },
+    ],
+    personalBest: storedBest('galeria'),
+  },
+  {
+    id: 'sniper',
+    title: 'Tiro de Precisão',
+    tagline: 'Luneta, vento e respiração',
+    icon: 'sniper-icon',
+    emoji: '🎯',
+    color: 0x475569,
+    shade: 0x0f172a,
+    entryScene: SceneKeys.Sniper,
+    load: () => import('./sniper/SniperScene').then((m) => [m.SniperScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'xs', label: 'X', x: 565, format: formatNumber },
+    ],
+    personalBest: storedBest('sniper'),
   },
 ];
 
