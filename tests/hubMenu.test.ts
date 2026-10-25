@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { trendingGames } from '@/platform/trending';
 import { GAMES } from '@/games/registry';
 import {
   CATEGORY_LABELS,
@@ -79,5 +80,49 @@ describe('hub categories', () => {
     expect(morning).toBe(night);
     expect(tomorrow).not.toBe(morning);
     expect(gameOfTheDay([], new Date())).toBeUndefined();
+  });
+});
+
+describe('hub: mais jogados', () => {
+  const NOW = new Date('2026-10-26T12:00:00Z');
+  const session = (
+    gameId: string,
+    durationSec: number,
+    endedAt: string,
+    id = Math.random().toString(),
+  ) =>
+    ({
+      id,
+      playerId: 'p',
+      playerName: 'x',
+      gameId,
+      durationSec,
+      score: 0,
+      startedAt: endedAt,
+      endedAt,
+    }) as never;
+
+  it('ranks by total time, then by sessions, and only counts the last 7 days', () => {
+    const ranked = trendingGames(
+      [
+        session('snake', 100, '2026-10-26T10:00:00Z'),
+        session('snake', 100, '2026-10-25T10:00:00Z'),
+        session('sudoku', 300, '2026-10-24T10:00:00Z'),
+        session('game2048', 200, '2026-10-26T09:00:00Z'),
+        session('stack', 200, '2026-10-26T08:00:00Z'),
+        session('stack', 0, '2026-10-26T08:30:00Z'),
+        session('flappybee', 9999, '2026-10-10T10:00:00Z'), // too old
+      ],
+      NOW,
+    );
+    // snake and stack tie on time and sessions (id order); game2048 has fewer sessions.
+    expect(ranked).toEqual(['sudoku', 'snake', 'stack', 'game2048']);
+  });
+
+  it('is empty without sessions and ignores broken dates; respects the limit', () => {
+    expect(trendingGames([], NOW)).toEqual([]);
+    expect(trendingGames([session('snake', 10, 'not a date')], NOW)).toEqual([]);
+    const many = ['a', 'b', 'c', 'd'].map((g, i) => session(g, 10 + i, '2026-10-26T10:00:00Z'));
+    expect(trendingGames(many, NOW, 7, 2)).toEqual(['d', 'c']);
   });
 });

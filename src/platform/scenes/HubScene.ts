@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '@/config';
-import { GAMES, type GameDefinition } from '@/games/registry';
+import { GAMES, type GameDefinition, type GameId } from '@/games/registry';
+import { trendingGames } from '@/platform/trending';
 import { HUB_FONT } from '@/platform/fonts';
 import { canFullscreen, isStandalone, toggleFullscreen } from '@/platform/fullscreen';
 import { loadGame } from '@/platform/gameLoader';
@@ -85,6 +86,10 @@ const ACCENTS = [UI.cyan, UI.violet, UI.pink] as const;
 const RANK_STROKE = ['#ffd166', '#d5dbff', '#ffb27a'] as const;
 
 /** Tab, filter and scroll survive trips into a game and back. */
+/** The hub's "most played" list (real sessions), filled in once they load. */
+let trend: { ids: GameId[]; global: boolean; at: number } | null = null;
+const TREND_REFRESH_MS = 120_000;
+
 let savedTab: Tab = 'inicio';
 let savedFilter: HubFilter = 'todos';
 const savedScroll: Record<Tab, number> = { inicio: 0, jogos: 0, lista: 0 };
@@ -236,6 +241,7 @@ export class HubScene extends Phaser.Scene {
     this.buildDock();
     this.buildInput();
     this.showTab(false);
+    void this.loadTrend();
 
     if (!reducedMotion()) {
       this.list.setAlpha(0);
@@ -696,6 +702,22 @@ export class HubScene extends Phaser.Scene {
     this.showTab(true);
   }
 
+  /** Reads the play sessions and, if the ranking changed, redraws the home rows in place. */
+  private async loadTrend(): Promise<void> {
+    if (trend && Date.now() - trend.at < TREND_REFRESH_MS) return;
+    const { telemetry } = getServices(this);
+    const sessions = await telemetry.listAll(2000).catch(() => null);
+    if (!sessions) return;
+    const next = { ids: trendingGames(sessions), global: telemetry.online, at: Date.now() };
+    const changed = !trend || trend.global !== next.global || trend.ids.join() !== next.ids.join();
+    trend = next;
+    // Redraw only when it matters and nothing is being touched.
+    if (changed && this.sys.isActive() && this.tab === 'inicio' && !this.sheet && !this.gesture) {
+      savedScroll[this.tab] = this.scroll;
+      this.showTab(false);
+    }
+  }
+
   /** Rebuilds the scrolling area for the current tab. `fade` marks a tab switch. */
   private showTab(fade: boolean): void {
     this.killFx();
@@ -773,8 +795,23 @@ export class HubScene extends Phaser.Scene {
     const favs = services.favorites.list();
     const recent = services.recents.list().flatMap((id) => GAMES.filter((g) => g.id === id));
     if (recent.length > 0) y = this.row('Continue jogando', recent, y, { accent: n++ });
-    const top10 = [...GAMES].sort((a, b) => hashOf(a.id + day) - hashOf(b.id + day)).slice(0, 10);
-    y = this.row('Top 10 de hoje', top10, y, { numbered: true, accent: n++ });
+    if (trend && trend.ids.length >= 3) {
+      // Real numbers: the games players spent the most time on this week.
+      const hot = trend.ids.flatMap((id) => GAMES.filter((g) => g.id === id));
+      y = this.row(
+        trend.global ? 'Top 10 · mais jogados da semana' : 'Os que você mais joga',
+        hot,
+        y,
+        {
+          numbered: true,
+          accent: n++,
+        },
+      );
+    } else {
+      // Nobody has played enough yet: say these are just picks for the day, not a ranking.
+      const picks = [...GAMES].sort((a, b) => hashOf(a.id + day) - hashOf(b.id + day)).slice(0, 10);
+      y = this.row('Sugestões de hoje', picks, y, { accent: n++ });
+    }
     const fresh = GAMES.filter((g) => !g.personalBest(services))
       .sort((a, b) => hashOf(b.id + day) - hashOf(a.id + day))
       .slice(0, 12);
