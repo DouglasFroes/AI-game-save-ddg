@@ -36,6 +36,9 @@ src/
     selecao/ timesbr/  data.ts (teams × seasons) · selecao/core.ts (pure draft + tournament sim, shared) ·
                        selecao/DreamScene.ts (shared UI) · <Name>Scene.ts (thin config);
                        brasileirao/ = same draft, then a 38-round league (`format: 'league'`)
+    olimpiadas/        attempt.ts (pure stages: meter / sweep / mash) · AttemptScene.ts (shared UI); the events
+                       saltodist/ dardo/ pesos/ saltoalt/ lance/ are just `core.ts` rules + a thin scene;
+                       cem/ arco/ natacao/ skeet/ barreiras/ have their own core + scene (category `esporte`)
     corta/ gelo/ velha/ ligue4/ minas/ bolhas/ blocos/ comecome/ nave/
                        core.ts (pure) · <Name>Scene.ts extending MiniScene (platform/ui/miniGame.ts:
                        background, back button, score, finish() -> GameOver). Hub icon = `emoji` field
