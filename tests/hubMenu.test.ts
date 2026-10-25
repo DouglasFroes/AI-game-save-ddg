@@ -47,7 +47,7 @@ describe('hub categories', () => {
   });
 
   it('has no empty category chip', () => {
-    const categories: CategoryId[] = ['acao', 'puzzle', 'mesa', 'reflexo'];
+    const categories: CategoryId[] = ['acao', 'puzzle', 'mesa', 'reflexo', 'esporte'];
     for (const c of categories) {
       expect(filterGames(GAMES, c, []).length, c).toBeGreaterThan(3);
     }

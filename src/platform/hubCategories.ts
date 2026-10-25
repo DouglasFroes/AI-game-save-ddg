@@ -1,6 +1,6 @@
 import type { GameId } from '@/games/registry';
 
-export type CategoryId = 'acao' | 'puzzle' | 'mesa' | 'reflexo';
+export type CategoryId = 'acao' | 'puzzle' | 'mesa' | 'reflexo' | 'esporte';
 
 /** Hub filters: "all" and "favorites" are views over every game, the rest group games by feel. */
 export type HubFilter = 'todos' | 'favoritos' | CategoryId;
@@ -12,6 +12,7 @@ export const CATEGORY_LABELS: Readonly<Record<HubFilter, string>> = {
   puzzle: 'Puzzle',
   mesa: 'Mesa',
   reflexo: 'Reflexo',
+  esporte: 'Esportes',
 };
 
 /** Every game sits in exactly one category (the type forces new games to pick one). */
@@ -83,6 +84,16 @@ export const GAME_CATEGORY: Readonly<Record<GameId, CategoryId>> = {
   selecao: 'mesa',
   timesbr: 'mesa',
   brasileirao: 'mesa',
+  cem: 'esporte',
+  saltodist: 'esporte',
+  dardo: 'esporte',
+  arco: 'esporte',
+  natacao: 'esporte',
+  pesos: 'esporte',
+  saltoalt: 'esporte',
+  skeet: 'esporte',
+  lance: 'esporte',
+  barreiras: 'esporte',
 };
 
 /** Games shown under a filter. `favorites` is the starred ids (the order given is kept). */

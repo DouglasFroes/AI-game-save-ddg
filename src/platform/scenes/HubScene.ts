@@ -78,8 +78,8 @@ const TAB_ICONS: Readonly<Record<Tab, IconKind>> = {
   lista: 'bookmark',
 };
 const TABS: readonly Tab[] = ['inicio', 'jogos', 'lista'];
-const ROW_CATEGORIES: readonly CategoryId[] = ['acao', 'puzzle', 'mesa', 'reflexo'];
-const FILTERS: readonly HubFilter[] = ['todos', 'acao', 'puzzle', 'mesa', 'reflexo'];
+const ROW_CATEGORIES: readonly CategoryId[] = ['acao', 'puzzle', 'mesa', 'reflexo', 'esporte'];
+const FILTERS: readonly HubFilter[] = ['todos', 'acao', 'puzzle', 'mesa', 'reflexo', 'esporte'];
 const AVATAR_COLORS = [0x38e1ff, 0x8b5cf6, 0xff5fb8, 0x34d399, 0xfbbf24, 0xfb7185] as const;
 const ACCENTS = [UI.cyan, UI.violet, UI.pink] as const;
 const RANK_STROKE = ['#ffd166', '#d5dbff', '#ffb27a'] as const;
@@ -1171,9 +1171,9 @@ export class HubScene extends Phaser.Scene {
     const y = HEADER_H + CHIPS_H / 2 - 4;
     const h = 56;
     const labels = FILTERS.map((f) =>
-      txt(this, 0, 0, CATEGORY_LABELS[f], 22, { color: '#ffffff' }),
+      txt(this, 0, 0, CATEGORY_LABELS[f], 20, { color: '#ffffff' }),
     );
-    const widths = labels.map((l) => Math.ceil(l.width + 44));
+    const widths = labels.map((l) => Math.ceil(l.width + 34));
     const total = widths.reduce((a, b) => a + b, 0);
     const gap = Phaser.Math.Clamp((CONTENT_W - total) / (FILTERS.length - 1), 6, 14);
     let x = MARGIN + (CONTENT_W - total - gap * (FILTERS.length - 1)) / 2;

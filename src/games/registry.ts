@@ -77,7 +77,17 @@ export type GameId =
   | 'dados'
   | 'selecao'
   | 'timesbr'
-  | 'brasileirao';
+  | 'brasileirao'
+  | 'cem'
+  | 'saltodist'
+  | 'dardo'
+  | 'arco'
+  | 'natacao'
+  | 'pesos'
+  | 'saltoalt'
+  | 'skeet'
+  | 'lance'
+  | 'barreiras';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -1160,6 +1170,198 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'pos', label: 'Posição', x: 650, format: (v) => `${v}º` },
     ],
     personalBest: storedBest('brasileirao'),
+  },
+  {
+    id: 'cem',
+    title: '100 Metros Rasos',
+    tagline: 'Alterne os pés e corra!',
+    icon: 'cem-icon',
+    emoji: '🏃',
+    color: 0x16a34a,
+    shade: 0x052e16,
+    entryScene: SceneKeys.Cem,
+    load: () => import('./cem/CemScene').then((m) => [m.CemScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      {
+        key: 'ms',
+        label: 'Tempo',
+        x: 565,
+        format: (v) => `${(v / 1000).toFixed(2).replace('.', ',')} s`,
+      },
+      { key: 'place', label: 'Lugar', x: 655, format: (v) => (v ? `${v}º` : '–') },
+    ],
+    personalBest: storedBest('cem'),
+  },
+  {
+    id: 'saltodist',
+    title: 'Salto em Distância',
+    tagline: 'Corra, pise e voe',
+    icon: 'saltodist-icon',
+    emoji: '🦘',
+    color: 0xea580c,
+    shade: 0x431407,
+    entryScene: SceneKeys.SaltoDist,
+    load: () => import('./saltodist/SaltoDistScene').then((m) => [m.SaltoDistScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      {
+        key: 'best',
+        label: 'Melhor',
+        x: 630,
+        format: (v) => `${(v / 100).toFixed(2).replace('.', ',')} m`,
+      },
+    ],
+    personalBest: storedBest('saltodist'),
+  },
+  {
+    id: 'dardo',
+    title: 'Dardo',
+    tagline: 'Força, ângulo e vento',
+    icon: 'dardo-icon',
+    emoji: '🗡️',
+    color: 0x059669,
+    shade: 0x022c22,
+    entryScene: SceneKeys.Dardo,
+    load: () => import('./dardo/DardoScene').then((m) => [m.DardoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      {
+        key: 'best',
+        label: 'Melhor',
+        x: 630,
+        format: (v) => `${(v / 10).toFixed(1).replace('.', ',')} m`,
+      },
+    ],
+    personalBest: storedBest('dardo'),
+  },
+  {
+    id: 'arco',
+    title: 'Tiro com Arco',
+    tagline: 'Mire no centro',
+    icon: 'arco-icon',
+    emoji: '🏹',
+    color: 0x2563eb,
+    shade: 0x172554,
+    entryScene: SceneKeys.Arco,
+    load: () => import('./arco/ArcoScene').then((m) => [m.ArcoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'rings', label: 'Anéis', x: 565 },
+      { key: 'tens', label: 'Dez', x: 655 },
+    ],
+    personalBest: storedBest('arco'),
+  },
+  {
+    id: 'natacao',
+    title: 'Natação 50 m',
+    tagline: 'Nade no ritmo',
+    icon: 'natacao-icon',
+    emoji: '🏊',
+    color: 0x0284c7,
+    shade: 0x082f49,
+    entryScene: SceneKeys.Natacao,
+    load: () => import('./natacao/NatacaoScene').then((m) => [m.NatacaoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 460, format: formatNumber },
+      {
+        key: 'ms',
+        label: 'Tempo',
+        x: 630,
+        format: (v) => `${(v / 1000).toFixed(2).replace('.', ',')} s`,
+      },
+    ],
+    personalBest: storedBest('natacao'),
+  },
+  {
+    id: 'pesos',
+    title: 'Levantamento de Peso',
+    tagline: 'Quanto você levanta?',
+    icon: 'pesos-icon',
+    emoji: '🏋️',
+    color: 0x7c3aed,
+    shade: 0x2e1065,
+    entryScene: SceneKeys.Pesos,
+    load: () => import('./pesos/PesosScene').then((m) => [m.PesosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      { key: 'best', label: 'Maior', x: 630, format: (v) => `${v} kg` },
+    ],
+    personalBest: storedBest('pesos'),
+  },
+  {
+    id: 'saltoalt',
+    title: 'Salto em Altura',
+    tagline: 'Suba a barra',
+    icon: 'saltoalt-icon',
+    emoji: '🤸',
+    color: 0x0ea5e9,
+    shade: 0x0c4a6e,
+    entryScene: SceneKeys.SaltoAlt,
+    load: () => import('./saltoalt/SaltoAltScene').then((m) => [m.SaltoAltScene]),
+    columns: [
+      {
+        key: 'score',
+        label: 'Altura',
+        x: 520,
+        format: (v) => `${(v / 100).toFixed(2).replace('.', ',')} m`,
+      },
+      { key: 'jumps', label: 'Saltos', x: 650 },
+    ],
+    personalBest: storedBest('saltoalt'),
+  },
+  {
+    id: 'skeet',
+    title: 'Tiro ao Prato',
+    tagline: 'Quebre os 25 pratos',
+    icon: 'skeet-icon',
+    emoji: '🎯',
+    color: 0x65a30d,
+    shade: 0x1a2e05,
+    entryScene: SceneKeys.Skeet,
+    load: () => import('./skeet/SkeetScene').then((m) => [m.SkeetScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 480, format: formatNumber },
+      { key: 'hits', label: 'Pratos', x: 630 },
+    ],
+    personalBest: storedBest('skeet'),
+  },
+  {
+    id: 'lance',
+    title: 'Lance Livre',
+    tagline: 'Cestas de 1, 2 e 3',
+    icon: 'lance-icon',
+    emoji: '🏀',
+    color: 0xea580c,
+    shade: 0x7c2d12,
+    entryScene: SceneKeys.Lance,
+    load: () => import('./lance/LanceScene').then((m) => [m.LanceScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'made', label: 'Cestas', x: 650 },
+    ],
+    personalBest: storedBest('lance'),
+  },
+  {
+    id: 'barreiras',
+    title: 'Corrida com Barreiras',
+    tagline: 'Pule as 10 barreiras',
+    icon: 'barreiras-icon',
+    emoji: '🚧',
+    color: 0xdb2777,
+    shade: 0x500724,
+    entryScene: SceneKeys.Barreiras,
+    load: () => import('./barreiras/BarreirasScene').then((m) => [m.BarreirasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 460, format: formatNumber },
+      {
+        key: 'ms',
+        label: 'Tempo',
+        x: 630,
+        format: (v) => `${(v / 1000).toFixed(2).replace('.', ',')} s`,
+      },
+    ],
+    personalBest: storedBest('barreiras'),
   },
 ];
 

@@ -123,6 +123,16 @@ export const SceneKeys = {
   Selecao: 'Selecao',
   TimesBr: 'TimesBr',
   Brasileirao: 'Brasileirao',
+  Cem: 'Cem',
+  SaltoDist: 'SaltoDist',
+  Dardo: 'Dardo',
+  Arco: 'Arco',
+  Natacao: 'Natacao',
+  Pesos: 'Pesos',
+  SaltoAlt: 'SaltoAlt',
+  Skeet: 'Skeet',
+  Lance: 'Lance',
+  Barreiras: 'Barreiras',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];
