@@ -28,9 +28,12 @@ export const LEVELS: Readonly<Record<Level, { label: string; tierShift: number; 
 };
 export const LEVEL_ORDER: readonly Level[] = ['easy', 'normal', 'hard'];
 
-/** Difficulty of each step: easy up to R$ 5 mil, medium up to 50 mil, hard, then the final one. */
+/**
+ * Difficulty of each step: easy for the first four (up to R$ 4 mil), medium up to R$ 40 mil, hard up
+ * to R$ 300 mil, then the last three (R$ 400 mil, R$ 500 mil and the million).
+ */
 export const tierOf = (step: number, level: Level = 'normal'): Question['tier'] => {
-  const base = step < 5 ? 1 : step < 10 ? 2 : step < 15 ? 3 : 4;
+  const base = step < 4 ? 1 : step < 9 ? 2 : step < 13 ? 3 : 4;
   return Math.min(4, Math.max(1, base + LEVELS[level].tierShift)) as Question['tier'];
 };
 
@@ -61,12 +64,16 @@ export class MilhaoGame {
   over = false;
   end: EndReason | null = null;
   prize = 0;
+  /** Texts asked in this run, in order. */
+  readonly asked: string[] = [];
   private readonly seen = new Set<string>();
 
   constructor(
     private readonly rng: Rng = Math.random,
     private readonly bank: readonly Question[] = QUESTIONS,
     readonly level: Level = 'normal',
+    /** Question texts asked in earlier runs, oldest first: the least recently seen come first. */
+    private readonly recent: readonly string[] = [],
   ) {
     this.time = LEVELS[level].time;
     this.next();
@@ -93,8 +100,13 @@ export class MilhaoGame {
     const tier = tierOf(this.step, this.level);
     let pool = this.bank.filter((q) => q.tier === tier && !this.seen.has(q.text));
     if (pool.length === 0) pool = this.bank.filter((q) => q.tier === tier);
+    // Prefer what the player has not seen lately (never seen = -1), so runs rarely repeat.
+    const lastSeen = (q: Question) => this.recent.lastIndexOf(q.text);
+    const oldest = Math.min(...pool.map(lastSeen));
+    pool = pool.filter((q) => lastSeen(q) === oldest);
     this.question = pool[Math.floor(this.rng() * pool.length)]!;
     this.seen.add(this.question.text);
+    this.asked.push(this.question.text);
     this.order = [0, 1, 2, 3].sort(() => this.rng() - 0.5);
     this.removed = new Set();
     this.time = LEVELS[this.level].time;
@@ -149,7 +161,8 @@ export class MilhaoGame {
   universitarios(): number[] {
     if (this.over || this.used.has('universitarios')) return [];
     this.used.add('universitarios');
-    const sure = this.question.tier === 1 ? 0.9 : this.question.tier === 2 ? 0.75 : 0.6;
+    // The students know less and less as the questions get harder.
+    const sure = [0, 0.85, 0.65, 0.5, 0.4][this.question.tier]!;
     const open = [0, 1, 2, 3].filter((p) => !this.removed.has(p));
     return [0, 1, 2].map(() =>
       this.rng() < sure ? this.rightPosition : open[Math.floor(this.rng() * open.length)]!,
@@ -160,7 +173,7 @@ export class MilhaoGame {
   placas(): number[] {
     if (this.over || this.used.has('placas')) return [];
     this.used.add('placas');
-    const lean = this.question.tier === 1 ? 3 : this.question.tier === 2 ? 1.8 : 1.1;
+    const lean = [0, 2.6, 1.6, 1.1, 0.9][this.question.tier]!;
     const raw = [0, 1, 2, 3].map((p) =>
       this.removed.has(p) ? 0 : (0.3 + this.rng()) * (p === this.rightPosition ? lean : 1),
     );

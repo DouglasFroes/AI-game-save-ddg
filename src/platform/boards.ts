@@ -6,6 +6,8 @@
 const BOARD_ALIAS: Readonly<Record<string, string>> = {
   // Sudoku hints were unlimited, which let runs reach scores the game never meant to allow.
   sudoku: 'sudoku2',
+  // Jogo do Milhão: harder, much bigger question bank and a fresh start for everyone.
+  milhao: 'milhao2',
 };
 
 export const boardId = (gameId: string): string => BOARD_ALIAS[gameId] ?? gameId;

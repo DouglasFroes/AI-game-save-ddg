@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import type { GameOverData } from '@/platform/scenes/GameOverScene';
 import { addText, Button, iconButton } from '@/platform/ui/widgets';
+import { BrowserStore, readJson, writeJson } from '@/platform/storage';
 import { getServices } from '@/services';
 import { formatTime } from '@/platform/ranking';
 import { formatPrize } from './art';
@@ -16,6 +17,8 @@ import {
 } from './core';
 
 const CX = GAME_WIDTH / 2;
+const RECENT_KEY = 'arcade.milhao.recent';
+const RECENT_MAX = 400;
 const LETTERS = ['A', 'B', 'C', 'D'];
 const ANSWER_Y = 560;
 const ANSWER_GAP = 112;
@@ -58,7 +61,12 @@ export class MilhaoScene extends Phaser.Scene {
 
   init(data: MilhaoData = {}): void {
     this.level = data.level ?? null;
-    this.game_ = new MilhaoGame(Math.random, undefined, this.level ?? 'normal');
+    this.game_ = new MilhaoGame(
+      Math.random,
+      undefined,
+      this.level ?? 'normal',
+      readJson<string[]>(new BrowserStore(), RECENT_KEY) ?? [],
+    );
     this.answers = [];
     this.helpButtons = new Map();
     this.busy = false;
@@ -142,6 +150,16 @@ export class MilhaoScene extends Phaser.Scene {
     if (import.meta.env.DEV) (window as unknown as { __milhao?: MilhaoScene }).__milhao = this;
   }
 
+  /** Saves what was asked, so the next runs start with questions the player has not seen lately. */
+  private rememberQuestions(): void {
+    if (!this.level) return; // still on the level picker: this game is thrown away
+    const store = new BrowserStore();
+    const before = (readJson<string[]>(store, RECENT_KEY) ?? []).filter(
+      (t) => !this.game_.asked.includes(t),
+    );
+    writeJson(store, RECENT_KEY, [...before, ...this.game_.asked].slice(-RECENT_MAX));
+  }
+
   private showLevelPicker(): void {
     this.busy = true;
     const shade = this.add
@@ -194,6 +212,7 @@ export class MilhaoScene extends Phaser.Scene {
 
   private showQuestion(): void {
     const g = this.game_;
+    this.rememberQuestions();
     const q = g.question;
     this.header.setText(
       `Pergunta ${g.step + 1} de ${QUESTION_COUNT} · ${formatPrize(LADDER[g.step]!)}`,

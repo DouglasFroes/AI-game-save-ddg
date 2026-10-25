@@ -1,3 +1,4 @@
+import { boardId } from '@/platform/boards';
 import { CLUBS } from '@/games/timesbr/data';
 import { NATIONS } from '@/games/selecao/data';
 import {
@@ -108,6 +109,35 @@ describe('jogo do milhão', () => {
     for (let i = 0; i < 3; i++) g.answer(g.rightPosition);
     expect(g.tick(100)).toBe(true);
     expect([g.end, g.prize]).toEqual(['timeout', 1_500]);
+  });
+});
+
+describe('jogo do milhão: banco e repetição', () => {
+  it('has a big bank with plenty of hard questions, and the ladder gets harder', () => {
+    const count = (t: number) => QUESTIONS.filter((q) => q.tier === t).length;
+    expect(QUESTIONS.length).toBeGreaterThanOrEqual(200);
+    expect(count(1)).toBeGreaterThanOrEqual(30);
+    expect(count(3)).toBeGreaterThanOrEqual(40);
+    expect(count(4)).toBeGreaterThanOrEqual(40);
+    expect([0, 3, 4, 8, 9, 12, 13, 15].map((i) => tierOf(i))).toEqual([1, 1, 2, 2, 3, 3, 4, 4]);
+  });
+
+  it('a new run starts with questions the player has not seen lately', () => {
+    const first = new MilhaoGame(seeded(1));
+    for (let i = 0; i < QUESTION_COUNT; i++) first.answer(first.rightPosition);
+    const second = new MilhaoGame(seeded(1), QUESTIONS, 'normal', first.asked);
+    const again = new Set(first.asked);
+    const asked: string[] = [];
+    for (let i = 0; i < QUESTION_COUNT; i++) {
+      asked.push(second.question.text);
+      second.answer(second.rightPosition);
+    }
+    // The bank is far bigger than a run, so nothing from the first run comes back.
+    expect(asked.filter((t) => again.has(t))).toEqual([]);
+  });
+
+  it('the Milhão ranking starts fresh on its own board', () => {
+    expect(boardId('milhao')).toBe('milhao2');
   });
 });
 
