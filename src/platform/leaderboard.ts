@@ -265,6 +265,11 @@ export class ResilientLeaderboard {
     return this.local.list(gameId, max);
   }
 
+  /** The board saved on this device only (no network). */
+  listLocal(gameId: string, max = 10): Promise<LeaderboardEntry[]> {
+    return this.local.list(gameId, max);
+  }
+
   /**
    * Sends the run only if it makes the top 20.
    * Returns its place and where it went, or null when it didn't qualify.

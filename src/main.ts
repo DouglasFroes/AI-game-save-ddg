@@ -4,6 +4,7 @@ import { isAdminRoute, mountAdminDashboard } from '@/platform/adminDashboard';
 import { fullscreenOnFirstTap } from '@/platform/fullscreen';
 import { BootScene } from '@/platform/scenes/BootScene';
 import { GameOverScene } from '@/platform/scenes/GameOverScene';
+import { HallScene } from '@/platform/scenes/HallScene';
 import { HubScene } from '@/platform/scenes/HubScene';
 import { LeaderboardScene } from '@/platform/scenes/LeaderboardScene';
 import { bindBrowserLifecycle } from '@/platform/sessionTracker';
@@ -30,7 +31,7 @@ if (isAdminRoute()) {
     disableContextMenu: true,
     render: { antialias: true },
     // Each game's scenes are added on demand by platform/gameLoader.ts.
-    scene: [BootScene, HubScene, LeaderboardScene, GameOverScene],
+    scene: [BootScene, HubScene, LeaderboardScene, GameOverScene, HallScene],
   });
 
   provideServices(game, services);

@@ -51,6 +51,7 @@ export const SceneKeys = {
   Boot: 'Boot',
   Hub: 'Hub',
   Leaderboard: 'Leaderboard',
+  Hall: 'Hall',
   GameOver: 'GameOver',
   DogLevels: 'DogLevels',
   DogGame: 'DogGame',

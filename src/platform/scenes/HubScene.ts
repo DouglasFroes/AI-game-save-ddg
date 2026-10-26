@@ -790,7 +790,7 @@ export class HubScene extends Phaser.Scene {
     this.list.add(this.progress);
     this.drawProgress();
 
-    let y = HERO_Y + HERO_H + 30;
+    let y = this.hallCard(HERO_Y + HERO_H + 26);
     let n = 0;
     const favs = services.favorites.list();
     const recent = services.recents.list().flatMap((id) => GAMES.filter((g) => g.id === id));
@@ -863,7 +863,44 @@ export class HubScene extends Phaser.Scene {
       drawIcon(this, 'crown', -w / 2 + 34, 0, 26, UI.gold),
       label,
     ]);
+    this.press(chip, w, 64, () => this.scene.start(SceneKeys.Hall), { inList: true });
     this.list.add(chip);
+  }
+
+  /** Entry to the Hall da Fama: who holds the most records across all games. */
+  private hallCard(top: number): number {
+    const h = 128;
+    const c = this.add.container(GAME_WIDTH / 2, top + h / 2);
+    c.add(this.halo(-CONTENT_W / 2 + 70, 0, UI.gold, 1.6, 0.5));
+    c.add(this.add.image(0, 0, glassArt(this, CONTENT_W, h, 30, { tint: UI.gold, fill: 0.12 })));
+    const trophy = drawIcon(this, 'trophy', -CONTENT_W / 2 + 70, 0, 60, UI.gold);
+    c.add(trophy);
+    c.add(
+      txt(this, -CONTENT_W / 2 + 130, -22, 'Hall da Fama', 32, { color: '#ffe08a' }).setOrigin(
+        0,
+        0.5,
+      ),
+    );
+    const sub = txt(this, -CONTENT_W / 2 + 130, 22, 'Quem tem mais recordes? Desafie!', 20, {
+      color: UI.soft,
+      weight: 'normal',
+    }).setOrigin(0, 0.5);
+    fit(sub, CONTENT_W - 210, 14);
+    c.add(sub);
+    c.add(drawIcon(this, 'chevron', CONTENT_W / 2 - 36, 0, 28, UI.gold));
+    this.press(c, CONTENT_W, h, () => this.scene.start(SceneKeys.Hall), {
+      inList: true,
+      down: 0.97,
+    });
+    this.loop({
+      targets: trophy,
+      angle: { from: -6, to: 6 },
+      duration: 1300,
+      yoyo: true,
+      ease: 'Sine.easeInOut',
+    });
+    this.list.add(c);
+    return top + h + 30;
   }
 
   private goSlide(next: number, dir: 1 | -1 = 1): void {
