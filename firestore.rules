@@ -4,8 +4,10 @@ rules_version = '2';
 // can hold several places (the game shows only the top 20). Campaign games (a running total of
 // all levels) keep one document per player instead, named after their uid, which they update.
 // - anyone can read the rankings
-// - a signed-in (anonymous) player can only create entries in their own name (`player` = uid)
-// - entries are never changed or deleted by the game
+// - only players signed in with Google can add entries, and only in their own name (`player` = uid)
+// - an anonymous player joining an existing Google account hands its runs over: it may change
+//   `player` (and nothing else) on its own entries, to an account that has linked it
+//   (accounts/{googleUid}/links/{anonymousUid}, written by that Google account)
 // - fields and value ranges are validated to limit abuse
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -13,16 +15,38 @@ service cloud.firestore {
       allow read: if gameId in gameIds();
 
       allow create: if request.auth != null
+        && isGoogle()
         && request.resource.data.player == request.auth.uid
         && gameId in gameIds()
         && validEntry(request.resource.data);
 
       allow update: if request.auth != null
-        && entryId == request.auth.uid
-        && request.resource.data.player == request.auth.uid
-        && gameId in campaignIds()
-        && validEntry(request.resource.data);
+        && ((isGoogle()
+            && entryId == request.auth.uid
+            && request.resource.data.player == request.auth.uid
+            && gameId in campaignIds()
+            && validEntry(request.resource.data))
+          || (resource.data.player == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player'])
+            && request.resource.data.player is string
+            && exists(/databases/$(database)/documents/accounts/$(request.resource.data.player)/links/$(request.auth.uid))));
 
+      // A campaign total moved over from another device is merged into the player's own
+      // document, and the old one removed.
+      allow delete: if request.auth != null
+        && isGoogle()
+        && gameId in campaignIds()
+        && resource.data.player == request.auth.uid
+        && entryId != request.auth.uid;
+    }
+
+    match /accounts/{uid}/links/{other} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && isGoogle()
+        && request.resource.data.keys().hasOnly(['at'])
+        && request.resource.data.at == request.time;
       allow delete: if false;
     }
 
@@ -50,6 +74,10 @@ service cloud.firestore {
               'espelhos', 'masmorra', 'pinball', 'dados', 'selecao', 'timesbr', 'brasileirao', 'sudoku2', 'milhao2',
               'penalti', 'golfe', 'tenis', 'basquete', 'boliche', 'curling', 'skate', 'boxe', 'ciclismo', 'esqui',
               'arqueiro', 'galeria', 'sniper'];
+    }
+
+    function isGoogle() {
+      return 'google.com' in request.auth.token.firebase.identities;
     }
 
     function campaignIds() {

@@ -32,6 +32,8 @@ export const CAMPAIGN_GAMES: ReadonlySet<string> = new Set(['doguinho', 'memofas
 /** A remote board that assigns its own player id (e.g. Firebase anonymous uid). */
 export interface RemoteLeaderboard extends LeaderboardRepository {
   playerId(): Promise<string>;
+  /** False while the player isn't signed in (only signed-in players reach the global board). */
+  canSubmit?(): Promise<boolean>;
 }
 
 export const MAX_NAME_LENGTH = 16;
@@ -189,7 +191,8 @@ export interface Submission {
   readonly details: ScoreDetails;
 }
 
-export type SubmitResult = 'global' | 'local';
+/** `login`: kept on the device and queued; it goes global once the player signs in. */
+export type SubmitResult = 'global' | 'local' | 'login';
 
 /** A run saved on the device while the global board was out of reach. */
 export interface PendingScore {
@@ -232,6 +235,7 @@ export class ResilientLeaderboard {
     const { remote, outbox } = this;
     if (!remote || !outbox || outbox.size === 0) return 0;
     try {
+      if (!(await this.signedIn())) return 0;
       const uid = await remote.playerId();
       this.remoteId = uid;
       return await outbox.drain((p) =>
@@ -241,6 +245,18 @@ export class ResilientLeaderboard {
       console.warn('Ainda sem conexão com o ranking global.', err);
       return 0;
     }
+  }
+
+  /** Whether runs can go to the global board now (always, for backends without accounts). */
+  async signedIn(): Promise<boolean> {
+    if (!this.remote?.canSubmit) return this.remote !== null;
+    return this.remote.canSubmit().catch(() => false);
+  }
+
+  /** Re-reads the remote player id (after signing in or out). */
+  async refreshIdentity(): Promise<void> {
+    if (!this.remote) return;
+    this.remoteId = await this.remote.playerId().catch(() => this.remoteId);
   }
 
   isMine(entry: LeaderboardEntry): boolean {
@@ -339,6 +355,11 @@ export class ResilientLeaderboard {
     const entry = { ...base, id, player: this.localId };
     await this.local.submit(gameId, entry, replace);
     if (!this.remote) return 'local';
+    if (this.remote.canSubmit && !(await this.signedIn())) {
+      // Not signed in: the run waits on the device and is sent right after signing in.
+      this.queue({ gameId, entry, replace });
+      return 'login';
+    }
     try {
       this.remoteId = await this.remote.playerId();
       await this.remote.submit(gameId, { ...base, id, player: this.remoteId }, replace);
@@ -350,12 +371,13 @@ export class ResilientLeaderboard {
         'Não foi possível enviar ao ranking global; fica para quando voltar a conexão.',
         err,
       );
-      // A campaign total supersedes the older queued ones; every other run is kept on its own.
-      this.outbox?.add(
-        { gameId, entry, replace },
-        replace ? (q) => q.gameId === gameId : undefined,
-      );
+      this.queue({ gameId, entry, replace });
       return 'local';
     }
+  }
+
+  /** A campaign total supersedes the older queued ones; every other run is kept on its own. */
+  private queue(p: PendingScore): void {
+    this.outbox?.add(p, p.replace ? (q) => q.gameId === p.gameId : undefined);
   }
 }

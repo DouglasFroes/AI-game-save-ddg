@@ -34,6 +34,7 @@ import {
   sunburstArt,
   UI,
 } from '@/platform/ui/hubTheme';
+import { openAccount } from '@/platform/ui/accountDialog';
 import { drawIcon } from '@/platform/ui/icons';
 import { getServices } from '@/services';
 
@@ -66,7 +67,7 @@ const MEDAL_TITLE: Record<Medal, string> = {
 };
 
 /** Survives scene restarts: the table is costly to read, and the open player is kept. */
-let cache: { at: number; online: boolean; table: Medalist[] } | null = null;
+let cache: { at: number; online: boolean; table: Medalist[]; who: string } | null = null;
 let openPlayer: string | null = null;
 
 const medalLine = (m: Medalist): string => `🥇 ${m.gold}   🥈 ${m.silver}   🥉 ${m.bronze}`;
@@ -151,7 +152,8 @@ export class HallScene extends Phaser.Scene {
   private async fetchTable(force: boolean): Promise<void> {
     if (this.loading) return;
     const { leaderboard } = getServices(this);
-    if (!force && cache && Date.now() - cache.at < CACHE_MS) {
+    const who = getServices(this).account.current()?.email ?? '';
+    if (!force && cache && cache.who === who && Date.now() - cache.at < CACHE_MS) {
       this.apply(cache.table, cache.online);
       return;
     }
@@ -171,7 +173,7 @@ export class HallScene extends Phaser.Scene {
     this.loading = false;
     if (!this.sys.isActive()) return;
     const table = medalTable(boards);
-    cache = { at: Date.now(), online, table };
+    cache = { at: Date.now(), online, table, who };
     this.apply(table, cache.online);
   }
 
@@ -331,28 +333,37 @@ export class HallScene extends Phaser.Scene {
     ).setOrigin(0, 0.5);
     fitText(line, 300, 13);
     box.add(line);
+    const { account } = getServices(this);
+    // Signed-out players can't reach the global board: the strip asks them to sign in.
+    const login = account.available && !account.current();
     const pillW = 200;
     const px = CONTENT_W / 2 - pillW / 2 - 12;
-    box.add(
-      this.add.image(
-        px,
-        0,
-        pillArt(this, pillW, 42, me ? [0xf59e0b, 0xd97706] : [0x2a2e55, 0x1d2040], false),
-      ),
-    );
+    const colors = login ? [0x4285f4, 0x2563eb] : me ? [0xf59e0b, 0xd97706] : [0x2a2e55, 0x1d2040];
+    box.add(this.add.image(px, 0, pillArt(this, pillW, 42, colors, false)));
     const label = soraText(
       this,
       px,
       0,
-      me ? `🏆 ${this.placeOf(me)}º no Hall` : '🚀 Entre no pódio',
+      login ? 'G  Entrar com Google' : me ? `🏆 ${this.placeOf(me)}º no Hall` : '🚀 Entre no pódio',
       16,
-      {
-        color: '#ffffff',
-      },
+      { color: '#ffffff' },
     );
     fitText(label, pillW - 20, 12);
     box.add(label);
-    if (me)
+    if (login) {
+      void account.prepare();
+      attachSpringPress(
+        this,
+        box,
+        CONTENT_W,
+        62,
+        () =>
+          void openAccount(this).then(() => {
+            if (this.sys.isActive() && account.current()) void this.fetchTable(true);
+          }),
+        { downScale: 0.97 },
+      );
+    } else if (me)
       attachSpringPress(this, box, CONTENT_W, 62, () => this.openPlayer(me), { downScale: 0.97 });
     this.strip.add(box);
   }

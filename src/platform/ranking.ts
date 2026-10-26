@@ -41,6 +41,8 @@ export async function watchBoard(services: Services, gameId: string): Promise<vo
 
 export function rankMessage(r: AutoSubmit | null, online: boolean): string {
   if (!r) return online ? 'Fora do top 20 global desta vez' : 'Fora do top 20 deste aparelho';
+  if (r.result === 'login')
+    return `Top 20: ${r.rank}º lugar! Entre com Google para valer no global`;
   const where = r.result === 'global' ? 'global' : 'deste aparelho';
   return `Entrou no top 20 ${where}: ${r.rank}º lugar!`;
 }
@@ -59,6 +61,7 @@ export async function submitScore(
 export function submitMessage(result: SubmitResult | null): string {
   if (result === 'global') return 'Enviado ao ranking global!';
   if (result === 'local') return 'Salvo no ranking deste aparelho.';
+  if (result === 'login') return 'Salvo aqui. Entre com Google para enviar ao global.';
   return '';
 }
 

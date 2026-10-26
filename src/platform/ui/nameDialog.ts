@@ -26,7 +26,7 @@ const text = (
 ) => addText(scene, x, y, value, size, { color, weight, family: HUB_FONT });
 
 /** A gradient pill button with a springy press. */
-function pillButton(
+export function pillButton(
   scene: Phaser.Scene,
   x: number,
   y: number,

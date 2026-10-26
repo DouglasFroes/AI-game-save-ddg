@@ -20,6 +20,7 @@ import { gameIdFromSearch } from '@/platform/shareLink';
 import { formatNumber } from '@/platform/ranking';
 import type { Overtake } from '@/platform/rankWatch';
 import { drawIcon, type IconKind } from '@/platform/ui/icons';
+import { openAccount } from '@/platform/ui/accountDialog';
 import { askName } from '@/platform/ui/nameDialog';
 import {
   ALL,
@@ -271,6 +272,23 @@ export class HubScene extends Phaser.Scene {
     else this.time.delayedCall(250, () => void this.requireName().then(openLinked));
 
     void this.checkRivals();
+
+    // Signing in or out changes the avatar badge and the home's sign-in card.
+    const { account } = getServices(this);
+    let signedIn = account.current() !== null;
+    const off = account.onChange(() => {
+      if (!this.sys.isActive()) return;
+      this.refreshName();
+      const now = account.current() !== null;
+      if (now === signedIn) return;
+      signedIn = now;
+      if (this.tab === 'inicio' && !this.sheet && !this.gesture) {
+        savedScroll[this.tab] = this.scroll;
+        this.showTab(false);
+      }
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+    void account.prepare();
 
     // The hub is already on screen: warm the game chunks in the background so taps feel instant.
     this.time.delayedCall(1500, () => {
@@ -557,10 +575,8 @@ export class HubScene extends Phaser.Scene {
       84,
       84,
       () => {
-        void askName(this, profile.get().name).then((name) => {
-          if (!name) return;
-          profile.update({ name });
-          this.refreshName();
+        void openAccount(this).then(() => {
+          if (this.sys.isActive()) this.refreshName();
         });
       },
       { down: 0.9 },
@@ -603,6 +619,18 @@ export class HubScene extends Phaser.Scene {
         ? txt(this, 0, 0, [...name][0]!.toUpperCase(), 28, { color: '#ffffff' })
         : drawIcon(this, 'user', 0, 0, 28, 0xffffff),
     ]);
+    const { account } = getServices(this);
+    if (account.available) {
+      // A Google "G" while signed in, a warning dot while the runs can't reach the global board.
+      const on = account.current() !== null;
+      const dot = this.add.graphics();
+      dot.fillStyle(on ? 0xffffff : 0xf59e0b).fillCircle(22, 22, 12);
+      dot.lineStyle(2, UI.bg).strokeCircle(22, 22, 12);
+      this.avatar.add([
+        dot,
+        txt(this, 22, 23, on ? 'G' : '!', 16, { color: on ? '#4285F4' : '#1f1300' }),
+      ]);
+    }
     if (this.greetName?.active) this.greetName.setText(name || 'Jogador');
   }
 
@@ -790,7 +818,9 @@ export class HubScene extends Phaser.Scene {
     this.list.add(this.progress);
     this.drawProgress();
 
-    let y = this.hallCard(HERO_Y + HERO_H + 26);
+    let y = HERO_Y + HERO_H + 26;
+    if (services.account.available && !services.account.current()) y = this.loginCard(y);
+    y = this.hallCard(y);
     let n = 0;
     const favs = services.favorites.list();
     const recent = services.recents.list().flatMap((id) => GAMES.filter((g) => g.id === id));
@@ -865,6 +895,32 @@ export class HubScene extends Phaser.Scene {
     ]);
     this.press(chip, w, 64, () => this.scene.start(SceneKeys.Hall), { inList: true });
     this.list.add(chip);
+  }
+
+  /** Asks signed-out players to sign in with Google: only then their runs reach the global board. */
+  private loginCard(top: number): number {
+    const h = 128;
+    const c = this.add.container(GAME_WIDTH / 2, top + h / 2);
+    c.add(this.add.image(0, 0, glassArt(this, CONTENT_W, h, 30, { tint: 0x4285f4, fill: 0.14 })));
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff).fillCircle(-CONTENT_W / 2 + 70, 0, 38);
+    c.add([g, txt(this, -CONTENT_W / 2 + 70, 2, 'G', 46, { color: '#4285F4' })]);
+    c.add(
+      txt(this, -CONTENT_W / 2 + 130, -22, 'Entre com Google', 30, { color: '#ffffff' }).setOrigin(
+        0,
+        0.5,
+      ),
+    );
+    const sub = txt(this, -CONTENT_W / 2 + 130, 22, 'Para valer no ranking global', 20, {
+      color: UI.soft,
+      weight: 'normal',
+    }).setOrigin(0, 0.5);
+    fit(sub, CONTENT_W - 210, 14);
+    c.add(sub);
+    c.add(drawIcon(this, 'chevron', CONTENT_W / 2 - 36, 0, 28, 0xffffff));
+    this.press(c, CONTENT_W, h, () => void openAccount(this), { inList: true, down: 0.97 });
+    this.list.add(c);
+    return top + h + 20;
   }
 
   /** Entry to the Hall da Fama: who holds the most records across all games. */

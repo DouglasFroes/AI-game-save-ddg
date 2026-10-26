@@ -1,13 +1,11 @@
-import type * as FirestoreLite from 'firebase/firestore/lite';
 import type { GameId } from '@/games/registry';
-import { withTimeout, type FirebaseSettings } from './firebaseLeaderboard';
+import {
+  sessionFor,
+  withTimeout,
+  type FirebaseSession,
+  type FirebaseSettings,
+} from './firebaseSession';
 import { parseSession, type PlaySession, type RemoteTelemetry } from './telemetry';
-
-interface Connection {
-  readonly fs: typeof FirestoreLite;
-  readonly db: FirestoreLite.Firestore;
-  readonly uid: string;
-}
 
 function toIsoDate(d: unknown): string {
   if (typeof d === 'string' && d) return d;
@@ -46,40 +44,27 @@ export function sessionFromFirestore(
  * Reuses the existing Firebase app instance when already initialized.
  */
 export class FirebaseTelemetry implements RemoteTelemetry {
-  private connection: Promise<Connection> | null = null;
+  private readonly session: FirebaseSession;
 
   constructor(
-    private readonly settings: FirebaseSettings,
+    settings: FirebaseSettings,
     private readonly isGameId?: (id: string) => id is GameId,
     private readonly timeoutMs = 8000,
-  ) {}
-
-  private connect(): Promise<Connection> {
-    this.connection ??= (async () => {
-      const [{ getApps, initializeApp }, auth, fs] = await Promise.all([
-        import('firebase/app'),
-        import('firebase/auth'),
-        import('firebase/firestore/lite'),
-      ]);
-      const existing = getApps()[0];
-      const app = existing ?? initializeApp(this.settings);
-      const a = auth.getAuth(app);
-      await a.authStateReady();
-      const user = a.currentUser ?? (await auth.signInAnonymously(a)).user;
-      return { fs, db: fs.getFirestore(app), uid: user.uid };
-    })().catch((err: unknown) => {
-      this.connection = null;
-      throw err;
-    });
-    return withTimeout(this.connection, this.timeoutMs);
+  ) {
+    this.session = sessionFor(settings);
   }
 
-  async playerId(): Promise<string> {
-    return (await this.connect()).uid;
+  private connect() {
+    return withTimeout(this.session.connect(), this.timeoutMs);
+  }
+
+  playerId(): Promise<string> {
+    return withTimeout(this.session.uid(), this.timeoutMs);
   }
 
   async record(session: PlaySession): Promise<void> {
-    const { fs, db, uid } = await this.connect();
+    const { fs, db } = await this.connect();
+    const uid = await this.playerId();
     const col = fs.collection(db, 'telemetry_sessions');
     const data = {
       player: uid,

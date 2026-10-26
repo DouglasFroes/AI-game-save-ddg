@@ -30,6 +30,7 @@ import {
   UI,
 } from '@/platform/ui/hubTheme';
 import { drawIcon } from '@/platform/ui/icons';
+import { openAccount } from '@/platform/ui/accountDialog';
 import { askName } from '@/platform/ui/nameDialog';
 import { getServices } from '@/services';
 
@@ -652,6 +653,7 @@ export class GameOverScene extends Phaser.Scene {
     if (!result || !('needsName' in result)) {
       status.setText(mine + rankMessage(result, services.leaderboard.online));
       if (result) status.setColor('#ffe08a');
+      if (result?.result === 'login') this.offerSignIn(status, card, buttonY, mine);
       return;
     }
 
@@ -688,6 +690,35 @@ export class GameOverScene extends Phaser.Scene {
         fontSize: 24,
         glow: false,
       },
+    );
+    card.add(btn);
+  }
+
+  /** The run made the top 20 but stays on the device until the player signs in with Google. */
+  private offerSignIn(
+    status: Phaser.GameObjects.Text,
+    card: Phaser.GameObjects.Container,
+    buttonY: number,
+    mine: string,
+  ): void {
+    const { account } = getServices(this);
+    void account.prepare();
+    const btn = buildTactile3DButton(
+      this,
+      0,
+      buttonY,
+      440,
+      58,
+      'G  Entrar com Google',
+      () => {
+        void openAccount(this).then(() => {
+          if (!account.current() || !status.active) return;
+          btn.destroy();
+          // Signing in sends the runs that were waiting, this one included.
+          status.setText(`${mine}Enviado ao ranking global!`);
+        });
+      },
+      { colors: [0x4285f4, 0x2563eb, 0x1d4ed8], lipColor: 0x1e3a8a, fontSize: 24, glow: false },
     );
     card.add(btn);
   }

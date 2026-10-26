@@ -2,12 +2,19 @@ import type Phaser from 'phaser';
 import { ProgressRepository } from '@/games/doguinho/core/progress';
 import { MemoProgressRepository } from '@/games/memofases/progress';
 import { GAMES, type GameId } from '@/games/registry';
+import { GoogleAccount, NO_ACCOUNT, type AccountService } from '@/platform/account';
 import { Sfx } from '@/platform/audio/Sfx';
+import { boardId } from '@/platform/boards';
 import { BestScores } from '@/platform/bestScores';
 import { Favorites } from '@/platform/favorites';
 import { FirebaseLeaderboard, readFirebaseSettings } from '@/platform/firebaseLeaderboard';
 import { FirebaseTelemetry } from '@/platform/firebaseTelemetry';
-import { LocalLeaderboard, ResilientLeaderboard, type PendingScore } from '@/platform/leaderboard';
+import {
+  CAMPAIGN_GAMES,
+  LocalLeaderboard,
+  ResilientLeaderboard,
+  type PendingScore,
+} from '@/platform/leaderboard';
 import { Outbox } from '@/platform/outbox';
 import { LocalTop } from '@/platform/localTop';
 import { ProfileRepository } from '@/platform/profile';
@@ -27,6 +34,8 @@ export interface Services {
   /** The player's 10 best runs of each game. */
   readonly localTop: LocalTop;
   readonly leaderboard: ResilientLeaderboard;
+  /** Google sign-in, required for the global ranking. */
+  readonly account: AccountService;
   /** Play time and session analytics (local + optional Firebase). */
   readonly telemetry: ResilientTelemetry;
   readonly sessionTracker: PlaySessionTracker;
@@ -46,9 +55,10 @@ export function createServices(env: Record<string, unknown> = import.meta.env): 
   const store = new BrowserStore();
   const profile = new ProfileRepository(store);
   const firebase = readFirebaseSettings(env);
+  const remoteBoard = firebase ? new FirebaseLeaderboard(firebase) : null;
   const leaderboard = new ResilientLeaderboard(
     new LocalLeaderboard(store),
-    firebase ? new FirebaseLeaderboard(firebase) : null,
+    remoteBoard,
     profile.get().playerId,
     undefined,
     new Outbox<PendingScore>(store, 'arcade.outbox.scores'),
@@ -60,6 +70,12 @@ export function createServices(env: Record<string, unknown> = import.meta.env): 
     undefined,
     new Outbox<PlaySession>(store, 'arcade.outbox.sessions'),
   );
+  const account = remoteBoard
+    ? new GoogleAccount(remoteBoard.session, leaderboard, profile, {
+        boards: GAMES.map((g) => boardId(g.id)),
+        campaigns: [...CAMPAIGN_GAMES].map(boardId),
+      })
+    : NO_ACCOUNT;
   const sessionTracker = new PlaySessionTracker(telemetry);
   const sfx = new Sfx();
   sfx.configure(profile.get());
@@ -68,6 +84,7 @@ export function createServices(env: Record<string, unknown> = import.meta.env): 
     best: new BestScores(store),
     localTop: new LocalTop(store),
     leaderboard,
+    account,
     telemetry,
     sessionTracker,
     favorites: new Favorites(store),

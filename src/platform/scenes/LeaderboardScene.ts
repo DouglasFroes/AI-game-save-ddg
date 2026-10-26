@@ -34,7 +34,7 @@ import {
   UI,
 } from '@/platform/ui/hubTheme';
 import { drawIcon, type IconKind } from '@/platform/ui/icons';
-import { askName } from '@/platform/ui/nameDialog';
+import { openAccount } from '@/platform/ui/accountDialog';
 import { getServices } from '@/services';
 
 export interface LeaderboardData {
@@ -233,10 +233,8 @@ export class LeaderboardScene extends Phaser.Scene {
       76,
       76,
       () => {
-        const { profile } = getServices(this);
-        void askName(this, profile.get().name).then((name) => {
-          if (!name || !this.sys.isActive()) return;
-          profile.update({ name });
+        void openAccount(this).then(() => {
+          if (!this.sys.isActive()) return;
           this.refreshAvatar();
           this.show(this.tab, false);
         });

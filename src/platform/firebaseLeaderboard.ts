@@ -1,20 +1,17 @@
-import type * as FirestoreLite from 'firebase/firestore/lite';
 import type { LeaderboardEntry, RemoteLeaderboard } from './leaderboard';
 import { boardId } from './boards';
+import {
+  sessionFor,
+  withTimeout,
+  type FirebaseSession,
+  type FirebaseSettings,
+} from './firebaseSession';
 import { parseEntry, rankEntries, TIEBREAK } from './leaderboard';
+
+export { withTimeout, type FirebaseSettings } from './firebaseSession';
 
 /** Extra rows fetched on tiebreak boards so a tied entry just past the cut-off is not lost. */
 const TIE_MARGIN = 20;
-
-/** Public web config from the Firebase console (safe to ship: security lives in firestore.rules). */
-export interface FirebaseSettings {
-  readonly apiKey: string;
-  readonly authDomain: string;
-  readonly projectId: string;
-  readonly appId: string;
-  readonly storageBucket?: string;
-  readonly messagingSenderId?: string;
-}
 
 export function readFirebaseSettings(env: Record<string, unknown>): FirebaseSettings | null {
   const get = (k: string) => {
@@ -46,56 +43,31 @@ export function fromFirestore(id: string, data: Record<string, unknown>): Leader
   return parseEntry({ ...data, id, date });
 }
 
-export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`Tempo esgotado (${ms}ms)`)), ms);
-    promise.then(
-      (v) => (clearTimeout(t), resolve(v)),
-      (e: unknown) => (clearTimeout(t), reject(e)),
-    );
-  });
-}
-
-interface Connection {
-  readonly fs: typeof FirestoreLite;
-  readonly db: FirestoreLite.Firestore;
-  readonly uid: string;
-}
-
 /**
  * Firestore-backed ranking: leaderboards/{gameId}/entries/{entryId}, one document per run (a
  * player can hold several places). Each document stores its owner's uid in `player`.
  * The SDK is loaded lazily so it never slows down the first screen.
  */
 export class FirebaseLeaderboard implements RemoteLeaderboard {
-  private connection: Promise<Connection> | null = null;
+  readonly session: FirebaseSession;
 
   constructor(
-    private readonly settings: FirebaseSettings,
+    settings: FirebaseSettings,
     private readonly timeoutMs = 8000,
-  ) {}
-
-  private connect(): Promise<Connection> {
-    this.connection ??= (async () => {
-      const [{ getApps, initializeApp }, auth, fs] = await Promise.all([
-        import('firebase/app'),
-        import('firebase/auth'),
-        import('firebase/firestore/lite'),
-      ]);
-      const app = getApps()[0] ?? initializeApp(this.settings);
-      const a = auth.getAuth(app);
-      await a.authStateReady();
-      const user = a.currentUser ?? (await auth.signInAnonymously(a)).user;
-      return { fs, db: fs.getFirestore(app), uid: user.uid };
-    })().catch((err: unknown) => {
-      this.connection = null; // allow a retry later
-      throw err;
-    });
-    return withTimeout(this.connection, this.timeoutMs);
+  ) {
+    this.session = sessionFor(settings);
   }
 
-  async playerId(): Promise<string> {
-    return (await this.connect()).uid;
+  private connect() {
+    return this.session.connect();
+  }
+
+  playerId(): Promise<string> {
+    return withTimeout(this.session.uid(), this.timeoutMs);
+  }
+
+  canSubmit(): Promise<boolean> {
+    return withTimeout(this.session.canSubmit(), this.timeoutMs);
   }
 
   async list(gameId: string, max: number): Promise<LeaderboardEntry[]> {
@@ -114,7 +86,8 @@ export class FirebaseLeaderboard implements RemoteLeaderboard {
   }
 
   async submit(gameId: string, entry: LeaderboardEntry, replace = false): Promise<void> {
-    const { fs, db, uid } = await this.connect();
+    const { fs, db } = await this.connect();
+    const uid = await this.session.uid();
     const data = {
       player: uid,
       name: entry.name,
