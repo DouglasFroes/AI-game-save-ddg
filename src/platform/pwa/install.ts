@@ -28,6 +28,12 @@ const isIos = (env: InstallEnv): boolean =>
   // iPadOS and iPhone "desktop site" report a Mac, but a real Mac has no touch screen.
   (env.platform === 'MacIntel' && (env.maxTouchPoints ?? 0) > 1);
 
+/** Where the Share button is and what to tap, since iOS cannot install a web app from code. */
+export const iosInstallSteps = (ua: string): string =>
+  /crios|fxios|edgios/i.test(ua)
+    ? '1. Toque no ícone de Compartilhar, no canto direito da barra de endereço.\n2. Role e toque em "Adicionar à Tela de Início".\n3. Toque em "Adicionar".'
+    : '1. Toque no ícone de Compartilhar, na barra de baixo do Safari.\n2. Role e toque em "Adicionar à Tela de Início".\n3. Toque em "Adicionar".';
+
 export class InstallPrompt {
   private deferred: BeforeInstallPromptEvent | null = null;
   private installed = false;

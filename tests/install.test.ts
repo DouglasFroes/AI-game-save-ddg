@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { InstallPrompt, type InstallEnv } from '@/platform/pwa/install';
+import { InstallPrompt, iosInstallSteps, type InstallEnv } from '@/platform/pwa/install';
 import { retractNotice } from '@/platform/notices';
 
-const setup = (opts: { standalone?: boolean; ua?: string; platform?: string; touch?: number } = {}) => {
+const setup = (
+  opts: { standalone?: boolean; ua?: string; platform?: string; touch?: number } = {},
+) => {
   const handlers = new Map<string, (e: Event) => void>();
   const env: InstallEnv = {
     addEventListener: (t, l) => void handlers.set(t, l),
@@ -68,11 +70,23 @@ describe('InstallPrompt', () => {
 });
 
 describe('iOS detection', () => {
-  const mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15';
+  const mac =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15';
   it('sees an iPhone in "desktop site" mode by its touch screen', () => {
     expect(setup({ ua: mac, platform: 'MacIntel', touch: 5 }).install.state()).toBe('ios');
   });
   it('does not mistake a real Mac for an iPhone', () => {
     expect(setup({ ua: mac, platform: 'MacIntel', touch: 0 }).install.state()).toBe('unavailable');
+  });
+});
+
+describe('iosInstallSteps', () => {
+  it('points to the address bar in Chrome and to the bottom bar in Safari', () => {
+    expect(iosInstallSteps('Mozilla/5.0 (iPhone) CriOS/130 Mobile Safari')).toContain(
+      'barra de endereço',
+    );
+    expect(iosInstallSteps('Mozilla/5.0 (iPhone) Version/17 Mobile Safari')).toContain(
+      'barra de baixo',
+    );
   });
 });

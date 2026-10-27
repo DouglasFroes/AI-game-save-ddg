@@ -5,6 +5,7 @@ import { trendingGames } from '@/platform/trending';
 import { HUB_FONT } from '@/platform/fonts';
 import { canFullscreen, isStandalone, toggleFullscreen } from '@/platform/fullscreen';
 import { loadGame, orderForWarmup, warmGames } from '@/platform/gameLoader';
+import { iosInstallSteps } from '@/platform/pwa/install';
 import { installPrompt } from '@/platform/pwa/installPrompt';
 import { hideSplash } from '@/platform/splash';
 import {
@@ -676,7 +677,7 @@ export class HubScene extends Phaser.Scene {
         kind: 'info',
         glyph: 'download',
         title: 'Instalar no iPhone',
-        body: 'Toque em Compartilhar e depois em "Adicionar à Tela de Início".',
+        body: iosInstallSteps(navigator.userAgent),
         sticky: true,
       });
       return;
