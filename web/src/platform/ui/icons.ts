@@ -29,6 +29,7 @@ export type IconKind =
   | 'bolt'
   | 'gamepad'
   | 'chat'
+  | 'bell'
   | 'search';
 
 type Pt = readonly [number, number];
@@ -325,6 +326,21 @@ export function drawIcon(
       ]);
       g.fillStyle(0x000000, 0.5);
       for (const x of [-0.2, 0, 0.2]) g.fillCircle(x * s, -0.07 * s, 0.065 * s);
+      break;
+    case 'bell':
+      // Bell dome + flared rim + clapper.
+      g.fillCircle(0, -0.4 * s, 0.08 * s);
+      poly(g, s, [
+        [-0.26, -0.22],
+        [0.26, -0.22],
+        [0.34, 0.14],
+        [0.44, 0.24],
+        [-0.44, 0.24],
+        [-0.34, 0.14],
+      ]);
+      g.fillCircle(0, -0.18 * s, 0.26 * s);
+      g.fillRoundedRect(-0.46 * s, 0.18 * s, 0.92 * s, 0.1 * s, 0.05 * s);
+      g.fillCircle(0, 0.36 * s, 0.11 * s);
       break;
     case 'gamepad':
       g.fillRoundedRect(-0.5 * s, -0.26 * s, s, 0.52 * s, 0.22 * s);

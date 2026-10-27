@@ -3,7 +3,14 @@ import type { ProfileRepository } from '@/platform/profile';
 import type { PlaySessionTracker } from '@/platform/sessionTracker';
 import { readJson, writeJson, type KeyValueStore } from '@/platform/storage';
 import type { ChatBackend } from './backend';
-import { GENERAL_ROOM, mentions, pushRecent, SpamGuard, type ChatMessage } from './core';
+import {
+  GENERAL_ROOM,
+  isReplyToMe,
+  mentions,
+  pushRecent,
+  SpamGuard,
+  type ChatMessage,
+} from './core';
 
 const HEARTBEAT_MS = 60_000;
 const TYPING_PING_MS = 3000;
@@ -14,6 +21,7 @@ const RECENT_EMOJI_KEY = 'arcade.chat.emoji';
 export interface MentionEvent {
   readonly room: string;
   readonly msg: ChatMessage;
+  readonly kind?: 'mention' | 'reply';
 }
 
 /**
@@ -122,12 +130,16 @@ export class ChatService {
     });
   }
 
-  /** Mentions of the player in any message they haven't seen yet. */
+  /** Mentions of (or direct replies to) the player in any message they haven't seen yet. */
   checkMention(room: string, m: ChatMessage): void {
     if (this.notified.has(m.id) || m.uid === this.uid || m.del) return;
-    if (!mentions(m.text, this.name) || m.at <= this.seen(room) || this.openRoom === room) return;
+    if (m.at <= this.seen(room) || this.openRoom === room) return;
+    const isMention = mentions(m.text, this.name);
+    const isReply = !isMention && isReplyToMe(m, this.name);
+    if (!isMention && !isReply) return;
     this.notified.add(m.id);
-    for (const l of this.mentionListeners) l({ room, msg: m });
+    const kind: 'mention' | 'reply' = isReply ? 'reply' : 'mention';
+    for (const l of this.mentionListeners) l({ room, msg: m, kind });
   }
 
   get unread(): number {

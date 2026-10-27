@@ -21,15 +21,20 @@ import {
 import { GLOBAL_TOP } from '@/platform/leaderboard';
 import { shareWithToast } from '@/platform/share';
 import { gameLaunchFromSearch } from '@/platform/shareLink';
-import { subscribeNotices } from '@/platform/notices';
+import {
+  onNoticeHistoryChange,
+  publishNotice,
+  subscribeNotices,
+  unreadNoticeCount,
+} from '@/platform/notices';
 import { showNotice } from '@/platform/ui/noticeCard';
+import { openNotifications } from '@/platform/ui/notificationsOverlay';
 import { formatNumber } from '@/platform/ranking';
 import type { Overtake } from '@/platform/rankWatch';
 import { drawIcon, type IconKind } from '@/platform/ui/icons';
 import { openAccount } from '@/platform/ui/accountDialog';
 import { isChatOpen, openChat } from '@/platform/chat/overlay';
 import { snippet } from '@/platform/chat/core';
-import { publishNotice } from '@/platform/notices';
 import { askName } from '@/platform/ui/nameDialog';
 import {
   ALL,
@@ -183,6 +188,7 @@ export class HubScene extends Phaser.Scene {
 
   private opening = false;
   private chatBadge: Phaser.GameObjects.Container | null = null;
+  private noticeBadge: Phaser.GameObjects.Container | null = null;
   private fullscreenView: Phaser.GameObjects.Container | null = null;
   private tab: Tab = 'inicio';
   private filter: HubFilter = 'todos';
@@ -331,22 +337,29 @@ export class HubScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
     void account.prepare();
 
-    // Chat: unread badge, and a discreet toast when someone mentions the player.
+    // Chat: unread badge, and a discreet toast when someone mentions or replies to the player.
     const { chat } = getServices(this);
     const offUnread = chat.onUnread((n) => this.paintChatBadge(n));
-    const offMention = chat.onMention(({ msg }) => {
+    const offNotices = onNoticeHistoryChange(() => this.paintNoticeBadge(unreadNoticeCount()));
+    const offMention = chat.onMention(({ room, msg, kind }) => {
       if (!this.sys.isActive() || isChatOpen()) return;
+      const isReply = kind === 'reply';
       publishNotice({
-        key: `mention-${msg.id}`,
+        key: `${isReply ? 'reply' : 'mention'}-${msg.id}`,
         kind: 'info',
+        category: 'chat',
+        chatRoom: room,
+        priority: 1,
         glyph: 'chat',
-        title: `${msg.name} mencionou você`,
+        title: isReply ? `${msg.name} respondeu você` : `${msg.name} mencionou você`,
         body: snippet(msg.text, 70),
-        actions: [{ label: 'Abrir chat', run: () => this.openChat() }],
+        actions: [{ label: 'Abrir chat', run: () => this.openChat(room) }],
+        onShow: () => getServices(this).sfx.play('pop'),
       });
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       offUnread();
+      offNotices();
       offMention();
     });
 
@@ -632,20 +645,35 @@ export class HubScene extends Phaser.Scene {
     this.refreshName();
 
     // Chat, with a badge counting unread messages of the general room.
-    const chatBtn = this.glassCircle(ax - 80, cy, 62, 'chat', 30, () => this.openChat(), {
+    const chatBtn = this.glassCircle(ax - 74, cy, 58, 'chat', 28, () => this.openChat(), {
       color: UI.cyan,
     });
     this.top.add(chatBtn.view);
-    this.chatBadge = this.add.container(ax - 80 + 22, cy - 22);
+    this.chatBadge = this.add.container(ax - 74 + 20, cy - 20);
     this.top.add(this.chatBadge);
     this.paintChatBadge(getServices(this).chat.unread);
 
+    // Notification Center (bell), with a badge counting unread notifications.
+    const bellBtn = this.glassCircle(
+      ax - 142,
+      cy,
+      58,
+      'bell',
+      28,
+      () => this.openNotificationsCenter(),
+      { color: UI.gold },
+    );
+    this.top.add(bellBtn.view);
+    this.noticeBadge = this.add.container(ax - 142 + 20, cy - 20);
+    this.top.add(this.noticeBadge);
+    this.paintNoticeBadge(unreadNoticeCount());
+
     const soundKind = (): IconKind => (profile.get().muted ? 'speakerOff' : 'speaker');
-    const sound = this.glassCircle(ax - 152, cy, 62, soundKind(), 30, () => this.openSettings());
+    const sound = this.glassCircle(ax - 210, cy, 58, soundKind(), 28, () => this.openSettings());
     this.soundIcon = { view: sound.view, setKind: () => sound.setKind(soundKind()) };
     this.top.add(sound.view);
     if (!isStandalone()) {
-      const full = this.glassCircle(ax - 224, cy, 62, 'expand', 28, () => {
+      const full = this.glassCircle(ax - 278, cy, 58, 'expand', 26, () => {
         if (!canFullscreen()) {
           this.toast(
             'No iPhone: toque em Compartilhar e\n"Adicionar à Tela de Início" para tela cheia',
@@ -657,12 +685,12 @@ export class HubScene extends Phaser.Scene {
       this.top.add(full.view);
       this.fullscreenView = full.view;
     }
-    const find = this.glassCircle(ax - 296, cy, 62, 'search', 30, () => this.openSearch(), {
+    const find = this.glassCircle(ax - 346, cy, 58, 'search', 28, () => this.openSearch(), {
       color: UI.violet,
     });
     this.top.add(find.view);
     // Same slot as full screen: an installed app opens full screen anyway.
-    this.buildInstallButton(ax - 224, cy);
+    this.buildInstallButton(ax - 278, cy);
   }
 
   /** "Instalar app": shown while the app can be installed, gone once it is. */
@@ -754,7 +782,14 @@ export class HubScene extends Phaser.Scene {
   }
 
   private paintChatBadge(n: number): void {
-    const b = this.chatBadge;
+    this.paintCountBadge(this.chatBadge, n);
+  }
+
+  private paintNoticeBadge(n: number): void {
+    this.paintCountBadge(this.noticeBadge, n);
+  }
+
+  private paintCountBadge(b: Phaser.GameObjects.Container | null, n: number): void {
     if (!b?.active) return;
     b.removeAll(true);
     if (n <= 0) return;
@@ -773,13 +808,30 @@ export class HubScene extends Phaser.Scene {
       });
   }
 
-  private openChat(): void {
+  private openChat(room?: string): void {
     const services = getServices(this);
     openChat(services.chat, services.sfx, {
+      room,
       rooms: services.recents.list(),
       onPlay: (id) => {
         const game = GAMES.find((g) => g.id === id);
         if (game && this.sys.isActive()) this.open(game);
+      },
+    });
+  }
+
+  private openNotificationsCenter(): void {
+    const services = getServices(this);
+    openNotifications(services.sfx, {
+      onPlayGame: (id) => {
+        const game = GAMES.find((g) => g.id === id);
+        if (game && this.sys.isActive()) this.open(game);
+      },
+      onOpenLeaderboard: (id) => {
+        if (this.sys.isActive()) this.scene.start(SceneKeys.Leaderboard, { gameId: id });
+      },
+      onOpenChat: (room) => {
+        if (this.sys.isActive()) this.openChat(room);
       },
     });
   }
@@ -2326,6 +2378,9 @@ export class HubScene extends Phaser.Scene {
       showNotice(this, {
         key: `rival:${game.id}`,
         kind: 'rival',
+        category: 'ranking',
+        gameId: game.id,
+        priority: 2,
         texture: game.icon,
         title: `${o.by} passou você no ${game.title}!`,
         body: where,

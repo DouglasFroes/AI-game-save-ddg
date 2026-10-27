@@ -1,7 +1,15 @@
 import type Phaser from 'phaser';
 import { GAME_WIDTH } from '@/config';
 import { HUB_FONT } from '@/platform/fonts';
-import { NoticeQueue, type AppNotice, type NoticeKind } from '@/platform/notices';
+import {
+  inferNoticeCategory,
+  isEphemeralNotice,
+  NoticeQueue,
+  recordNotice,
+  type AppNotice,
+  type NoticeCategory,
+  type NoticeKind,
+} from '@/platform/notices';
 import { UI } from '@/platform/ui/hubTheme';
 import { drawIcon, type IconKind } from '@/platform/ui/icons';
 import { addText } from '@/platform/ui/widgets';
@@ -30,6 +38,12 @@ const GLYPH: Record<NoticeKind, IconKind> = {
   rival: 'trophy',
 };
 
+const CATEGORY_BADGE: Record<NoticeCategory, string> = {
+  ranking: '🏆 RANKING GLOBAL',
+  chat: '💬 BATE-PAPO',
+  system: '⚡ SISTEMA',
+};
+
 interface SceneNotices {
   queue: NoticeQueue<AppNotice>;
   showing: boolean;
@@ -38,13 +52,15 @@ const states = new WeakMap<Phaser.Scene, SceneNotices>();
 
 /**
  * Shows an in-app notification card at the top of the scene, one at a time (the rest wait in
- * line). The card carries the game's icon, a title and detail, and buttons for what to do next;
- * tapping the card runs the first action, the ✕ or the timer dismisses it.
+ * line). The card carries the game's icon, a category badge, a title and detail, and buttons for
+ * what to do next; tapping the card runs the first action, swiping up or tapping ✕ dismisses it,
+ * and holding pauses the timer.
  */
 export function showNotice(scene: Phaser.Scene, notice: AppNotice): void {
+  recordNotice(notice);
   let state = states.get(scene);
   if (!state) {
-    state = { queue: new NoticeQueue<AppNotice>(), showing: false };
+    state = { queue: new NoticeQueue<AppNotice>(8), showing: false };
     states.set(scene, state);
     scene.events.once('shutdown', () => states.delete(scene));
   }
@@ -57,7 +73,7 @@ function pump(scene: Phaser.Scene, state: SceneNotices): void {
   const next = state.queue.shift();
   if (!next) return;
   state.showing = true;
-  buildCard(scene, next, () => {
+  buildCard(scene, next, state.queue.size, () => {
     state.showing = false;
     pump(scene, state);
   });
@@ -80,14 +96,24 @@ const label = (
     wrapWidth: TEXT_W,
   }).setOrigin(0, 0);
 
-function buildCard(scene: Phaser.Scene, notice: AppNotice, done: () => void): void {
+function buildCard(
+  scene: Phaser.Scene,
+  notice: AppNotice,
+  waitingCount: number,
+  done: () => void,
+): void {
   const kind = notice.kind ?? 'info';
   const accent = ACCENT[kind];
   const actions = (notice.actions ?? []).slice(0, 2);
+  const showCategory = !isEphemeralNotice(notice) || Boolean(notice.body) || actions.length > 0;
+  const catText =
+    kind === 'rival' ? '⚔️ DESAFIO NO RANKING' : CATEGORY_BADGE[inferNoticeCategory(notice)];
 
+  const tag = showCategory ? label(scene, TEXT_X, 0, catText, 16, css(accent), 'bold') : null;
   const title = label(scene, TEXT_X, 0, notice.title, 26, kind === 'rival' ? '#ffd166' : UI.white);
   const body = notice.body ? label(scene, TEXT_X, 0, notice.body, 21, UI.soft, 'normal') : null;
-  const textH = title.height + (body ? 8 + body.height : 0);
+  const tagH = tag ? tag.height + 6 : 0;
+  const textH = tagH + title.height + (body ? 8 + body.height : 0);
   const chipsH = actions.length > 0 ? 18 + 56 : 0;
   const h = Math.max(ICON + PAD * 2, textH + chipsH + PAD * 2);
 
@@ -115,20 +141,74 @@ function buildCard(scene: Phaser.Scene, notice: AppNotice, done: () => void): vo
 
   // Card body: soft shadow, glass fill, accent-coloured edge.
   const bg = scene.add.graphics();
-  bg.fillStyle(0x000000, 0.35).fillRoundedRect(-CARD_W / 2, -h / 2 + 8, CARD_W, h, 32);
+  bg.fillStyle(0x000000, 0.38).fillRoundedRect(-CARD_W / 2, -h / 2 + 8, CARD_W, h, 32);
   bg.fillStyle(0x0f1126, 0.97).fillRoundedRect(-CARD_W / 2, -h / 2, CARD_W, h, 32);
   bg.lineStyle(2, accent, 0.85).strokeRoundedRect(-CARD_W / 2, -h / 2, CARD_W, h, 32);
   bg.fillStyle(accent, 1).fillRoundedRect(-CARD_W / 2 + 1, -h / 2 + 26, 7, h - 52, 3);
   card.add(bg);
 
+  const duration = notice.sticky ? STICKY_MS : actions.length > 0 ? SHOW_ACTION_MS : SHOW_MS;
+  const bar = scene.add
+    .rectangle(-CARD_W / 2 + 40, h / 2 - 10, CARD_W - 80, 4, accent, 0.7)
+    .setOrigin(0, 0.5);
+  const barTween = scene.tweens.add({
+    targets: bar,
+    scaleX: 0,
+    duration,
+    ease: 'Linear',
+    onComplete: close,
+  });
+
   // The tap target for the whole card sits under the buttons and the ✕.
+  // Supports hold-to-pause and swipe-up / horizontal-swipe to dismiss without triggering action[0].
   const hit = scene.add
     .rectangle(0, 0, CARD_W, h, 0xffffff, 0.001)
     .setInteractive({ useHandCursor: true });
-  hit.on('pointerup', () => {
+  let startX = 0;
+  let startY = 0;
+  let pointerHeld = false;
+  hit.on('pointerdown', (p: Phaser.Input.Pointer) => {
     if (closed) return;
-    actions[0]?.run();
-    close();
+    startX = p.x;
+    startY = p.y;
+    pointerHeld = true;
+    barTween.pause();
+  });
+  hit.on('pointermove', (p: Phaser.Input.Pointer) => {
+    if (closed || !pointerHeld || !p.isDown) return;
+    const dy = p.y - startY;
+    if (dy < 0) {
+      card.y = restY + dy * 0.65;
+      card.alpha = Math.max(0.4, 1 + dy / 180);
+    } else {
+      card.y = restY + Math.min(16, dy * 0.2);
+      card.alpha = 1;
+    }
+  });
+  hit.on('pointerout', () => {
+    if (closed || !pointerHeld) return;
+    pointerHeld = false;
+    scene.tweens.add({ targets: card, y: restY, alpha: 1, duration: 160, ease: 'Sine.easeOut' });
+    barTween.resume();
+  });
+  hit.on('pointerup', (p: Phaser.Input.Pointer) => {
+    if (closed) return;
+    const wasHeld = pointerHeld;
+    pointerHeld = false;
+    const dx = wasHeld ? p.x - startX : 0;
+    const dy = wasHeld ? p.y - startY : 0;
+    // Swipe up or wide horizontal swipe dismisses without firing the action.
+    if (dy < -24 || Math.abs(dx) > 64) {
+      close();
+      return;
+    }
+    if (Math.hypot(dx, dy) < 14) {
+      actions[0]?.run();
+      close();
+      return;
+    }
+    scene.tweens.add({ targets: card, y: restY, alpha: 1, duration: 160, ease: 'Sine.easeOut' });
+    barTween.resume();
   });
   card.add(hit);
 
@@ -147,11 +227,32 @@ function buildCard(scene: Phaser.Scene, notice: AppNotice, done: () => void): vo
   }
 
   const top = -h / 2 + PAD;
-  title.setPosition(TEXT_X, top);
+  if (tag) {
+    tag.setPosition(TEXT_X, top);
+    card.add(tag);
+  }
+  title.setPosition(TEXT_X, top + tagH);
   card.add(title);
   if (body) {
-    body.setPosition(TEXT_X, top + title.height + 8);
+    body.setPosition(TEXT_X, top + tagH + title.height + 8);
     card.add(body);
+  }
+
+  // Queue counter badge (+N) when more notifications are waiting behind this one.
+  if (waitingCount > 0) {
+    const qText = addText(scene, 0, 0, `+${waitingCount}`, 16, {
+      family: HUB_FONT,
+      color: css(accent),
+      weight: 'bold',
+    });
+    const qw = Math.max(38, qText.width + 20);
+    const qx = CARD_W / 2 - 88 - qw / 2;
+    const qy = -h / 2 + 40;
+    const qBg = scene.add.graphics();
+    qBg.fillStyle(accent, 0.18).fillRoundedRect(qx - qw / 2, qy - 14, qw, 28, 14);
+    qBg.lineStyle(1.5, accent, 0.55).strokeRoundedRect(qx - qw / 2, qy - 14, qw, 28, 14);
+    qText.setPosition(qx, qy);
+    card.add([qBg, qText]);
   }
 
   // Buttons: "what do I do about it".
@@ -184,14 +285,7 @@ function buildCard(scene: Phaser.Scene, notice: AppNotice, done: () => void): vo
     .rectangle(CARD_W / 2 - 40, -h / 2 + 40, 64, 64, 0xffffff, 0.001)
     .setInteractive({ useHandCursor: true });
   x.on('pointerup', close);
-  card.add([drawIcon(scene, 'close', CARD_W / 2 - 40, -h / 2 + 40, 18, 0x7a80a8), x]);
-
-  const duration = notice.sticky ? STICKY_MS : actions.length > 0 ? SHOW_ACTION_MS : SHOW_MS;
-  const bar = scene.add
-    .rectangle(-CARD_W / 2 + 40, h / 2 - 10, CARD_W - 80, 4, accent, 0.7)
-    .setOrigin(0, 0.5);
-  card.add(bar);
-  scene.tweens.add({ targets: bar, scaleX: 0, duration, ease: 'Linear', onComplete: close });
+  card.add([drawIcon(scene, 'close', CARD_W / 2 - 40, -h / 2 + 40, 18, 0x7a80a8), x, bar]);
 
   notice.onShow?.();
   scene.tweens.add({ targets: card, y: restY, duration: 380, ease: 'Back.easeOut' });

@@ -196,6 +196,14 @@ export function mentions(text: string, name: string): boolean {
   return false;
 }
 
+/** True when `msg` quotes/replies directly to `name` (accents and case ignored). */
+export function isReplyToMe(msg: Pick<ChatMessage, 're'>, name: string): boolean {
+  const target = msg.re?.name?.trim();
+  const me = name.trim();
+  if (!target || !me) return false;
+  return fold(target) === fold(me);
+}
+
 /** Splits text into plain and "@mention" parts, for highlighting. */
 export function splitMentions(text: string): Array<{ text: string; mention: boolean }> {
   const out: Array<{ text: string; mention: boolean }> = [];
