@@ -65,37 +65,64 @@ O jogador escolhe um apelido uma vez no menu e ele vale para todos os rankings.
 
 ## Stack
 
-Vite · TypeScript (strict) · Phaser 3 (Matter) · Firebase (Auth anônimo + Firestore) · Vitest · ESLint · Prettier
+Jogo: Vite · TypeScript (strict) · Phaser 3 (Matter) · Vitest · ESLint · Prettier
+Servidor: Rust (Axum + SQLx) · PostgreSQL · WebSocket · Docker (Dokploy)
+
+```
+web/      o jogo (PWA)                 api/     API em Rust: ranking, telemetria, chat, login
+admin/    painel de administração      legacy/  Firebase e o admin antigo (só referência)
+tools/    exportação dos dados antigos
+```
 
 Requer **Node 22.13+** (veja `.nvmrc`).
 
 ## Rodando
 
 ```bash
-npm install
+cd web && npm install
 npm run dev        # http://localhost:5173 (e no IP da rede, para testar no celular)
 npm run check      # tipos + lint + testes
-npm run build      # gera dist/
+npm run build      # gera web/dist/
+```
+
+Sem o servidor, cada ranking fica salvo só no aparelho. Para testar o ranking global, o chat e o
+login, suba também a API (precisa de Rust e de um PostgreSQL; veja [api/.env.example](api/.env.example)):
+
+```bash
+cd api && cargo run            # http://localhost:8080 (o `npm run dev` já encaminha /api para ela)
+cd api && cargo test           # com TEST_DATABASE_URL apontando para um Postgres, roda também os testes de integração
+cd admin && npm install && npm run dev   # painel em http://localhost:5174/admin/
 ```
 
 Para testar no celular: rode `npm run dev`, conecte o celular na mesma rede Wi-Fi e abra o endereço
 `Network:` exibido no terminal.
 
-## Ranking global (Firebase)
+## Publicando no Dokploy
 
-Sem configuração, cada ranking fica salvo só no aparelho. Para ativar o ranking global:
+Um único contêiner roda tudo: a API em Rust serve o jogo em `/` e o admin em `/admin`.
 
-1. No [console do Firebase](https://console.firebase.google.com), crie o projeto.
-2. **Firestore Database → Criar banco** (modo produção, região `southamerica-east1`).
-3. **Authentication → Sign-in method → Anônimo → Ativar.**
-4. **Configurações do projeto → Seus apps → Web**: registre o app e copie o `firebaseConfig`.
-5. Copie `.env.example` para `.env.local` e preencha os valores `VITE_FIREBASE_*`.
-6. Publique as regras de segurança: cole o conteúdo de [`firestore.rules`](firestore.rules) em
-   **Firestore → Regras → Publicar** (ou `npx firebase-tools deploy --only firestore:rules`).
+1. No Dokploy, crie um serviço **Compose** apontando para este repositório (`docker-compose.yml`), ou uma
+   **Application** usando o `Dockerfile`. O PostgreSQL fica fora: o contêiner só precisa da URL.
+2. Na aba **Environment**, preencha as variáveis de [.env.example](.env.example):
+   `DATABASE_URL` (ex.: `postgres://usuario:senha@host:5432/fliper?sslmode=require`), `JWT_SECRET` (`openssl rand -hex 32`), `GOOGLE_CLIENT_ID` e `ADMIN_EMAILS`.
+3. Aponte o domínio para o serviço `app`, porta `8080`.
+4. No [Google Cloud](https://console.cloud.google.com/apis/credentials), crie um **ID do cliente OAuth**
+   (tipo *Aplicativo da Web*) e adicione o endereço do site em *Origens JavaScript autorizadas*.
 
-Os dados ficam em `leaderboards/{jogo}/entries/{uid}`. Cada jogador só consegue gravar o próprio
-documento, e as regras validam nome, faixa de pontos e campos. Se o Firebase estiver fora do ar, o
-jogo usa o ranking local automaticamente.
+O banco precisa existir (vazio); as tabelas são criadas e atualizadas sozinhas na subida
+(`api/migrations`). O backup do Postgres é com você.
+
+### Trazendo os dados do Firebase
+
+```bash
+cd tools/firestore-export && npm install
+GOOGLE_APPLICATION_CREDENTIALS=chave-da-conta-de-servico.json node export.mjs firestore-export.json
+# no servidor (ou localmente, com DATABASE_URL apontando para o banco novo):
+fliper-api import firestore-export.json
+```
+
+Rankings e sessões são importados e ligados ao id Google de cada jogador: quem entrar com Google no
+site novo encontra os recordes de antes. Rodar duas vezes não duplica nada. O chat não é migrado.
 
 ## Arquitetura
 

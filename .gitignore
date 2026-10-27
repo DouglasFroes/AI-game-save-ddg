@@ -1,7 +1,9 @@
 node_modules
 dist
+target
 *.log
-# Local secrets (Firebase keys): never committed; .env.example documents them.
+# Local secrets (Google client id, JWT secret, database password): never committed; the
+# .env.example files document them.
 .env
 .env.*
 !.env.example

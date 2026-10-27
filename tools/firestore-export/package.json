@@ -1,0 +1,9 @@
+{
+  "name": "firestore-export",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "One-off export of the old Firebase data for `fliper-api import`.",
+  "scripts": { "export": "node export.mjs" },
+  "dependencies": { "firebase-admin": "^13.0.0" }
+}

@@ -1,0 +1,18 @@
+# Fliper on Dokploy (or anywhere with Docker). The database is external: only its URL is needed.
+# Dokploy: create a "Compose" (or "Application", using the Dockerfile) service from this repository,
+# fill in the environment variables below in its Environment tab, and attach your domain to port 8080.
+services:
+  app:
+    build:
+      context: .
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      ADMIN_EMAILS: ${ADMIN_EMAILS}
+      RUST_LOG: ${RUST_LOG:-info}
+    expose:
+      - '8080'

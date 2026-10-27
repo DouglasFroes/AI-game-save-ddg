@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/dist
+api/target
+legacy
+tools
+docs
+*.md
+.env
+.env.*
