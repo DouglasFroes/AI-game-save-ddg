@@ -7,3 +7,7 @@ target
 .env
 .env.*
 !.env.example
+
+# Firebase service account key and exported data (secrets / personal data)
+firebase-sa.json
+firestore-export.json
