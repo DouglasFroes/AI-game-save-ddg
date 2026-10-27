@@ -1,6 +1,9 @@
 /** Query parameter of a shared link: `https://site/?jogo=zigue` opens that game directly. */
 export const GAME_PARAM = 'jogo';
 
+/** With `?jogo=id&jogar=1` the game starts right away (app shortcuts) instead of showing its sheet. */
+export const PLAY_PARAM = 'jogar';
+
 /** Link that opens the arcade straight into one game. */
 export function gameLink(
   id: string,
@@ -13,6 +16,16 @@ export function gameLink(
 export function gameIdFromSearch(search: string, isGame: (id: string) => boolean): string | null {
   const id = new URLSearchParams(search).get(GAME_PARAM);
   return id && isGame(id) ? id : null;
+}
+
+/** What a launch link asks for: which game, and whether to start it immediately. */
+export function gameLaunchFromSearch(
+  search: string,
+  isGame: (id: string) => boolean,
+): { id: string; play: boolean } | null {
+  const id = gameIdFromSearch(search, isGame);
+  if (!id) return null;
+  return { id, play: new URLSearchParams(search).get(PLAY_PARAM) === '1' };
 }
 
 /**

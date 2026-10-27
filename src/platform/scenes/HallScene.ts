@@ -51,6 +51,8 @@ const VIEW_H = VIEW_BOTTOM - VIEW_TOP;
 const DRAG_SLOP = 10;
 /** How many runs per board are read to find three different players. */
 const BOARD_DEPTH = 10;
+/** Boards read in parallel (the connection multiplexes them). */
+const BOARD_CONCURRENCY = 16;
 const CACHE_MS = 180_000;
 const MAX_ROWS = 50;
 
@@ -159,22 +161,45 @@ export class HallScene extends Phaser.Scene {
     }
     this.loading = true;
     this.clearContent();
-    this.status.setText('BUSCANDO OS RECORDES DE TODOS OS JOGOS…');
-    this.renderLoading();
-    // One board first: when the global ranking is out of reach, the rest is read from the device
-    // instead of waiting for every request to time out.
     const ids = GAMES.map((g) => g.id);
-    const first = await leaderboard.list(ids[0]!, BOARD_DEPTH);
-    const online = leaderboard.online;
-    const rest = await loadBoards(ids.slice(1), (id) =>
-      online ? leaderboard.list(id, BOARD_DEPTH) : leaderboard.listLocal(id, BOARD_DEPTH),
+    // Paint at once from the last global boards kept on this device, then refresh behind it.
+    const saved = ids.map((id) => ({ gameId: id, entries: leaderboard.snapshot(id) }));
+    const shown = saved.every((b) => b.entries !== null);
+    if (shown) {
+      this.apply(
+        medalTable(saved.map((b) => ({ gameId: b.gameId, entries: b.entries ?? [] }))),
+        true,
+      );
+      this.status.setText(`${this.status.text} · ATUALIZANDO…`);
+    } else {
+      this.status.setText('BUSCANDO OS RECORDES DE TODOS OS JOGOS…');
+      this.renderLoading();
+    }
+    // Every board at once (the connection is shared, so a dead network fails them together
+    // instead of one by one); with no network at all, read straight from the device.
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    const boards = await loadBoards(
+      ids,
+      (id) =>
+        offline ? leaderboard.listLocal(id, BOARD_DEPTH) : leaderboard.list(id, BOARD_DEPTH),
+      BOARD_CONCURRENCY,
     );
-    const boards = [{ gameId: ids[0]!, entries: first }, ...rest];
+    const online = !offline && leaderboard.online;
     this.loading = false;
     if (!this.sys.isActive()) return;
+    if (shown && !online) {
+      // Keep the last global table rather than swapping it for this device's own boards.
+      this.status.setText('📴 SEM CONEXÃO · ÚLTIMO RANKING GLOBAL SALVO');
+      return;
+    }
     const table = medalTable(boards);
     cache = { at: Date.now(), online, table, who };
-    this.apply(table, cache.online);
+    const keep = this.scroll;
+    this.apply(table, online);
+    if (shown && !openPlayer) {
+      this.scroll = Math.min(keep, this.maxScroll);
+      this.applyScroll();
+    }
   }
 
   private apply(table: Medalist[], online: boolean): void {

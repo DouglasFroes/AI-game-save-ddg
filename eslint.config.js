@@ -4,7 +4,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'node_modules'] },
+  { ignores: ['dist', 'node_modules', 'src/platform/pwa/sw.template.js'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -16,5 +16,6 @@ export default tseslint.config(
       eqeqeq: 'error',
     },
   },
+  { files: ['scripts/**/*.mjs', 'vite.config.ts'], languageOptions: { globals: globals.node } },
   prettier,
 );

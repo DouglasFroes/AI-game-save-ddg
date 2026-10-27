@@ -24,6 +24,8 @@ export function bindConnectivitySync(
   services: Pick<Services, 'leaderboard' | 'telemetry'>,
   env: Env = window,
   doc: Doc = document,
+  /** Called with how many scores were sent, when there were any. */
+  onSynced?: (scores: number) => void,
 ): () => Promise<number> {
   const sync = async (): Promise<number> => {
     if (env.navigator && !env.navigator.onLine) return 0;
@@ -31,6 +33,7 @@ export function bindConnectivitySync(
       services.leaderboard.flush(),
       services.telemetry.flush(),
     ]);
+    if (scores > 0) onSynced?.(scores);
     return scores + sessions;
   };
   const run = () => void sync();

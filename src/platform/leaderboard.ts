@@ -1,4 +1,5 @@
 import type { ScoreDetails } from './bestScores';
+import type { BoardSnapshots } from './boardSnapshots';
 import { boardId } from './boards';
 import type { Outbox } from './outbox';
 import { readJson, writeJson, type KeyValueStore } from './storage';
@@ -219,6 +220,8 @@ export class ResilientLeaderboard {
     private readonly now: () => Date = () => new Date(),
     /** Runs that couldn't reach the global board yet; sent by `flush()` once the device is online. */
     private readonly outbox: Outbox<PendingScore> | null = null,
+    /** Remembers the last global board of each game, to show it instantly next time. */
+    private readonly snapshots: BoardSnapshots | null = null,
   ) {}
 
   get hasRemote(): boolean {
@@ -272,6 +275,7 @@ export class ResilientLeaderboard {
         ]);
         this.remoteId = id;
         this.online = true;
+        this.snapshots?.put(gameId, entries);
         return entries;
       } catch (err) {
         console.warn('Ranking global indisponível, usando ranking local.', err);
@@ -279,6 +283,12 @@ export class ResilientLeaderboard {
     }
     this.online = false;
     return this.local.list(gameId, max);
+  }
+
+  /** The last global board read on this device, or null when it was never loaded. */
+  snapshot(gameId: string): LeaderboardEntry[] | null {
+    const saved = this.snapshots?.get(gameId);
+    return saved ? [...saved.entries] : null;
   }
 
   /** The board saved on this device only (no network). */
