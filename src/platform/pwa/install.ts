@@ -18,9 +18,15 @@ export interface InstallEnv {
   addEventListener(type: string, listener: (event: Event) => void): void;
   isStandalone(): boolean;
   userAgent: string;
+  /** `navigator.platform` and `navigator.maxTouchPoints`: iPads and "desktop site" mode hide iOS in the UA. */
+  platform?: string;
+  maxTouchPoints?: number;
 }
 
-const isIos = (ua: string): boolean => /iphone|ipad|ipod/i.test(ua);
+const isIos = (env: InstallEnv): boolean =>
+  /iphone|ipad|ipod/i.test(env.userAgent) ||
+  // iPadOS and iPhone "desktop site" report a Mac, but a real Mac has no touch screen.
+  (env.platform === 'MacIntel' && (env.maxTouchPoints ?? 0) > 1);
 
 export class InstallPrompt {
   private deferred: BeforeInstallPromptEvent | null = null;
@@ -51,7 +57,7 @@ export class InstallPrompt {
   state(): InstallState {
     if (this.installed || this.env.isStandalone()) return 'installed';
     if (this.deferred) return 'prompt';
-    return isIos(this.env.userAgent) ? 'ios' : 'unavailable';
+    return isIos(this.env) ? 'ios' : 'unavailable';
   }
 
   /** Shows the browser's install dialog. Call it straight from a tap. */

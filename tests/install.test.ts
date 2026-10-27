@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { InstallPrompt, type InstallEnv } from '@/platform/pwa/install';
 import { retractNotice } from '@/platform/notices';
 
-const setup = (opts: { standalone?: boolean; ua?: string } = {}) => {
+const setup = (opts: { standalone?: boolean; ua?: string; platform?: string; touch?: number } = {}) => {
   const handlers = new Map<string, (e: Event) => void>();
   const env: InstallEnv = {
     addEventListener: (t, l) => void handlers.set(t, l),
     isStandalone: () => opts.standalone ?? false,
     userAgent: opts.ua ?? 'Mozilla/5.0 (Linux; Android 14) Chrome/130',
+    platform: opts.platform,
+    maxTouchPoints: opts.touch,
   };
   const fire = (type: string, event: Event = new Event(type)) => handlers.get(type)!(event);
   return { install: new InstallPrompt(env), fire };
@@ -62,5 +64,15 @@ describe('InstallPrompt', () => {
     install.onChange(() => calls++);
     fire('beforeinstallprompt', promptEvent('dismissed'));
     expect(calls).toBe(1);
+  });
+});
+
+describe('iOS detection', () => {
+  const mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15';
+  it('sees an iPhone in "desktop site" mode by its touch screen', () => {
+    expect(setup({ ua: mac, platform: 'MacIntel', touch: 5 }).install.state()).toBe('ios');
+  });
+  it('does not mistake a real Mac for an iPhone', () => {
+    expect(setup({ ua: mac, platform: 'MacIntel', touch: 0 }).install.state()).toBe('unavailable');
   });
 });

@@ -6,4 +6,6 @@ export const installPrompt = new InstallPrompt({
   addEventListener: (type, listener) => window.addEventListener(type, listener),
   isStandalone,
   userAgent: navigator.userAgent,
+  platform: navigator.platform,
+  maxTouchPoints: navigator.maxTouchPoints,
 });
