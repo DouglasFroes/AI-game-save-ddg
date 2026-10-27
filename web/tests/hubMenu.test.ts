@@ -7,6 +7,7 @@ import {
   GAME_CATEGORY,
   gameOfTheDay,
   greeting,
+  searchGames,
   type CategoryId,
 } from '@/platform/hubCategories';
 import { Recents } from '@/platform/recents';
@@ -124,5 +125,31 @@ describe('hub: mais jogados', () => {
     expect(trendingGames([session('snake', 10, 'not a date')], NOW)).toEqual([]);
     const many = ['a', 'b', 'c', 'd'].map((g, i) => session(g, 10 + i, '2026-10-26T10:00:00Z'));
     expect(trendingGames(many, NOW, 7, 2)).toEqual(['d', 'c']);
+  });
+});
+
+describe('searchGames', () => {
+  const games = [
+    { title: 'Seleção dos Sonhos', tagline: 'Monte o time' },
+    { title: 'Cobra', tagline: 'Coma maçãs' },
+  ];
+
+  it('ignores accents and case', () => {
+    expect(searchGames(games, 'SELECAO').map((g) => g.title)).toEqual(['Seleção dos Sonhos']);
+    expect(searchGames(games, 'macas')).toHaveLength(1);
+  });
+
+  it('needs every word, and a blank query keeps everything', () => {
+    expect(searchGames(games, 'sonhos time')).toHaveLength(1);
+    expect(searchGames(games, 'sonhos cobra')).toHaveLength(0);
+    expect(searchGames(games, '  ')).toHaveLength(2);
+  });
+});
+
+describe('football games', () => {
+  it('sit in the sports category', () => {
+    for (const id of ['selecao', 'timesbr', 'brasileirao'] as const) {
+      expect(GAME_CATEGORY[id]).toBe('esporte');
+    }
   });
 });

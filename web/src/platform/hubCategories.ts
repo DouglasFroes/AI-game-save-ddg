@@ -81,9 +81,9 @@ export const GAME_CATEGORY: Readonly<Record<GameId, CategoryId>> = {
   masmorra: 'mesa',
   pinball: 'acao',
   dados: 'mesa',
-  selecao: 'mesa',
-  timesbr: 'mesa',
-  brasileirao: 'mesa',
+  selecao: 'esporte',
+  timesbr: 'esporte',
+  brasileirao: 'esporte',
   penalti: 'esporte',
   golfe: 'esporte',
   tenis: 'esporte',
@@ -108,6 +108,24 @@ export function filterGames<T extends { readonly id: GameId }>(
   if (filter === 'todos') return [...games];
   if (filter === 'favoritos') return games.filter((g) => favorites.includes(g.id));
   return games.filter((g) => GAME_CATEGORY[g.id] === filter);
+}
+
+const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/**
+ * Games whose title or tagline contains every word of `query` (accents and case ignored), in the
+ * order given. A blank query matches everything.
+ */
+export function searchGames<T extends { readonly title: string; readonly tagline: string }>(
+  games: readonly T[],
+  query: string,
+): T[] {
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [...games];
+  return games.filter((g) => {
+    const hay = fold(`${g.title} ${g.tagline}`);
+    return words.every((w) => hay.includes(w));
+  });
 }
 
 /** "Bom dia" until noon, "Boa tarde" until 6 pm, "Boa noite" after that (and through the night). */

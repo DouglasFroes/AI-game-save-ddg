@@ -11,6 +11,7 @@ import { hideSplash } from '@/platform/splash';
 import {
   CATEGORY_LABELS,
   filterGames,
+  searchGames,
   GAME_CATEGORY,
   gameOfTheDay,
   greeting,
@@ -55,6 +56,7 @@ const MARGIN = 30;
 const CONTENT_W = GAME_WIDTH - MARGIN * 2;
 const HEADER_H = 124;
 const CHIPS_H = 96;
+const SEARCH_H = 84;
 const DOCK_W = 624;
 const DOCK_H = 104;
 const DOCK_CY = GAME_HEIGHT - 34 - DOCK_H / 2;
@@ -101,6 +103,7 @@ const TREND_REFRESH_MS = 120_000;
 
 let savedTab: Tab = 'inicio';
 let savedFilter: HubFilter = 'todos';
+let savedQuery = '';
 const savedScroll: Record<Tab, number> = { inicio: 0, jogos: 0, lista: 0 };
 /**
  * Game asked for by a link (`?jogo=id`, or `&jogar=1` from an app shortcut to start it right
@@ -183,6 +186,8 @@ export class HubScene extends Phaser.Scene {
   private fullscreenView: Phaser.GameObjects.Container | null = null;
   private tab: Tab = 'inicio';
   private filter: HubFilter = 'todos';
+  private query = '';
+  private searchEl: HTMLInputElement | null = null;
   private list!: Phaser.GameObjects.Container;
   private top!: Phaser.GameObjects.Container;
   private bar!: Phaser.GameObjects.Container;
@@ -233,6 +238,8 @@ export class HubScene extends Phaser.Scene {
     this.progress = null;
     this.tab = savedTab;
     this.filter = savedFilter;
+    this.query = savedQuery;
+    this.searchEl = null;
     const { profile } = getServices(this);
 
     // The bands around the game (on screens that aren't 9:16) take the page's black too.
@@ -252,6 +259,13 @@ export class HubScene extends Phaser.Scene {
     this.top = this.add.container(0, 0).setDepth(20);
     this.bar = this.add.container(0, 0).setDepth(20);
     this.scrollBar = this.add.graphics().setDepth(21);
+
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.placeSearch, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.placeSearch, this);
+      this.searchEl?.remove();
+      this.searchEl = null;
+    });
 
     this.buildHeader();
     this.buildDock();
@@ -799,7 +813,7 @@ export class HubScene extends Phaser.Scene {
   /** The strip behind the header: see-through at the top of the page, frosted once scrolled. */
   private paintHeader(): void {
     const g = this.headerSolid.clear();
-    const extra = this.tab === 'jogos' ? CHIPS_H : 0;
+    const extra = this.tab === 'jogos' ? CHIPS_H + SEARCH_H : 0;
     g.fillStyle(UI.bg, 0.9).fillRect(0, 0, GAME_WIDTH, HEADER_H + extra);
     g.fillStyle(0xffffff, 0.08).fillRect(0, HEADER_H + extra - 2, GAME_WIDTH, 2);
     this.tapTop = HEADER_H + extra;
@@ -927,13 +941,18 @@ export class HubScene extends Phaser.Scene {
     if (this.tab === 'inicio') end = this.buildHome(!fade);
     else if (this.tab === 'jogos') {
       this.buildChips();
-      end = this.buildGrid(filterGames(GAMES, this.filter, []), false);
+      this.buildSearch();
+      const shown = this.query
+        ? searchGames(GAMES, this.query)
+        : filterGames(GAMES, this.filter, []);
+      end = this.buildGrid(shown, false);
     } else {
       end = this.buildGrid(
         filterGames(GAMES, 'favoritos', getServices(this).favorites.list()),
         true,
       );
     }
+    this.placeSearch();
     this.maxScroll = Math.max(0, end + 28 - DOCK_TOP);
     this.scroll = Phaser.Math.Clamp(savedScroll[this.tab], 0, this.maxScroll);
     this.velocity = 0;
@@ -1474,7 +1493,7 @@ export class HubScene extends Phaser.Scene {
       const label = labels[i]!;
       const c = this.add.container(x + w / 2, y);
       x += w + gap;
-      const on = this.filter === f;
+      const on = this.filter === f && !this.query;
       label.setPosition(0, -1).setColor(on ? '#ffffff' : '#b6bcdc');
       c.add([
         this.add.image(0, 0, on ? pillArt(this, w, h, CTA, true) : glassArt(this, w, h, h / 2)),
@@ -1485,7 +1504,8 @@ export class HubScene extends Phaser.Scene {
         w,
         h + 12,
         () => {
-          if (this.sheet || this.filter === f) return;
+          if (this.sheet || (this.filter === f && !this.query)) return;
+          this.clearQuery();
           this.filter = f;
           savedFilter = f;
           savedScroll.jogos = 0;
@@ -1496,6 +1516,101 @@ export class HubScene extends Phaser.Scene {
       this.top.add(c);
       this.chips.push(c);
     });
+  }
+
+  private searchCy(): number {
+    return HEADER_H + CHIPS_H + SEARCH_H / 2 - 8;
+  }
+
+  private clearQuery(): void {
+    this.query = '';
+    savedQuery = '';
+    if (this.searchEl) this.searchEl.value = '';
+  }
+
+  /** The search pill: Phaser draws the glass, a DOM input on top takes the typing. */
+  private buildSearch(): void {
+    const cy = this.searchCy();
+    const h = 64;
+    const c = this.add.container(GAME_WIDTH / 2, cy);
+    c.add([
+      this.add.image(0, 0, glassArt(this, CONTENT_W, h, h / 2)),
+      drawIcon(this, 'search', -CONTENT_W / 2 + 44, 0, 32, 0x8d93bd),
+    ]);
+    this.top.add(c);
+    this.chips.push(c);
+    if (!this.query) return;
+    const x = CONTENT_W / 2 - 40;
+    const clear = this.add.container(GAME_WIDTH / 2 + x, cy);
+    clear.add(drawIcon(this, 'close', 0, 0, 26, 0xffffff));
+    this.press(
+      clear,
+      64,
+      64,
+      () => {
+        if (this.sheet) return;
+        this.clearQuery();
+        savedScroll.jogos = 0;
+        this.showTab(false);
+      },
+      { down: 0.85 },
+    );
+    this.top.add(clear);
+    this.chips.push(clear);
+  }
+
+  /** Creates the input on first use, then shows it over the pill (only on the Games tab). */
+  private placeSearch(): void {
+    if (!this.sys.isActive()) return;
+    const visible = this.tab === 'jogos' && !this.sheet;
+    if (!this.searchEl) {
+      if (!visible) return;
+      const el = document.createElement('input');
+      el.type = 'search';
+      el.placeholder = 'Buscar jogo';
+      el.enterKeyHint = 'search';
+      el.autocomplete = 'off';
+      el.setAttribute('aria-label', 'Buscar jogo');
+      el.value = this.query;
+      Object.assign(el.style, {
+        position: 'fixed',
+        zIndex: '30',
+        boxSizing: 'border-box',
+        background: 'transparent',
+        border: '0',
+        outline: 'none',
+        color: '#ffffff',
+        fontFamily: HUB_FONT,
+        fontWeight: '600',
+        padding: '0',
+        margin: '0',
+        appearance: 'none',
+      });
+      el.addEventListener('input', () => {
+        this.query = el.value.trim();
+        savedQuery = this.query;
+        savedScroll.jogos = 0;
+        this.showTab(false);
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') el.blur();
+      });
+      document.body.appendChild(el);
+      this.searchEl = el;
+    }
+    const el = this.searchEl;
+    el.style.display = visible ? 'block' : 'none';
+    if (!visible) return;
+    const r = this.game.canvas.getBoundingClientRect();
+    const k = r.width / GAME_WIDTH;
+    const left = MARGIN + 84;
+    const w = CONTENT_W - 84 - 84;
+    el.style.left = `${r.left + left * k}px`;
+    el.style.top = `${r.top + (this.searchCy() - 30) * k}px`;
+    el.style.width = `${w * k}px`;
+    el.style.height = `${60 * k}px`;
+    // 16px minimum: iOS zooms the page into any smaller input.
+    el.style.fontSize = `${Math.max(16, 24 * k)}px`;
   }
 
   private buildGrid(games: GameDefinition[], isList: boolean): number {
@@ -1529,6 +1644,21 @@ export class HubScene extends Phaser.Scene {
       start = top + 42;
     }
 
+    if (games.length === 0 && !isList) {
+      this.list.add(
+        txt(this, GAME_WIDTH / 2, start + 220, 'Nenhum jogo encontrado', 34, {
+          color: UI.white,
+        }),
+      );
+      this.list.add(
+        txt(this, GAME_WIDTH / 2, start + 276, 'Tente outra palavra', 22, {
+          color: UI.soft,
+          weight: 'normal',
+        }),
+      );
+      return start + 400;
+    }
+
     if (games.length === 0) {
       const c = this.add.container(GAME_WIDTH / 2, start + 270);
       c.add([
@@ -1557,7 +1687,7 @@ export class HubScene extends Phaser.Scene {
     }
 
     const gridW = GRID_COLS * POSTER_W + (GRID_COLS - 1) * GRID_GAP;
-    const rise = !reducedMotion();
+    const rise = !reducedMotion() && !this.query;
     games.forEach((game, i) => {
       const x = (GAME_WIDTH - gridW) / 2 + POSTER_W / 2 + (i % GRID_COLS) * (POSTER_W + GRID_GAP);
       const y = start + POSTER_H / 2 + Math.floor(i / GRID_COLS) * (POSTER_H + GRID_GAP);
@@ -1758,6 +1888,7 @@ export class HubScene extends Phaser.Scene {
   private scrim(): { root: Phaser.GameObjects.Container; dim: Phaser.GameObjects.Rectangle } {
     const root = this.add.container(0, 0).setDepth(50);
     this.sheet = root;
+    this.placeSearch();
     const dim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x03040a, 0.8).setOrigin(0);
     dim.setInteractive();
     dim.on('pointerup', () => this.closeSheet());

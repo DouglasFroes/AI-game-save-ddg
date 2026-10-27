@@ -28,7 +28,8 @@ export type IconKind =
   | 'sparkle'
   | 'bolt'
   | 'gamepad'
-  | 'chat';
+  | 'chat'
+  | 'search';
 
 type Pt = readonly [number, number];
 
@@ -217,6 +218,11 @@ export function drawIcon(
         [0, 0.2],
         [-0.28, 0.42],
       ]);
+      break;
+    case 'search':
+      g.lineStyle(s * 0.12, color);
+      g.strokeCircle(-0.08 * s, -0.08 * s, 0.26 * s);
+      g.lineBetween(0.12 * s, 0.12 * s, 0.38 * s, 0.38 * s);
       break;
     case 'chevron':
       g.lineStyle(s * 0.14, color);
