@@ -7,9 +7,12 @@ import { GameOverScene } from '@/platform/scenes/GameOverScene';
 import { HallScene } from '@/platform/scenes/HallScene';
 import { HubScene } from '@/platform/scenes/HubScene';
 import { LeaderboardScene } from '@/platform/scenes/LeaderboardScene';
+import { registerServiceWorker } from '@/platform/pwa/register';
 import { bindBrowserLifecycle } from '@/platform/sessionTracker';
 import { bindConnectivitySync } from '@/platform/sync';
 import { createServices, provideServices } from '@/services';
+
+registerServiceWorker();
 
 const services = createServices();
 
