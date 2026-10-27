@@ -44,9 +44,12 @@ pub fn router(state: AppState) -> Router {
         .route("/admin/overview", get(admin::overview))
         .route("/admin/sessions", get(admin::sessions))
         .route("/admin/players", get(admin::players))
+        .route("/admin/players/{id}", get(admin::player_detail))
+        .route("/admin/entries", get(admin::entries_list))
         .route("/admin/entries/{id}", delete(admin::delete_entry))
         .route("/admin/reports", get(admin::reports))
         .route("/admin/reports/{message}", delete(admin::dismiss_reports))
+        .route("/admin/chat/messages", get(admin::messages_list))
         .route("/admin/chat/messages/{id}", delete(admin::moderate_message))
         .layer(RequestBodyLimitLayer::new(MAX_BODY));
 

@@ -188,6 +188,7 @@ export class HubScene extends Phaser.Scene {
   private filter: HubFilter = 'todos';
   private query = '';
   private searchEl: HTMLInputElement | null = null;
+  private searching = false;
   private list!: Phaser.GameObjects.Container;
   private top!: Phaser.GameObjects.Container;
   private bar!: Phaser.GameObjects.Container;
@@ -240,6 +241,7 @@ export class HubScene extends Phaser.Scene {
     this.filter = savedFilter;
     this.query = savedQuery;
     this.searchEl = null;
+    this.searching = false;
     const { profile } = getServices(this);
 
     // The bands around the game (on screens that aren't 9:16) take the page's black too.
@@ -655,6 +657,10 @@ export class HubScene extends Phaser.Scene {
       this.top.add(full.view);
       this.fullscreenView = full.view;
     }
+    const find = this.glassCircle(ax - 296, cy, 62, 'search', 30, () => this.openSearch(), {
+      color: UI.violet,
+    });
+    this.top.add(find.view);
     // Same slot as full screen: an installed app opens full screen anyway.
     this.buildInstallButton(ax - 224, cy);
   }
@@ -1528,20 +1534,30 @@ export class HubScene extends Phaser.Scene {
     if (this.searchEl) this.searchEl.value = '';
   }
 
-  /** The search pill: Phaser draws the glass, a DOM input on top takes the typing. */
+  /** The search pill: Phaser draws the glass and the text; tapping it opens the real input. */
   private buildSearch(): void {
     const cy = this.searchCy();
     const h = 64;
     const c = this.add.container(GAME_WIDTH / 2, cy);
     c.add([
       this.add.image(0, 0, glassArt(this, CONTENT_W, h, h / 2)),
-      drawIcon(this, 'search', -CONTENT_W / 2 + 44, 0, 32, 0x8d93bd),
+      drawIcon(this, 'search', -CONTENT_W / 2 + 44, 0, 32, this.query ? 0xffffff : 0x8d93bd),
     ]);
+    if (!this.searching) {
+      c.add(
+        txt(this, -CONTENT_W / 2 + 84, 0, this.query || 'Buscar jogo', 26, {
+          color: this.query ? '#ffffff' : '#8d93bd',
+          weight: this.query ? 'bold' : 'normal',
+        }).setOrigin(0, 0.5),
+      );
+    }
+    this.press(c, this.query ? CONTENT_W - 100 : CONTENT_W, h, () => this.focusSearch(), {
+      down: 0.98,
+    });
     this.top.add(c);
     this.chips.push(c);
     if (!this.query) return;
-    const x = CONTENT_W / 2 - 40;
-    const clear = this.add.container(GAME_WIDTH / 2 + x, cy);
+    const clear = this.add.container(GAME_WIDTH / 2 + CONTENT_W / 2 - 40, cy);
     clear.add(drawIcon(this, 'close', 0, 0, 26, 0xffffff));
     this.press(
       clear,
@@ -1559,46 +1575,78 @@ export class HubScene extends Phaser.Scene {
     this.chips.push(clear);
   }
 
-  /** Creates the input on first use, then shows it over the pill (only on the Games tab). */
-  private placeSearch(): void {
-    if (!this.sys.isActive()) return;
-    const visible = this.tab === 'jogos' && !this.sheet;
-    if (!this.searchEl) {
-      if (!visible) return;
-      const el = document.createElement('input');
-      el.type = 'search';
-      el.placeholder = 'Buscar jogo';
-      el.enterKeyHint = 'search';
-      el.autocomplete = 'off';
-      el.setAttribute('aria-label', 'Buscar jogo');
-      el.value = this.query;
-      Object.assign(el.style, {
-        position: 'fixed',
-        zIndex: '30',
-        boxSizing: 'border-box',
-        background: 'transparent',
-        border: '0',
-        outline: 'none',
-        color: '#ffffff',
-        fontFamily: HUB_FONT,
-        fontWeight: '600',
-        padding: '0',
-        margin: '0',
-        appearance: 'none',
-      });
-      el.addEventListener('input', () => {
-        this.query = el.value.trim();
-        savedQuery = this.query;
-        savedScroll.jogos = 0;
-        this.showTab(false);
-      });
-      el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') el.blur();
-      });
-      document.body.appendChild(el);
-      this.searchEl = el;
+  /** Opens the search from anywhere: goes to the Games tab and raises the keyboard. */
+  private openSearch(): void {
+    if (this.sheet) return;
+    if (this.tab !== 'jogos') {
+      this.tab = 'jogos';
+      savedTab = 'jogos';
+      savedScroll.jogos = 0;
+      this.paintDock(true);
     }
+    this.focusSearch();
+  }
+
+  private focusSearch(): void {
+    if (this.sheet) return;
+    this.searching = true;
+    this.showTab(false);
+    const el = this.ensureSearchEl();
+    this.placeSearch();
+    el.value = this.query;
+    el.focus();
+  }
+
+  private ensureSearchEl(): HTMLInputElement {
+    if (this.searchEl) return this.searchEl;
+    const el = document.createElement('input');
+    el.type = 'search';
+    el.placeholder = 'Buscar jogo';
+    el.enterKeyHint = 'search';
+    el.autocomplete = 'off';
+    el.setAttribute('aria-label', 'Buscar jogo');
+    Object.assign(el.style, {
+      position: 'fixed',
+      zIndex: '30',
+      boxSizing: 'border-box',
+      background: 'transparent',
+      border: '0',
+      outline: 'none',
+      color: '#ffffff',
+      fontFamily: HUB_FONT,
+      fontWeight: '600',
+      padding: '0',
+      margin: '0',
+      appearance: 'none',
+      display: 'none',
+    });
+    el.addEventListener('input', () => {
+      this.query = el.value.trim();
+      savedQuery = this.query;
+      savedScroll.jogos = 0;
+      this.showTab(false);
+    });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') el.blur();
+    });
+    el.addEventListener('blur', () => {
+      this.searching = false;
+      el.style.display = 'none';
+      // Redraw a beat later so the tap that blurred the field (a game card) still lands.
+      this.time?.delayedCall(250, () => {
+        if (this.sys.isActive() && !this.searching) this.showTab(false);
+      });
+    });
+    document.body.appendChild(el);
+    this.searchEl = el;
+    return el;
+  }
+
+  /** Puts the input over the pill while searching; hides it otherwise (and behind any sheet). */
+  private placeSearch(): void {
     const el = this.searchEl;
+    if (!el || !this.sys.isActive()) return;
+    const visible = this.tab === 'jogos' && !this.sheet && this.searching;
     el.style.display = visible ? 'block' : 'none';
     if (!visible) return;
     const r = this.game.canvas.getBoundingClientRect();
@@ -1610,7 +1658,7 @@ export class HubScene extends Phaser.Scene {
     el.style.width = `${w * k}px`;
     el.style.height = `${60 * k}px`;
     // 16px minimum: iOS zooms the page into any smaller input.
-    el.style.fontSize = `${Math.max(16, 24 * k)}px`;
+    el.style.fontSize = `${Math.max(16, 26 * k)}px`;
   }
 
   private buildGrid(games: GameDefinition[], isList: boolean): number {

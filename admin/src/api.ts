@@ -45,36 +45,51 @@ export async function api<T>(path: string, method = 'GET', body?: unknown): Prom
   return data as T;
 }
 
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
 export interface Totals {
   players: number;
   google_players: number;
   active_today: number;
   active_7d: number;
+  active_30d?: number;
   sessions: number;
   play_seconds: number;
   entries: number;
   messages: number;
   open_reports: number;
+  games_played?: number;
 }
+
 export interface GameStats {
   game_id: string;
   sessions: number;
   play_seconds: number;
   players: number;
   best_score: number;
+  entries?: number;
   last_played_at: string | null;
 }
+
 export interface DayStats {
   day: string;
   sessions: number;
   play_seconds: number;
   players: number;
 }
+
 export interface Overview {
   totals: Totals;
   games: GameStats[];
   daily: DayStats[];
+  top_players?: PlayerSummary[];
 }
+
 export interface PlaySession {
   id: string;
   playerId: string;
@@ -85,6 +100,12 @@ export interface PlaySession {
   startedAt: string;
   endedAt: string;
 }
+
+export interface SessionsPage extends Page<PlaySession> {
+  total_seconds: number;
+  unique_players: number;
+}
+
 export interface PlayerSummary {
   id: string;
   name: string | null;
@@ -93,17 +114,50 @@ export interface PlayerSummary {
   sessions: number;
   play_seconds: number;
   entries: number;
+  messages?: number;
+  favorite_game?: string | null;
   created_at: string;
   last_seen_at: string;
 }
+
+export interface PlayerGameStats {
+  game_id: string;
+  sessions: number;
+  play_seconds: number;
+  best_score: number;
+  last_played_at: string;
+}
+
 export interface Entry {
   id: string;
+  game_id?: string;
   player: string;
   name: string;
   score: number;
   details: Record<string, number>;
   date: string;
+  rank?: number;
 }
+
+export interface AdminMessage {
+  id: string;
+  room: string;
+  player_id: string;
+  name: string;
+  text: string;
+  deleted: boolean;
+  reports: number;
+  created_at: string;
+}
+
+export interface PlayerDetail {
+  player: PlayerSummary;
+  games: PlayerGameStats[];
+  recent_sessions: PlaySession[];
+  entries: Entry[];
+  recent_messages: AdminMessage[];
+}
+
 export interface Report {
   id: number;
   room: string;
@@ -116,8 +170,9 @@ export interface Report {
   last_reported_at: string;
 }
 
-interface Session {
+export interface Session {
   token: string;
+  playerId?: string;
   google: boolean;
   account: { email: string; name: string } | null;
 }

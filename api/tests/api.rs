@@ -304,14 +304,27 @@ async fn admin_is_limited_to_listed_emails() {
     // Moderation: remove a run, blank a reported message.
     let (_, run) = app.call(Method::POST, "/api/boards/stack/entries", Some(&ana), Some(run(5))).await;
     let id = run["id"].as_str().unwrap();
+    let (_, entries_page) = app.call(Method::GET, "/api/admin/entries?game=stack&page=1&per_page=10", Some(&boss), None).await;
+    assert_eq!((entries_page["total"].as_i64(), entries_page["items"][0]["rank"].as_i64()), (Some(1), Some(1)));
     assert_eq!(app.call(Method::DELETE, &format!("/api/admin/entries/{id}"), Some(&boss), None).await.0, StatusCode::NO_CONTENT);
     assert_eq!(app.call(Method::DELETE, &format!("/api/admin/entries/{id}"), Some(&boss), None).await.0, StatusCode::NOT_FOUND);
+
+    let (_, players_page) = app.call(Method::GET, "/api/admin/players?page=1&per_page=1", Some(&boss), None).await;
+    assert_eq!((players_page["total"].as_i64(), players_page["items"].as_array().unwrap().len()), (Some(2), 1));
+    let pid = players_page["items"][0]["id"].as_str().unwrap();
+    let (s, detail) = app.call(Method::GET, &format!("/api/admin/players/{pid}"), Some(&boss), None).await;
+    assert_eq!((s, detail["player"]["id"].as_str()), (StatusCode::OK, Some(pid)));
+
+    let (_, sessions_page) = app.call(Method::GET, "/api/admin/sessions?page=1&per_page=10", Some(&boss), None).await;
+    assert_eq!(sessions_page["total"].as_i64(), Some(0));
 
     let (_, msg) = app.call(Method::POST, "/api/chat/rooms/geral/messages", Some(&ana), Some(json!({"name":"Ana","text":"feio"}))).await;
     let mid = msg["id"].as_str().unwrap();
     app.call(Method::POST, &format!("/api/chat/rooms/geral/messages/{mid}/report"), Some(&boss), None).await;
     let (_, reports) = app.call(Method::GET, "/api/admin/reports", Some(&boss), None).await;
     assert_eq!((reports.as_array().unwrap().len(), reports[0]["text"].clone()), (1, json!("feio")));
+    let (_, msgs_page) = app.call(Method::GET, "/api/admin/chat/messages?status=reported", Some(&boss), None).await;
+    assert_eq!(msgs_page["total"].as_i64(), Some(1));
     assert_eq!(app.call(Method::DELETE, &format!("/api/admin/chat/messages/{mid}"), Some(&boss), None).await.0, StatusCode::NO_CONTENT);
     let (_, reports) = app.call(Method::GET, "/api/admin/reports", Some(&boss), None).await;
     assert!(reports.as_array().unwrap().is_empty());

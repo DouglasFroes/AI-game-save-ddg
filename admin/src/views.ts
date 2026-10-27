@@ -1,50 +1,563 @@
-import { ago, csvCell, dateTime, duration, esc, number } from './format';
 import {
   api,
+  type AdminMessage,
   type DayStats,
   type Entry,
+  type GameStats,
   type Overview,
+  type Page,
   type PlayerSummary,
   type PlaySession,
   type Report,
+  type SessionsPage,
 } from './api';
+import {
+  ago,
+  csvCell,
+  dateTime,
+  duration,
+  esc,
+  fillDailyTimeline,
+  formatDetailPairs,
+  number,
+  paginateSlice,
+  parseHashRoute,
+  percent,
+} from './format';
+import { CATEGORY_LABELS, GAMES_CATALOG, getGameMeta, type GameCategory } from './games';
+import {
+  bindPagination,
+  confirmDialog,
+  downloadFile,
+  openPlayerModal,
+  renderGameBadge,
+  renderPagination,
+  renderPlayerCell,
+  renderRankBadge,
+  renderRoomBadge,
+  toast,
+} from './ui';
 
 /** A screen: fills `root` and returns when it is drawn. Errors are shown by the caller. */
-export type View = (root: HTMLElement) => Promise<void>;
+export type View = (root: HTMLElement, onBadgeUpdate?: (reports: number) => void) => Promise<void>;
 
-const stat = (label: string, value: string, hint = ''): string =>
-  `<div class="stat"><span>${esc(label)}</span><strong>${esc(value)}</strong>${hint ? `<small>${esc(hint)}</small>` : ''}</div>`;
+const sortedCatalog = [...GAMES_CATALOG].sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
 
-function bars(days: DayStats[]): string {
-  const max = Math.max(1, ...days.map((d) => d.sessions));
-  return `<div class="bars">${days
-    .map(
-      (d) =>
-        `<div class="bar" title="${esc(d.day)}: ${d.sessions} partidas, ${d.players} jogadores"><i style="height:${Math.max(2, (d.sessions / max) * 100)}%"></i><span>${esc(d.day.slice(8))}</span></div>`,
-    )
-    .join('')}</div>`;
+function bindPlayerTriggers(root: HTMLElement, onChanged?: () => void): void {
+  root.querySelectorAll<HTMLElement>('[data-player-modal]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.playerModal;
+      if (id) void openPlayerModal(id, onChanged);
+    });
+  });
 }
 
-export const overview: View = async (root) => {
-  const o = await api<Overview>('/api/admin/overview');
-  const t = o.totals;
-  root.innerHTML = `
-    <div class="stats">
-      ${stat('Jogadores', number(t.players), `${number(t.google_players)} com Google`)}
-      ${stat('Ativos hoje', number(t.active_today), `${number(t.active_7d)} em 7 dias`)}
-      ${stat('Partidas', number(t.sessions))}
-      ${stat('Tempo jogado', duration(t.play_seconds))}
-      ${stat('Recordes', number(t.entries))}
-      ${stat('Mensagens', number(t.messages), `${t.open_reports} denúncia(s) aberta(s)`)}
+const kpiCard = (
+  icon: string,
+  label: string,
+  value: string,
+  hint = '',
+  accentClass = '',
+): string => `
+  <div class="stat ${accentClass}">
+    <div class="stat-top">
+      <span class="stat-label">${esc(label)}</span>
+      <span class="stat-icon">${icon}</span>
     </div>
-    <h2>Partidas por dia (14 dias)</h2>${bars(o.daily)}
-    <h2>Jogos</h2>
-    <table><thead><tr><th>Jogo</th><th>Partidas</th><th>Tempo</th><th>Jogadores</th><th>Melhor</th><th>Última</th></tr></thead><tbody>${o.games
-      .map(
-        (g) =>
-          `<tr><td>${esc(g.game_id)}</td><td>${number(g.sessions)}</td><td>${duration(g.play_seconds)}</td><td>${number(g.players)}</td><td>${number(g.best_score)}</td><td>${g.last_played_at ? ago(g.last_played_at) : '—'}</td></tr>`,
-      )
-      .join('')}</tbody></table>`;
+    <strong class="stat-value">${esc(value)}</strong>
+    ${hint ? `<small class="stat-hint">${hint}</small>` : ''}
+  </div>
+`;
+
+type ChartMetric = 'sessions' | 'play_seconds' | 'players';
+
+function renderDailyChart(days: DayStats[], metric: ChartMetric): string {
+  const values = days.map((d) => d[metric]);
+  const max = Math.max(1, ...values);
+  const formatVal = (v: number) => (metric === 'play_seconds' ? duration(v) : number(v));
+
+  return `
+    <div class="daily-chart" style="--cols:${days.length}">
+      ${days
+        .map((d) => {
+          const val = d[metric];
+          const pct = val > 0 ? Math.max(6, Math.round((val / max) * 100)) : 2;
+          const dateLabel = `${d.day.slice(8, 10)}/${d.day.slice(5, 7)}`;
+          const tip = `${dateLabel}/${d.day.slice(0, 4)}: ${number(d.sessions)} partidas · ${duration(d.play_seconds)} · ${number(d.players)} jogadores`;
+          return `
+            <div class="day-col" title="${esc(tip)}">
+              <span class="day-val">${val > 0 ? esc(formatVal(val)) : ''}</span>
+              <div class="day-bar-wrap">
+                <div class="day-bar ${val > 0 ? 'has-data' : ''}" style="height:${pct}%"></div>
+              </div>
+              <span class="day-date">${esc(dateLabel)}</span>
+            </div>
+          `;
+        })
+        .join('')}
+    </div>
+  `;
+}
+
+export const overview: View = async (root, onBadgeUpdate) => {
+  let daysCount = 14;
+  let metric: ChartMetric = 'sessions';
+  let data = await api<Overview>(`/api/admin/overview?days=${daysCount}`);
+  onBadgeUpdate?.(data.totals.open_reports);
+
+  const draw = () => {
+    const t = data.totals;
+    const timeline = fillDailyTimeline(data.daily, daysCount);
+    const periodSessions = timeline.reduce((acc, d) => acc + d.sessions, 0);
+    const periodSeconds = timeline.reduce((acc, d) => acc + d.play_seconds, 0);
+    const avgSessionSec = t.sessions > 0 ? Math.round(t.play_seconds / t.sessions) : 0;
+    const avgPlayerSec = t.players > 0 ? Math.round(t.play_seconds / t.players) : 0;
+    const googlePct = percent(t.google_players, t.players, 0);
+    const gamesPlayed = t.games_played ?? data.games.filter((g) => g.sessions > 0).length;
+
+    const topGames = data.games.slice(0, 10);
+    const maxGameTime = Math.max(1, topGames[0]?.play_seconds ?? 1);
+    const topPlayers = data.top_players ?? [];
+
+    root.innerHTML = `
+      <div class="stats">
+        ${kpiCard(
+          '👥',
+          'Jogadores',
+          number(t.players),
+          `<strong>${number(t.google_players)}</strong> com Google (${esc(googlePct)})`,
+        )}
+        ${kpiCard(
+          '🟢',
+          'Ativos Hoje',
+          number(t.active_today),
+          `7d: <strong>${number(t.active_7d)}</strong>${t.active_30d !== undefined ? ` · 30d: <strong>${number(t.active_30d)}</strong>` : ''}`,
+        )}
+        ${kpiCard(
+          '🕹️',
+          'Partidas',
+          number(t.sessions),
+          `Média de <strong>${esc(duration(avgSessionSec))}</strong> / partida`,
+        )}
+        ${kpiCard(
+          '⏱️',
+          'Tempo Jogado',
+          duration(t.play_seconds),
+          `Média de <strong>${esc(duration(avgPlayerSec))}</strong> / jogador`,
+          'stat-highlight',
+        )}
+        ${kpiCard(
+          '🏆',
+          'Recordes',
+          number(t.entries),
+          `<strong>${number(gamesPlayed)}</strong> de ${GAMES_CATALOG.length} jogos jogados`,
+        )}
+        ${kpiCard(
+          '💬',
+          'Mensagens no Chat',
+          number(t.messages),
+          t.open_reports > 0
+            ? `<a href="#denuncias" class="stat-alert">🚨 ${number(t.open_reports)} denúncia(s) aberta(s)</a>`
+            : `<span class="text-success">✓ Nenhuma denúncia aberta</span>`,
+          t.open_reports > 0 ? 'stat-danger' : '',
+        )}
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>📈 Atividade Diária (${daysCount} dias)</h2>
+            <p class="panel-sub">
+              No período: <strong>${number(periodSessions)}</strong> partidas ·
+              <strong>${duration(periodSeconds)}</strong> jogados
+            </p>
+          </div>
+          <div class="toolbar-group">
+            <div class="seg-group" role="group" aria-label="Métrica">
+              <button type="button" class="seg-btn ${metric === 'sessions' ? 'active' : ''}" data-metric="sessions">Partidas</button>
+              <button type="button" class="seg-btn ${metric === 'play_seconds' ? 'active' : ''}" data-metric="play_seconds">Tempo</button>
+              <button type="button" class="seg-btn ${metric === 'players' ? 'active' : ''}" data-metric="players">Jogadores</button>
+            </div>
+            <div class="seg-group" role="group" aria-label="Período">
+              ${[7, 14, 30]
+                .map(
+                  (d) =>
+                    `<button type="button" class="seg-btn ${daysCount === d ? 'active' : ''}" data-days="${d}">${d}d</button>`,
+                )
+                .join('')}
+            </div>
+          </div>
+        </div>
+        ${renderDailyChart(timeline, metric)}
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>🔥 Top 10 Jogos por Tempo</h2>
+              <p class="panel-sub">Jogos com maior engajamento acumulado</p>
+            </div>
+            <a href="#jogos" class="btn btn-xs btn-ghost">Ver todos (${GAMES_CATALOG.length}) →</a>
+          </div>
+          ${
+            topGames.length === 0
+              ? `<div class="empty-state">Nenhuma partida registrada ainda.</div>`
+              : `<div class="progress-list">
+                  ${topGames
+                    .map((g, i) => {
+                      const meta = getGameMeta(g.game_id);
+                      const pct = Math.max(4, Math.round((g.play_seconds / maxGameTime) * 100));
+                      const share = percent(g.play_seconds, t.play_seconds, 0);
+                      return `
+                        <div class="progress-row">
+                          <div class="progress-meta">
+                            ${renderRankBadge(i + 1)}
+                            ${renderGameBadge(g.game_id, { linkTab: 'sessoes' })}
+                            <span class="progress-stats">
+                              <strong class="text-accent">${duration(g.play_seconds)}</strong> (${share}) ·
+                              ${number(g.sessions)} part. · ${number(g.players)} jog.
+                            </span>
+                          </div>
+                          <div class="progress-track">
+                            <div class="progress-fill" style="width:${pct}%;background:${esc(meta.color)}"></div>
+                          </div>
+                        </div>
+                      `;
+                    })
+                    .join('')}
+                </div>`
+          }
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>👑 Top 10 Jogadores</h2>
+              <p class="panel-sub">Usuários com mais tempo de jogo</p>
+            </div>
+            <a href="#jogadores" class="btn btn-xs btn-ghost">Ver todos (${number(t.players)}) →</a>
+          </div>
+          ${
+            topPlayers.length === 0
+              ? `<div class="empty-state">Nenhum jogador ativo ainda.</div>`
+              : `<div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Jogador</th>
+                        <th>Tempo</th>
+                        <th>Partidas</th>
+                        <th>Favorito</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${topPlayers
+                        .map(
+                          (p, i) => `
+                        <tr>
+                          <td>${renderRankBadge(i + 1)}</td>
+                          <td>${renderPlayerCell(p)}</td>
+                          <td><span class="pill-duration">${duration(p.play_seconds)}</span></td>
+                          <td>${number(p.sessions)}</td>
+                          <td>${p.favorite_game ? renderGameBadge(p.favorite_game) : '<span class="muted">—</span>'}</td>
+                          <td class="text-right">
+                            <button type="button" class="btn btn-xs btn-ghost" data-player-modal="${esc(p.id)}">Ficha</button>
+                          </td>
+                        </tr>
+                      `,
+                        )
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>`
+          }
+        </div>
+      </div>
+    `;
+
+    root.querySelectorAll<HTMLButtonElement>('[data-metric]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        metric = btn.dataset.metric as ChartMetric;
+        draw();
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>('[data-days]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const nextDays = Number(btn.dataset.days);
+        if (!nextDays || nextDays === daysCount) return;
+        daysCount = nextDays;
+        data = await api<Overview>(`/api/admin/overview?days=${daysCount}`);
+        draw();
+      });
+    });
+
+    bindPlayerTriggers(root, () => {
+      void api<Overview>(`/api/admin/overview?days=${daysCount}`).then((fresh) => {
+        data = fresh;
+        draw();
+      });
+    });
+  };
+
+  draw();
+};
+
+export function gamesToCsv(rows: GameStats[]): string {
+  const head = 'gameId,title,category,sessions,playSeconds,players,entries,bestScore,lastPlayedAt';
+  const lines = rows.map((g) => {
+    const meta = getGameMeta(g.game_id);
+    return [
+      g.game_id,
+      meta.title,
+      CATEGORY_LABELS[meta.category],
+      g.sessions,
+      g.play_seconds,
+      g.players,
+      g.entries ?? 0,
+      g.best_score,
+      g.last_played_at ?? '',
+    ]
+      .map(csvCell)
+      .join(',');
+  });
+  return [head, ...lines].join('\n');
+}
+
+export const gamesView: View = async (root, onBadgeUpdate) => {
+  const o = await api<Overview>('/api/admin/overview?days=14');
+  onBadgeUpdate?.(o.totals.open_reports);
+
+  const byId = new Map<string, GameStats>(o.games.map((g) => [g.game_id, g]));
+  const allGames: GameStats[] = GAMES_CATALOG.map((meta) => {
+    const found = byId.get(meta.id);
+    return (
+      found ?? {
+        game_id: meta.id,
+        sessions: 0,
+        play_seconds: 0,
+        players: 0,
+        best_score: 0,
+        entries: 0,
+        last_played_at: null,
+      }
+    );
+  });
+  // Include any extra game from DB not in static catalog
+  for (const g of o.games) {
+    if (!GAMES_CATALOG.some((c) => c.id === g.game_id)) {
+      allGames.push(g);
+    }
+  }
+
+  let search = '';
+  let category: 'all' | GameCategory = 'all';
+  let statusFilter: 'all' | 'played' | 'unplayed' | 'ranked' = 'all';
+  let sortBy: 'time' | 'sessions' | 'players' | 'avg' | 'entries' | 'score' | 'recent' | 'name' = 'time';
+  let page = 1;
+  let perPage = 25;
+
+  root.innerHTML = `
+    <div class="panel">
+      <div class="toolbar">
+        <input id="game-q" type="search" class="input-search" placeholder="🔍 Buscar jogo por título ou ID..." />
+        <div class="toolbar-filters">
+          <select id="game-cat">
+            <option value="all">Todas as categorias</option>
+            ${(Object.keys(CATEGORY_LABELS) as GameCategory[])
+              .map((c) => `<option value="${c}">${esc(CATEGORY_LABELS[c])}</option>`)
+              .join('')}
+          </select>
+          <select id="game-status">
+            <option value="all">Todos os jogos (${allGames.length})</option>
+            <option value="played">Com partidas jogadas</option>
+            <option value="unplayed">Sem partidas (0)</option>
+            <option value="ranked">Com recordes no ranking</option>
+          </select>
+          <select id="game-sort">
+            <option value="time">Ordenar: Maior tempo jogado</option>
+            <option value="sessions">Ordenar: Mais partidas</option>
+            <option value="players">Ordenar: Mais jogadores únicos</option>
+            <option value="avg">Ordenar: Maior tempo médio</option>
+            <option value="entries">Ordenar: Mais recordes</option>
+            <option value="score">Ordenar: Maior pontuação</option>
+            <option value="recent">Ordenar: Jogado recentemente</option>
+            <option value="name">Ordenar: Nome (A–Z)</option>
+          </select>
+          <button type="button" id="game-csv" class="btn btn-secondary">📥 Exportar CSV</button>
+        </div>
+      </div>
+      <div id="games-summary" class="summary-strip"></div>
+      <div id="games-list"></div>
+    </div>
+  `;
+
+  const summaryEl = root.querySelector<HTMLElement>('#games-summary')!;
+  const listEl = root.querySelector<HTMLElement>('#games-list')!;
+
+  const getFiltered = (): GameStats[] => {
+    const q = search.trim().toLowerCase();
+    return allGames
+      .filter((g) => {
+        const meta = getGameMeta(g.game_id);
+        if (category !== 'all' && meta.category !== category) return false;
+        if (statusFilter === 'played' && g.sessions === 0) return false;
+        if (statusFilter === 'unplayed' && g.sessions > 0) return false;
+        if (statusFilter === 'ranked' && (g.entries ?? 0) === 0) return false;
+        if (q) {
+          const hay = `${meta.title} ${g.game_id} ${CATEGORY_LABELS[meta.category]}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const ma = getGameMeta(a.game_id);
+        const mb = getGameMeta(b.game_id);
+        const avgA = a.sessions > 0 ? a.play_seconds / a.sessions : 0;
+        const avgB = b.sessions > 0 ? b.play_seconds / b.sessions : 0;
+        switch (sortBy) {
+          case 'sessions':
+            return b.sessions - a.sessions || b.play_seconds - a.play_seconds;
+          case 'players':
+            return b.players - a.players || b.play_seconds - a.play_seconds;
+          case 'avg':
+            return avgB - avgA || b.play_seconds - a.play_seconds;
+          case 'entries':
+            return (b.entries ?? 0) - (a.entries ?? 0) || b.play_seconds - a.play_seconds;
+          case 'score':
+            return b.best_score - a.best_score || b.play_seconds - a.play_seconds;
+          case 'recent':
+            return (b.last_played_at ?? '').localeCompare(a.last_played_at ?? '');
+          case 'name':
+            return ma.title.localeCompare(mb.title, 'pt-BR');
+          case 'time':
+          default:
+            return b.play_seconds - a.play_seconds || b.sessions - a.sessions || ma.title.localeCompare(mb.title, 'pt-BR');
+        }
+      });
+  };
+
+  const renderTable = () => {
+    const filtered = getFiltered();
+    const pg = paginateSlice(filtered, page, perPage);
+    page = pg.page;
+    const totalSec = filtered.reduce((s, g) => s + g.play_seconds, 0);
+    const totalSess = filtered.reduce((s, g) => s + g.sessions, 0);
+    const playedCount = filtered.filter((g) => g.sessions > 0).length;
+    const grandTotalSec = Math.max(1, o.totals.play_seconds);
+
+    summaryEl.innerHTML = `
+      <span><strong>${number(filtered.length)}</strong> jogos no filtro (${number(playedCount)} com partidas)</span>
+      <span>Partidas somadas: <strong>${number(totalSess)}</strong></span>
+      <span>Tempo somado: <strong>${duration(totalSec)}</strong></span>
+    `;
+
+    if (pg.total === 0) {
+      listEl.innerHTML = `<div class="empty-state">Nenhum jogo encontrado para os filtros selecionados.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Jogo</th>
+              <th>Categoria</th>
+              <th>Tempo Jogado</th>
+              <th>% do Total</th>
+              <th>Partidas</th>
+              <th>Jogadores</th>
+              <th>Média/Partida</th>
+              <th>Recordes</th>
+              <th>Melhor Pontuação</th>
+              <th>Última Partida</th>
+              <th class="text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pg.items
+              .map((g, idx) => {
+                const rank = (pg.page - 1) * pg.per_page + idx + 1;
+                const meta = getGameMeta(g.game_id);
+                const avg = g.sessions > 0 ? Math.round(g.play_seconds / g.sessions) : 0;
+                const share = percent(g.play_seconds, grandTotalSec, 1);
+                return `
+                  <tr class="${g.sessions === 0 && (g.entries ?? 0) === 0 ? 'row-dim' : ''}">
+                    <td>${renderRankBadge(rank)}</td>
+                    <td>${renderGameBadge(g.game_id, { showId: true })}</td>
+                    <td><span class="cat-pill cat-${esc(meta.category)}">${esc(CATEGORY_LABELS[meta.category])}</span></td>
+                    <td><span class="pill-duration">${duration(g.play_seconds)}</span></td>
+                    <td>${esc(share)}</td>
+                    <td><strong>${number(g.sessions)}</strong></td>
+                    <td>${number(g.players)}</td>
+                    <td>${g.sessions > 0 ? duration(avg) : '—'}</td>
+                    <td>${number(g.entries ?? 0)}</td>
+                    <td>${g.best_score > 0 ? `<strong class="text-gold">${number(g.best_score)}</strong>` : '—'}</td>
+                    <td title="${esc(dateTime(g.last_played_at))}">${g.last_played_at ? ago(g.last_played_at) : '—'}</td>
+                    <td class="text-right actions-cell">
+                      <a href="#rankings?game=${encodeURIComponent(g.game_id)}" class="btn btn-xs btn-ghost" title="Ver ranking deste jogo">🏆 Ranking</a>
+                      <a href="#sessoes?game=${encodeURIComponent(g.game_id)}" class="btn btn-xs btn-ghost" title="Ver partidas deste jogo">🕒 Partidas</a>
+                    </td>
+                  </tr>
+                `;
+              })
+              .join('')}
+          </tbody>
+        </table>
+      </div>
+      ${renderPagination({ total: pg.total, page: pg.page, per_page: pg.per_page, noun: 'jogos' })}
+    `;
+
+    bindPagination(
+      listEl,
+      (nextPage) => {
+        page = nextPage;
+        renderTable();
+      },
+      (nextPerPage) => {
+        perPage = nextPerPage;
+        page = 1;
+        renderTable();
+      },
+    );
+  };
+
+  root.querySelector<HTMLInputElement>('#game-q')!.addEventListener('input', (e) => {
+    search = (e.target as HTMLInputElement).value;
+    page = 1;
+    renderTable();
+  });
+  root.querySelector<HTMLSelectElement>('#game-cat')!.addEventListener('change', (e) => {
+    category = (e.target as HTMLSelectElement).value as 'all' | GameCategory;
+    page = 1;
+    renderTable();
+  });
+  root.querySelector<HTMLSelectElement>('#game-status')!.addEventListener('change', (e) => {
+    statusFilter = (e.target as HTMLSelectElement).value as typeof statusFilter;
+    page = 1;
+    renderTable();
+  });
+  root.querySelector<HTMLSelectElement>('#game-sort')!.addEventListener('change', (e) => {
+    sortBy = (e.target as HTMLSelectElement).value as typeof sortBy;
+    page = 1;
+    renderTable();
+  });
+  root.querySelector('#game-csv')!.addEventListener('click', () => {
+    const filtered = getFiltered();
+    downloadFile(
+      `fliper-jogos-${new Date().toISOString().slice(0, 10)}.csv`,
+      gamesToCsv(filtered),
+      'text/csv',
+    );
+    toast('CSV de jogos exportado!');
+  });
+
+  renderTable();
 };
 
 export function sessionsToCsv(rows: PlaySession[]): string {
@@ -56,84 +569,871 @@ export function sessionsToCsv(rows: PlaySession[]): string {
 }
 
 export const sessions: View = async (root) => {
-  const rows = await api<PlaySession[]>('/api/admin/sessions?days=30&limit=300');
+  const { params } = parseHashRoute(location.hash);
+  let game = params.get('game') || 'all';
+  let q = params.get('q') || '';
+  let days = Number(params.get('days') ?? 30);
+  if (!Number.isFinite(days)) days = 30;
+  let sort = params.get('sort') || 'recent';
+  let page = 1;
+  let perPage = 25;
+  let currentData: SessionsPage | null = null;
+
   root.innerHTML = `
-    <p class="bar-actions"><button id="csv">Baixar CSV</button><span>${rows.length} partidas dos últimos 30 dias</span></p>
-    <table><thead><tr><th>Quando</th><th>Jogador</th><th>Jogo</th><th>Duração</th><th>Pontos</th></tr></thead><tbody>${rows
-      .map(
-        (s) =>
-          `<tr><td>${dateTime(s.endedAt)}</td><td>${esc(s.playerName)}</td><td>${esc(s.gameId)}</td><td>${duration(s.durationSec)}</td><td>${number(s.score)}</td></tr>`,
-      )
-      .join('')}</tbody></table>`;
-  root.querySelector('#csv')?.addEventListener('click', () => {
-    const url = URL.createObjectURL(new Blob([sessionsToCsv(rows)], { type: 'text/csv' }));
-    const a = Object.assign(document.createElement('a'), { href: url, download: `fliper-sessoes-${new Date().toISOString().slice(0, 10)}.csv` });
-    a.click();
-    URL.revokeObjectURL(url);
-  });
-};
+    <div class="panel">
+      <div class="toolbar">
+        <input id="sess-q" type="search" class="input-search" placeholder="🔍 Buscar por jogador, ID ou jogo..." value="${esc(q)}" />
+        <div class="toolbar-filters">
+          <select id="sess-game">
+            <option value="all" ${game === 'all' ? 'selected' : ''}>Todos os jogos (${sortedCatalog.length})</option>
+            ${sortedCatalog
+              .map(
+                (g) =>
+                  `<option value="${esc(g.id)}" ${game === g.id ? 'selected' : ''}>${esc(g.emoji)} ${esc(g.title)}</option>`,
+              )
+              .join('')}
+          </select>
+          <select id="sess-days">
+            <option value="1" ${days === 1 ? 'selected' : ''}>Últimas 24 horas</option>
+            <option value="7" ${days === 7 ? 'selected' : ''}>Últimos 7 dias</option>
+            <option value="30" ${days === 30 ? 'selected' : ''}>Últimos 30 dias</option>
+            <option value="90" ${days === 90 ? 'selected' : ''}>Últimos 90 dias</option>
+            <option value="365" ${days === 365 ? 'selected' : ''}>Último ano</option>
+            <option value="0" ${days === 0 ? 'selected' : ''}>Todo o período</option>
+          </select>
+          <select id="sess-sort">
+            <option value="recent" ${sort === 'recent' ? 'selected' : ''}>Ordenar: Mais recentes</option>
+            <option value="duration" ${sort === 'duration' ? 'selected' : ''}>Ordenar: Maior duração</option>
+            <option value="score" ${sort === 'score' ? 'selected' : ''}>Ordenar: Maior pontuação</option>
+          </select>
+          <button type="button" id="csv" class="btn btn-secondary">📥 Baixar CSV</button>
+        </div>
+      </div>
+      <div id="sess-summary" class="summary-strip"></div>
+      <div id="sess-list"></div>
+    </div>
+  `;
 
-export const players: View = async (root) => {
-  root.innerHTML = `<p class="bar-actions"><input id="q" type="search" placeholder="Buscar por apelido ou e-mail" /></p><div id="list"></div>`;
-  const list = root.querySelector<HTMLElement>('#list')!;
-  const load = async (q: string) => {
-    const rows = await api<PlayerSummary[]>(`/api/admin/players?limit=100${q ? `&q=${encodeURIComponent(q)}` : ''}`);
-    list.innerHTML = `<table><thead><tr><th>Jogador</th><th>E-mail</th><th>Partidas</th><th>Tempo</th><th>Recordes</th><th>Visto</th></tr></thead><tbody>${rows
-      .map(
-        (p) =>
-          `<tr><td>${esc(p.name ?? 'Anônimo')} ${p.google ? '<span class="tag">Google</span>' : ''}</td><td>${esc(p.email ?? '—')}</td><td>${number(p.sessions)}</td><td>${duration(p.play_seconds)}</td><td>${number(p.entries)}</td><td>${ago(p.last_seen_at)}</td></tr>`,
-      )
-      .join('')}</tbody></table>`;
+  const summaryEl = root.querySelector<HTMLElement>('#sess-summary')!;
+  const listEl = root.querySelector<HTMLElement>('#sess-list')!;
+
+  const buildQuery = (overridePage = page, overridePerPage = perPage): string => {
+    const sp = new URLSearchParams();
+    sp.set('days', String(days));
+    sp.set('sort', sort);
+    sp.set('page', String(overridePage));
+    sp.set('per_page', String(overridePerPage));
+    if (game && game !== 'all') sp.set('game', game);
+    if (q.trim()) sp.set('q', q.trim());
+    return sp.toString();
   };
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  root.querySelector<HTMLInputElement>('#q')!.addEventListener('input', (e) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => void load((e.target as HTMLInputElement).value.trim()), 300);
-  });
-  await load('');
-};
 
-export const rankings: View = async (root) => {
-  const games = await api<string[]>('/api/games');
-  root.innerHTML = `<p class="bar-actions"><select id="game">${games.map((g) => `<option>${esc(g)}</option>`).join('')}</select><span>Remova recordes suspeitos ou apelidos ofensivos.</span></p><div id="board"></div>`;
-  const board = root.querySelector<HTMLElement>('#board')!;
-  const select = root.querySelector<HTMLSelectElement>('#game')!;
   const load = async () => {
-    const rows = await api<Entry[]>(`/api/boards/${encodeURIComponent(select.value)}?limit=50`);
-    board.innerHTML = `<table><thead><tr><th>#</th><th>Jogador</th><th>Pontos</th><th>Quando</th><th></th></tr></thead><tbody>${rows
-      .map(
-        (e, i) =>
-          `<tr><td>${i + 1}</td><td>${esc(e.name)}</td><td>${number(e.score)}</td><td>${dateTime(e.date)}</td><td><button class="danger" data-id="${esc(e.id)}">Remover</button></td></tr>`,
-      )
-      .join('')}</tbody></table>`;
+    listEl.innerHTML = `<div class="loading-box"><div class="spinner"></div><span>Carregando partidas…</span></div>`;
+    const res = await api<SessionsPage | PlaySession[]>(`/api/admin/sessions?${buildQuery()}`);
+    // Support both paginated response and array fallback
+    const pg: SessionsPage = Array.isArray(res)
+      ? {
+          ...paginateSlice(res, page, perPage),
+          total_seconds: res.reduce((acc, s) => acc + s.durationSec, 0),
+          unique_players: new Set(res.map((s) => s.playerId)).size,
+        }
+      : res;
+    currentData = pg;
+    const avgSec = pg.total > 0 ? Math.round(pg.total_seconds / pg.total) : 0;
+
+    summaryEl.innerHTML = `
+      <span>Total no filtro: <strong>${number(pg.total)}</strong> partidas</span>
+      <span>Tempo somado: <strong>${duration(pg.total_seconds)}</strong> (média ${duration(avgSec)})</span>
+      <span>Jogadores únicos: <strong>${number(pg.unique_players)}</strong></span>
+    `;
+
+    if (pg.items.length === 0) {
+      listEl.innerHTML = `<div class="empty-state">Nenhuma partida encontrada para os filtros selecionados.</div>`;
+      return;
+    }
+
+    const paginationHtml = renderPagination({
+      total: pg.total,
+      page: pg.page,
+      per_page: pg.per_page,
+      noun: 'partidas',
+    });
+
+    listEl.innerHTML = `
+      ${paginationHtml}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Quando</th>
+              <th>Jogador</th>
+              <th>Jogo</th>
+              <th>Duração</th>
+              <th>Pontuação</th>
+              <th class="text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pg.items
+              .map(
+                (s) => `
+              <tr>
+                <td>
+                  <div>${dateTime(s.endedAt)}</div>
+                  <small class="muted">${ago(s.endedAt)}</small>
+                </td>
+                <td>${renderPlayerCell({ id: s.playerId, name: s.playerName })}</td>
+                <td>${renderGameBadge(s.gameId, { showCategory: true })}</td>
+                <td><span class="pill-duration">${duration(s.durationSec)}</span></td>
+                <td><strong>${s.score > 0 ? number(s.score) : '—'}</strong></td>
+                <td class="text-right">
+                  <button type="button" class="btn btn-xs btn-ghost" data-player-modal="${esc(s.playerId)}">Ver jogador</button>
+                </td>
+              </tr>
+            `,
+              )
+              .join('')}
+          </tbody>
+        </table>
+      </div>
+      ${paginationHtml}
+    `;
+
+    bindPagination(
+      listEl,
+      (nextPage) => {
+        page = nextPage;
+        void load();
+      },
+      (nextPerPage) => {
+        perPage = nextPerPage;
+        page = 1;
+        void load();
+      },
+    );
+    bindPlayerTriggers(listEl, () => void load());
   };
-  select.addEventListener('change', () => void load());
-  board.addEventListener('click', (e) => {
-    const id = (e.target as HTMLElement).dataset.id;
-    if (!id || !confirm('Remover este recorde do ranking?')) return;
-    void api(`/api/admin/entries/${id}`, 'DELETE').then(load);
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  root.querySelector<HTMLInputElement>('#sess-q')!.addEventListener('input', (e) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      q = (e.target as HTMLInputElement).value;
+      page = 1;
+      void load();
+    }, 280);
   });
+  root.querySelector<HTMLSelectElement>('#sess-game')!.addEventListener('change', (e) => {
+    game = (e.target as HTMLSelectElement).value;
+    page = 1;
+    void load();
+  });
+  root.querySelector<HTMLSelectElement>('#sess-days')!.addEventListener('change', (e) => {
+    days = Number((e.target as HTMLSelectElement).value);
+    page = 1;
+    void load();
+  });
+  root.querySelector<HTMLSelectElement>('#sess-sort')!.addEventListener('change', (e) => {
+    sort = (e.target as HTMLSelectElement).value;
+    page = 1;
+    void load();
+  });
+
+  root.querySelector('#csv')?.addEventListener('click', async () => {
+    try {
+      const exportRes = await api<SessionsPage | PlaySession[]>(
+        `/api/admin/sessions?${buildQuery(1, 1000)}`,
+      );
+      const rows = Array.isArray(exportRes) ? exportRes : exportRes.items;
+      downloadFile(
+        `fliper-sessoes-${new Date().toISOString().slice(0, 10)}.csv`,
+        sessionsToCsv(rows),
+        'text/csv',
+      );
+      toast(`CSV exportado (${number(rows.length)} partidas).`);
+    } catch {
+      if (currentData) {
+        downloadFile(
+          `fliper-sessoes-${new Date().toISOString().slice(0, 10)}.csv`,
+          sessionsToCsv(currentData.items),
+          'text/csv',
+        );
+      }
+    }
+  });
+
   await load();
 };
 
-export const reports: View = async (root) => {
-  const render = async () => {
-    const rows = await api<Report[]>('/api/admin/reports');
-    root.innerHTML = rows.length
-      ? `<table><thead><tr><th>Sala</th><th>Autor</th><th>Mensagem</th><th>Denúncias</th><th>Última</th><th></th></tr></thead><tbody>${rows
-          .map(
-            (r) =>
-              `<tr><td>${esc(r.room)}</td><td>${esc(r.author_name)}</td><td>${r.deleted ? '<em>já removida</em>' : esc(r.text)}</td><td>${r.reports}</td><td>${ago(r.last_reported_at)}</td><td>${r.deleted ? '' : `<button class="danger" data-hide="${esc(r.message_id)}">Remover</button> `}<button data-dismiss="${esc(r.message_id)}">Ignorar</button></td></tr>`,
-          )
-          .join('')}</tbody></table>`
-      : '<p class="empty">Nenhuma denúncia aberta. 🎉</p>';
+export function playersToCsv(rows: PlayerSummary[]): string {
+  const head = 'id,name,email,google,sessions,playSeconds,entries,favoriteGame,createdAt,lastSeenAt';
+  const lines = rows.map((p) =>
+    [
+      p.id,
+      p.name ?? 'Anônimo',
+      p.email ?? '',
+      p.google ? 'true' : 'false',
+      p.sessions,
+      p.play_seconds,
+      p.entries,
+      p.favorite_game ?? '',
+      p.created_at,
+      p.last_seen_at,
+    ]
+      .map(csvCell)
+      .join(','),
+  );
+  return [head, ...lines].join('\n');
+}
+
+export const players: View = async (root) => {
+  const { params } = parseHashRoute(location.hash);
+  let q = params.get('q') || '';
+  let kind = params.get('kind') || 'all';
+  let sort = params.get('sort') || 'recent';
+  let page = 1;
+  let perPage = 25;
+
+  root.innerHTML = `
+    <div class="panel">
+      <div class="toolbar">
+        <input id="q" type="search" class="input-search" placeholder="🔍 Buscar por apelido, e-mail, ID ou jogo favorito..." value="${esc(q)}" />
+        <div class="toolbar-filters">
+          <select id="player-kind">
+            <option value="all" ${kind === 'all' ? 'selected' : ''}>Todas as contas</option>
+            <option value="google" ${kind === 'google' ? 'selected' : ''}>Apenas com Google</option>
+            <option value="anon" ${kind === 'anon' ? 'selected' : ''}>Apenas anônimos</option>
+            <option value="active" ${kind === 'active' ? 'selected' : ''}>Com partidas jogadas (&gt;0)</option>
+          </select>
+          <select id="player-sort">
+            <option value="recent" ${sort === 'recent' ? 'selected' : ''}>Ordenar: Visto recentemente</option>
+            <option value="time" ${sort === 'time' ? 'selected' : ''}>Ordenar: Maior tempo jogado</option>
+            <option value="sessions" ${sort === 'sessions' ? 'selected' : ''}>Ordenar: Mais partidas</option>
+            <option value="entries" ${sort === 'entries' ? 'selected' : ''}>Ordenar: Mais recordes</option>
+            <option value="created" ${sort === 'created' ? 'selected' : ''}>Ordenar: Cadastro mais recente</option>
+            <option value="name" ${sort === 'name' ? 'selected' : ''}>Ordenar: Nome (A–Z)</option>
+          </select>
+          <button type="button" id="players-csv" class="btn btn-secondary">📥 Exportar CSV</button>
+        </div>
+      </div>
+      <div id="list"></div>
+    </div>
+  `;
+
+  const list = root.querySelector<HTMLElement>('#list')!;
+
+  const buildQuery = (overridePage = page, overridePerPage = perPage): string => {
+    const sp = new URLSearchParams();
+    sp.set('kind', kind);
+    sp.set('sort', sort);
+    sp.set('page', String(overridePage));
+    sp.set('per_page', String(overridePerPage));
+    if (q.trim()) sp.set('q', q.trim());
+    return sp.toString();
   };
-  root.addEventListener('click', (e) => {
-    const el = e.target as HTMLElement;
+
+  const load = async () => {
+    list.innerHTML = `<div class="loading-box"><div class="spinner"></div><span>Carregando jogadores…</span></div>`;
+    const res = await api<Page<PlayerSummary> | PlayerSummary[]>(`/api/admin/players?${buildQuery()}`);
+    const pg: Page<PlayerSummary> = Array.isArray(res) ? paginateSlice(res, page, perPage) : res;
+
+    if (pg.items.length === 0) {
+      list.innerHTML = `<div class="empty-state">Nenhum jogador encontrado para os filtros selecionados.</div>`;
+      return;
+    }
+
+    const paginationHtml = renderPagination({
+      total: pg.total,
+      page: pg.page,
+      per_page: pg.per_page,
+      noun: 'jogadores',
+    });
+
+    list.innerHTML = `
+      ${paginationHtml}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Jogador</th>
+              <th>E-mail</th>
+              <th>Tempo Jogado</th>
+              <th>Partidas</th>
+              <th>Jogo Favorito</th>
+              <th>Recordes</th>
+              <th>Chat</th>
+              <th>Visto por Último</th>
+              <th class="text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pg.items
+              .map((p, idx) => {
+                const rank = (pg.page - 1) * pg.per_page + idx + 1;
+                const avg = p.sessions > 0 ? Math.round(p.play_seconds / p.sessions) : 0;
+                return `
+                  <tr>
+                    <td><span class="rank-badge">#${number(rank)}</span></td>
+                    <td>${renderPlayerCell({ ...p, email: null, showId: true })}</td>
+                    <td>${p.email ? esc(p.email) : '<span class="muted">—</span>'}</td>
+                    <td>
+                      <span class="pill-duration">${duration(p.play_seconds)}</span>
+                      ${avg > 0 ? `<small class="cell-sub">média ${duration(avg)}</small>` : ''}
+                    </td>
+                    <td><strong>${number(p.sessions)}</strong></td>
+                    <td>${p.favorite_game ? renderGameBadge(p.favorite_game) : '<span class="muted">—</span>'}</td>
+                    <td>${number(p.entries)}</td>
+                    <td>${number(p.messages ?? 0)}</td>
+                    <td title="Criado em ${esc(dateTime(p.created_at))}">
+                      <div>${ago(p.last_seen_at)}</div>
+                      <small class="muted">${dateTime(p.last_seen_at)}</small>
+                    </td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-xs btn-secondary" data-player-modal="${esc(p.id)}">Ver ficha</button>
+                    </td>
+                  </tr>
+                `;
+              })
+              .join('')}
+          </tbody>
+        </table>
+      </div>
+      ${paginationHtml}
+    `;
+
+    bindPagination(
+      list,
+      (nextPage) => {
+        page = nextPage;
+        void load();
+      },
+      (nextPerPage) => {
+        perPage = nextPerPage;
+        page = 1;
+        void load();
+      },
+    );
+    bindPlayerTriggers(list, () => void load());
+  };
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  root.querySelector<HTMLInputElement>('#q')!.addEventListener('input', (e) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      q = (e.target as HTMLInputElement).value.trim();
+      page = 1;
+      void load();
+    }, 280);
+  });
+  root.querySelector<HTMLSelectElement>('#player-kind')!.addEventListener('change', (e) => {
+    kind = (e.target as HTMLSelectElement).value;
+    page = 1;
+    void load();
+  });
+  root.querySelector<HTMLSelectElement>('#player-sort')!.addEventListener('change', (e) => {
+    sort = (e.target as HTMLSelectElement).value;
+    page = 1;
+    void load();
+  });
+  root.querySelector('#players-csv')!.addEventListener('click', async () => {
+    const res = await api<Page<PlayerSummary> | PlayerSummary[]>(`/api/admin/players?${buildQuery(1, 500)}`);
+    const rows = Array.isArray(res) ? res : res.items;
+    downloadFile(
+      `fliper-jogadores-${new Date().toISOString().slice(0, 10)}.csv`,
+      playersToCsv(rows),
+      'text/csv',
+    );
+    toast(`CSV exportado (${number(rows.length)} jogadores).`);
+  });
+
+  await load();
+};
+
+export const rankings: View = async (root) => {
+  const { params } = parseHashRoute(location.hash);
+  let game = params.get('game') || sortedCatalog[0]!.id;
+  let q = params.get('q') || '';
+  let sort = params.get('sort') || 'score';
+  let page = 1;
+  let perPage = 25;
+
+  root.innerHTML = `
+    <div class="panel">
+      <div class="toolbar">
+        <input id="rank-q" type="search" class="input-search" placeholder="🔍 Filtrar recordes por apelido ou ID do jogador..." value="${esc(q)}" />
+        <div class="toolbar-filters">
+          <select id="game">
+            <option value="all" ${game === 'all' ? 'selected' : ''}>🌎 Todos os jogos (visão global)</option>
+            ${sortedCatalog
+              .map(
+                (g) =>
+                  `<option value="${esc(g.id)}" ${game === g.id ? 'selected' : ''}>${esc(g.emoji)} ${esc(g.title)} (${esc(g.id)})</option>`,
+              )
+              .join('')}
+          </select>
+          <select id="rank-sort">
+            <option value="score" ${sort === 'score' ? 'selected' : ''}>Ordenar: Maior pontuação</option>
+            <option value="recent" ${sort === 'recent' ? 'selected' : ''}>Ordenar: Mais recentes</option>
+          </select>
+        </div>
+      </div>
+      <div id="board"></div>
+    </div>
+  `;
+
+  const board = root.querySelector<HTMLElement>('#board')!;
+  const select = root.querySelector<HTMLSelectElement>('#game')!;
+
+  const load = async () => {
+    board.innerHTML = `<div class="loading-box"><div class="spinner"></div><span>Carregando ranking…</span></div>`;
+    const sp = new URLSearchParams();
+    sp.set('game', select.value);
+    sp.set('sort', sort);
+    sp.set('page', String(page));
+    sp.set('per_page', String(perPage));
+    if (q.trim()) sp.set('q', q.trim());
+
+    let pg: Page<Entry>;
+    try {
+      pg = await api<Page<Entry>>(`/api/admin/entries?${sp.toString()}`);
+    } catch {
+      const targetGame = select.value === 'all' ? sortedCatalog[0]!.id : select.value;
+      const rows = await api<Entry[]>(`/api/boards/${encodeURIComponent(targetGame)}?limit=100`);
+      pg = paginateSlice(
+        rows.map((r, i) => ({ ...r, game_id: targetGame, rank: i + 1 })),
+        page,
+        perPage,
+      );
+    }
+
+    if (pg.items.length === 0) {
+      board.innerHTML = `<div class="empty-state">Nenhum recorde encontrado para este filtro.</div>`;
+      return;
+    }
+
+    const paginationHtml = renderPagination({
+      total: pg.total,
+      page: pg.page,
+      per_page: pg.per_page,
+      noun: 'recordes',
+    });
+
+    board.innerHTML = `
+      ${paginationHtml}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Posição</th>
+              <th>Jogo</th>
+              <th>Jogador</th>
+              <th>Pontos</th>
+              <th>Detalhes da Partida</th>
+              <th>Data</th>
+              <th class="text-right">Moderação</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pg.items
+              .map((e, i) => {
+                const pos = e.rank ?? (pg.page - 1) * pg.per_page + i + 1;
+                const pairs = formatDetailPairs(e.details);
+                return `
+                  <tr>
+                    <td>${renderRankBadge(pos)}</td>
+                    <td>${e.game_id ? renderGameBadge(e.game_id) : renderGameBadge(select.value)}</td>
+                    <td>${renderPlayerCell({ id: e.player, name: e.name })}</td>
+                    <td><strong class="text-gold">${number(e.score)}</strong></td>
+                    <td>
+                      ${
+                        pairs.length
+                          ? pairs
+                              .map(
+                                (d) =>
+                                  `<span class="detail-chip">${esc(d.label)}: <strong>${esc(d.value)}</strong></span>`,
+                              )
+                              .join(' ')
+                          : '<span class="muted">—</span>'
+                      }
+                    </td>
+                    <td>
+                      <div>${dateTime(e.date)}</div>
+                      <small class="muted">${ago(e.date)}</small>
+                    </td>
+                    <td class="text-right">
+                      <button type="button" class="btn btn-xs btn-danger" data-id="${esc(e.id)}" data-name="${esc(e.name)}" data-score="${esc(number(e.score))}">
+                        Remover
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              })
+              .join('')}
+          </tbody>
+        </table>
+      </div>
+      ${paginationHtml}
+    `;
+
+    bindPagination(
+      board,
+      (nextPage) => {
+        page = nextPage;
+        void load();
+      },
+      (nextPerPage) => {
+        perPage = nextPerPage;
+        page = 1;
+        void load();
+      },
+    );
+    bindPlayerTriggers(board, () => void load());
+  };
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  root.querySelector<HTMLInputElement>('#rank-q')!.addEventListener('input', (e) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      q = (e.target as HTMLInputElement).value;
+      page = 1;
+      void load();
+    }, 280);
+  });
+  select.addEventListener('change', () => {
+    game = select.value;
+    page = 1;
+    void load();
+  });
+  root.querySelector<HTMLSelectElement>('#rank-sort')!.addEventListener('change', (e) => {
+    sort = (e.target as HTMLSelectElement).value;
+    page = 1;
+    void load();
+  });
+
+  board.addEventListener('click', async (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-id]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (!id) return;
+    const playerName = btn.dataset.name ?? '';
+    const scoreText = btn.dataset.score ?? '';
+    const ok = await confirmDialog({
+      title: 'Remover recorde do ranking',
+      message: `Deseja remover o recorde de ${playerName} (${scoreText} pts) permanentemente do ranking?`,
+      confirmLabel: 'Remover recorde',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api(`/api/admin/entries/${encodeURIComponent(id)}`, 'DELETE');
+      toast('Recorde removido do ranking.');
+      await load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Falha ao remover recorde.', 'error');
+    }
+  });
+
+  await load();
+};
+
+export const reports: View = async (root, onBadgeUpdate) => {
+  type Mode = 'reports' | 'messages';
+  let mode: Mode = 'reports';
+  let reportSearch = '';
+  let reportPage = 1;
+  let reportPerPage = 25;
+
+  let msgRoom = 'all';
+  let msgStatus = 'all';
+  let msgSearch = '';
+  let msgPage = 1;
+  let msgPerPage = 25;
+
+  const render = async () => {
+    const reportRows = await api<Report[]>('/api/admin/reports');
+    onBadgeUpdate?.(reportRows.length);
+
+    root.innerHTML = `
+      <div class="subtabs">
+        <button type="button" class="subtab ${mode === 'reports' ? 'active' : ''}" data-mode="reports">
+          🚨 Denúncias Abertas
+          ${reportRows.length > 0 ? `<span class="badge-count">${number(reportRows.length)}</span>` : ''}
+        </button>
+        <button type="button" class="subtab ${mode === 'messages' ? 'active' : ''}" data-mode="messages">
+          💬 Histórico Completo do Chat
+        </button>
+      </div>
+      <div id="mod-body" class="panel"></div>
+    `;
+
+    root.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        mode = btn.dataset.mode as Mode;
+        void render();
+      });
+    });
+
+    const body = root.querySelector<HTMLElement>('#mod-body')!;
+
+    if (mode === 'reports') {
+      const drawReports = () => {
+        const q = reportSearch.trim().toLowerCase();
+        const filtered = reportRows.filter(
+          (r) =>
+            !q ||
+            r.author_name.toLowerCase().includes(q) ||
+            r.text.toLowerCase().includes(q) ||
+            r.room.toLowerCase().includes(q),
+        );
+        const pg = paginateSlice(filtered, reportPage, reportPerPage);
+        reportPage = pg.page;
+
+        body.innerHTML = `
+          <div class="toolbar">
+            <input id="rep-q" type="search" class="input-search" placeholder="🔍 Filtrar denúncias por autor, mensagem ou sala..." value="${esc(reportSearch)}" />
+            <span class="muted">${number(reportRows.length)} mensagem(ns) com denúncia aberta</span>
+          </div>
+          ${
+            pg.total === 0
+              ? `<div class="empty-state">Nenhuma denúncia aberta encontrada. 🎉</div>`
+              : `
+                ${renderPagination({ total: pg.total, page: pg.page, per_page: pg.per_page, noun: 'denúncias' })}
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Sala</th>
+                        <th>Autor</th>
+                        <th>Mensagem</th>
+                        <th>Denúncias</th>
+                        <th>Última Denúncia</th>
+                        <th class="text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${pg.items
+                        .map(
+                          (r) => `
+                        <tr>
+                          <td>${renderRoomBadge(r.room)}</td>
+                          <td>${renderPlayerCell({ id: r.author_id, name: r.author_name })}</td>
+                          <td class="msg-cell">${r.deleted ? '<em class="muted">já removida</em>' : esc(r.text)}</td>
+                          <td><span class="tag tag-danger">${number(r.reports)}</span></td>
+                          <td>
+                            <div>${ago(r.last_reported_at)}</div>
+                            <small class="muted">${dateTime(r.last_reported_at)}</small>
+                          </td>
+                          <td class="text-right actions-cell">
+                            ${
+                              r.deleted
+                                ? ''
+                                : `<button type="button" class="btn btn-xs btn-danger" data-hide="${esc(r.message_id)}">Remover</button>`
+                            }
+                            <button type="button" class="btn btn-xs btn-ghost" data-dismiss="${esc(r.message_id)}">Ignorar</button>
+                          </td>
+                        </tr>
+                      `,
+                        )
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>
+                ${renderPagination({ total: pg.total, page: pg.page, per_page: pg.per_page, noun: 'denúncias' })}
+              `
+          }
+        `;
+
+        const input = body.querySelector<HTMLInputElement>('#rep-q');
+        input?.addEventListener('input', () => {
+          reportSearch = input.value;
+          reportPage = 1;
+          const pos = input.selectionStart ?? input.value.length;
+          drawReports();
+          const nextInput = body.querySelector<HTMLInputElement>('#rep-q');
+          nextInput?.focus();
+          nextInput?.setSelectionRange(pos, pos);
+        });
+
+        bindPagination(
+          body,
+          (nextPage) => {
+            reportPage = nextPage;
+            drawReports();
+          },
+          (nextPerPage) => {
+            reportPerPage = nextPerPage;
+            reportPage = 1;
+            drawReports();
+          },
+        );
+        bindPlayerTriggers(body, () => void render());
+      };
+
+      drawReports();
+    } else {
+      body.innerHTML = `
+        <div class="toolbar">
+          <input id="msg-q" type="search" class="input-search" placeholder="🔍 Buscar mensagens por texto, autor ou ID..." value="${esc(msgSearch)}" />
+          <div class="toolbar-filters">
+            <select id="msg-room">
+              <option value="all" ${msgRoom === 'all' ? 'selected' : ''}>Todas as salas</option>
+              <option value="geral" ${msgRoom === 'geral' ? 'selected' : ''}>🌎 Sala Geral</option>
+              ${sortedCatalog
+                .map(
+                  (g) =>
+                    `<option value="${esc(g.id)}" ${msgRoom === g.id ? 'selected' : ''}>${esc(g.emoji)} ${esc(g.title)}</option>`,
+                )
+                .join('')}
+            </select>
+            <select id="msg-status">
+              <option value="all" ${msgStatus === 'all' ? 'selected' : ''}>Status: Todas</option>
+              <option value="active" ${msgStatus === 'active' ? 'selected' : ''}>Apenas ativas</option>
+              <option value="reported" ${msgStatus === 'reported' ? 'selected' : ''}>Com denúncias</option>
+              <option value="deleted" ${msgStatus === 'deleted' ? 'selected' : ''}>Removidas</option>
+            </select>
+          </div>
+        </div>
+        <div id="msg-list"></div>
+      `;
+
+      const msgList = body.querySelector<HTMLElement>('#msg-list')!;
+      const loadMessages = async () => {
+        msgList.innerHTML = `<div class="loading-box"><div class="spinner"></div><span>Carregando mensagens…</span></div>`;
+        const sp = new URLSearchParams();
+        sp.set('room', msgRoom);
+        sp.set('status', msgStatus);
+        sp.set('page', String(msgPage));
+        sp.set('per_page', String(msgPerPage));
+        if (msgSearch.trim()) sp.set('q', msgSearch.trim());
+
+        const pg = await api<Page<AdminMessage>>(`/api/admin/chat/messages?${sp.toString()}`);
+        if (pg.items.length === 0) {
+          msgList.innerHTML = `<div class="empty-state">Nenhuma mensagem encontrada para este filtro.</div>`;
+          return;
+        }
+
+        const paginationHtml = renderPagination({
+          total: pg.total,
+          page: pg.page,
+          per_page: pg.per_page,
+          noun: 'mensagens',
+        });
+
+        msgList.innerHTML = `
+          ${paginationHtml}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Quando</th>
+                  <th>Sala</th>
+                  <th>Autor</th>
+                  <th>Mensagem</th>
+                  <th>Denúncias</th>
+                  <th class="text-right">Moderação</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${pg.items
+                  .map(
+                    (m) => `
+                  <tr class="${m.deleted ? 'row-dim' : ''}">
+                    <td>
+                      <div>${dateTime(m.created_at)}</div>
+                      <small class="muted">${ago(m.created_at)}</small>
+                    </td>
+                    <td>${renderRoomBadge(m.room)}</td>
+                    <td>${renderPlayerCell({ id: m.player_id, name: m.name })}</td>
+                    <td class="msg-cell">${m.deleted ? '<em class="muted">Mensagem removida</em>' : esc(m.text)}</td>
+                    <td>${m.reports > 0 ? `<span class="tag tag-danger">${number(m.reports)}</span>` : '<span class="muted">0</span>'}</td>
+                    <td class="text-right">
+                      ${
+                        m.deleted
+                          ? '<span class="muted">Moderação concluída</span>'
+                          : `<button type="button" class="btn btn-xs btn-danger" data-hide="${esc(m.id)}">Remover</button>`
+                      }
+                    </td>
+                  </tr>
+                `,
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          </div>
+          ${paginationHtml}
+        `;
+
+        bindPagination(
+          msgList,
+          (nextPage) => {
+            msgPage = nextPage;
+            void loadMessages();
+          },
+          (nextPerPage) => {
+            msgPerPage = nextPerPage;
+            msgPage = 1;
+            void loadMessages();
+          },
+        );
+        bindPlayerTriggers(msgList, () => void loadMessages());
+      };
+
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      body.querySelector<HTMLInputElement>('#msg-q')!.addEventListener('input', (e) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          msgSearch = (e.target as HTMLInputElement).value;
+          msgPage = 1;
+          void loadMessages();
+        }, 280);
+      });
+      body.querySelector<HTMLSelectElement>('#msg-room')!.addEventListener('change', (e) => {
+        msgRoom = (e.target as HTMLSelectElement).value;
+        msgPage = 1;
+        void loadMessages();
+      });
+      body.querySelector<HTMLSelectElement>('#msg-status')!.addEventListener('change', (e) => {
+        msgStatus = (e.target as HTMLSelectElement).value;
+        msgPage = 1;
+        void loadMessages();
+      });
+
+      await loadMessages();
+    }
+  };
+
+  root.addEventListener('click', async (e) => {
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-hide],[data-dismiss]');
+    if (!el) return;
     const hide = el.dataset.hide;
     const dismiss = el.dataset.dismiss;
-    if (hide) void api(`/api/admin/chat/messages/${hide}`, 'DELETE').then(render);
-    else if (dismiss) void api(`/api/admin/reports/${dismiss}`, 'DELETE').then(render);
+    if (hide) {
+      const ok = await confirmDialog({
+        title: 'Remover mensagem do chat',
+        message: 'A mensagem será apagada para todos na sala e suas denúncias serão encerradas.',
+        confirmLabel: 'Remover mensagem',
+        danger: true,
+      });
+      if (!ok) return;
+      try {
+        await api(`/api/admin/chat/messages/${encodeURIComponent(hide)}`, 'DELETE');
+        toast('Mensagem removida e denúncia encerrada.');
+        await render();
+      } catch (err) {
+        toast(err instanceof Error ? err.message : 'Falha ao moderar mensagem.', 'error');
+      }
+    } else if (dismiss) {
+      try {
+        await api(`/api/admin/reports/${encodeURIComponent(dismiss)}`, 'DELETE');
+        toast('Denúncia arquivada.');
+        await render();
+      } catch (err) {
+        toast(err instanceof Error ? err.message : 'Falha ao ignorar denúncia.', 'error');
+      }
+    }
   });
+
   await render();
 };
