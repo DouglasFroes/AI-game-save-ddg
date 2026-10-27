@@ -672,24 +672,65 @@ export class HubScene extends Phaser.Scene {
 
   private async installApp(): Promise<void> {
     if (installPrompt.state() === 'ios') {
-      // iOS cannot install from code, but its share sheet holds "Adicionar à Tela de Início".
-      // Must start straight from the tap; a cancelled sheet just rejects, which is fine.
-      if (typeof navigator.share === 'function') {
-        navigator
-          .share({ title: document.title, url: window.location.origin + '/' })
-          .catch(() => undefined);
-      }
-      showNotice(this, {
-        key: 'install-ios',
-        kind: 'info',
-        glyph: 'download',
-        title: 'Instalar no iPhone',
-        body: iosInstallSteps(navigator.userAgent),
-        sticky: true,
-      });
+      this.openInstallGuide();
       return;
     }
     await installPrompt.prompt();
+  }
+
+  /** "Instalar no iPhone": iOS cannot install from code, so this walks the player through it. */
+  private openInstallGuide(): void {
+    if (this.sheet) return;
+    const { root } = this.scrim();
+    const w = 640;
+    const h = 700;
+    const cx = GAME_WIDTH / 2;
+    const top = 290;
+    const card = this.add.graphics();
+    card.fillStyle(0x0c0e22).fillRoundedRect(cx - w / 2, top, w, h, 40);
+    card.lineStyle(2, 0xffffff, 0.14).strokeRoundedRect(cx - w / 2, top, w, h, 40);
+    // Swallows taps on the card so they don't reach the dim layer (which closes the modal).
+    const body = this.add.zone(cx, top + h / 2, w, h).setInteractive();
+    root.add([card, body, this.halo(cx, top + 30, UI.cyan, 4.4, 0.32)]);
+    root.add(txt(this, cx, top + 66, 'Instalar no iPhone', 38, { color: '#ffffff' }));
+    root.add(
+      txt(this, cx, top + 110, 'Abre em tela cheia, como um app', 19, {
+        color: UI.mute,
+        weight: 'normal',
+      }),
+    );
+
+    const rowW = w - 48;
+    const rowH = 130;
+    iosInstallSteps(navigator.userAgent).forEach((step, i) => {
+      const c = this.add.container(cx, top + 220 + i * (rowH + 12));
+      const num = txt(this, -rowW / 2 + 52, 0, String(i + 1), 34, { color: '#ffffff' });
+      const text = txt(this, -rowW / 2 + 104, 0, step, 24, {
+        color: UI.soft,
+        weight: 'normal',
+      })
+        .setOrigin(0, 0.5)
+        .setWordWrapWidth(rowW - 140);
+      c.add([
+        this.add.image(0, 0, glassArt(this, rowW, rowH, 28)),
+        this.add.circle(-rowW / 2 + 52, 0, 28, UI.cyan, 0.28),
+        num,
+        text,
+      ]);
+      root.add(c);
+    });
+
+    const done = this.ctaButton(
+      cx,
+      top + h - 62,
+      w - 96,
+      88,
+      'Entendi',
+      32,
+      () => this.closeSheet(),
+      { icon: false },
+    );
+    root.add(done.view);
   }
 
   private paintChatBadge(n: number): void {

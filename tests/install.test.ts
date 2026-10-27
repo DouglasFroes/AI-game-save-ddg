@@ -82,10 +82,10 @@ describe('iOS detection', () => {
 
 describe('iosInstallSteps', () => {
   it('points to the address bar in Chrome and to the bottom bar in Safari', () => {
-    expect(iosInstallSteps('Mozilla/5.0 (iPhone) CriOS/130 Mobile Safari')).toContain(
+    expect(iosInstallSteps('Mozilla/5.0 (iPhone) CriOS/130 Mobile Safari')[0]).toContain(
       'barra de endereço',
     );
-    expect(iosInstallSteps('Mozilla/5.0 (iPhone) Version/17 Mobile Safari')).toContain(
+    expect(iosInstallSteps('Mozilla/5.0 (iPhone) Version/17 Mobile Safari')[0]).toContain(
       'barra de baixo',
     );
   });
