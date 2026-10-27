@@ -90,7 +90,11 @@ export type GameId =
   | 'esqui'
   | 'arqueiro'
   | 'galeria'
-  | 'sniper';
+  | 'sniper'
+  | 'damas'
+  | 'naval'
+  | 'domino'
+  | 'hoquei';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -1393,6 +1397,67 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'xs', label: 'X', x: 565, format: formatNumber },
     ],
     personalBest: storedBest('sniper'),
+  },
+  {
+    id: 'damas',
+    title: 'Damas',
+    tagline: 'Capture tudo, vire dama',
+    icon: 'damas-icon',
+    color: 0xb45309,
+    shade: 0x451a03,
+    entryScene: SceneKeys.Damas,
+    load: () => import('./damas/DamasScene').then((m) => [m.DamasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 650 },
+    ],
+    personalBest: storedBest('damas'),
+  },
+  {
+    id: 'naval',
+    title: 'Batalha Naval',
+    tagline: 'Afunde a frota inimiga',
+    icon: 'naval-icon',
+    color: 0x0ea5e9,
+    shade: 0x0c4a6e,
+    entryScene: SceneKeys.Naval,
+    load: () => import('./naval/NavalScene').then((m) => [m.NavalScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 650 },
+    ],
+    personalBest: storedBest('naval'),
+  },
+  {
+    id: 'domino',
+    title: 'Dominó',
+    tagline: 'Bata o robô até 50 pontos',
+    icon: 'domino-icon',
+    color: 0x15803d,
+    shade: 0x052e16,
+    entryScene: SceneKeys.Domino,
+    load: () => import('./domino/DominoScene').then((m) => [m.DominoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 520, format: formatNumber },
+      { key: 'wins', label: 'Partidas', x: 650 },
+    ],
+    personalBest: storedBest('domino'),
+  },
+  {
+    id: 'hoquei',
+    title: 'Hóquei de Mesa',
+    tagline: 'Rebata o disco e faça gol',
+    icon: 'hoquei-icon',
+    color: 0x22d3ee,
+    shade: 0x0e2a47,
+    entryScene: SceneKeys.Hoquei,
+    load: () => import('./hoquei/HoqueiScene').then((m) => [m.HoqueiScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'goals', label: 'Gols', x: 655 },
+    ],
+    personalBest: storedBest('hoquei'),
   },
 ];
 

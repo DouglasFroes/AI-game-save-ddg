@@ -39,6 +39,10 @@ web/src/   (the game; the server is in ../api)
     penalti/ golfe/ tenis/ basquete/ boliche/ curling/ skate/ boxe/ ciclismo/ esqui/ arqueiro/ galeria/ sniper/
                        sports (hub category `esporte`): each its own pure core (physics/rules, unit-tested in
                        tests/esportes.test.ts, including bots that prove the game can be won) + a scene
+    damas/ naval/ domino/ hoquei/
+                       table games against a CPU, each a pure core (rules + CPU, unit-tested incl. a bot that
+                       proves it can be won) + art.ts (hub icon, also reused by the scene) + <Name>Scene.ts.
+                       Series scoring: every win raises the CPU's level, the first loss ends the run.
     corta/ gelo/ velha/ ligue4/ minas/ bolhas/ blocos/ comecome/ nave/
                        core.ts (pure) · <Name>Scene.ts extending MiniScene (platform/ui/miniGame.ts:
                        background, back button, score, finish() -> GameOver). Hub icon = `emoji` field

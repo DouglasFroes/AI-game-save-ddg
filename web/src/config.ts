@@ -137,6 +137,10 @@ export const SceneKeys = {
   Arqueiro: 'Arqueiro',
   Galeria: 'Galeria',
   Sniper: 'Sniper',
+  Damas: 'Damas',
+  Naval: 'Naval',
+  Domino: 'Domino',
+  Hoquei: 'Hoquei',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];
