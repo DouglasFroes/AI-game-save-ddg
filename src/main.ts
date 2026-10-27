@@ -7,6 +7,8 @@ import { GameOverScene } from '@/platform/scenes/GameOverScene';
 import { HallScene } from '@/platform/scenes/HallScene';
 import { HubScene } from '@/platform/scenes/HubScene';
 import { LeaderboardScene } from '@/platform/scenes/LeaderboardScene';
+import { bindConnectivityNotices } from '@/platform/connectivityNotices';
+import { publishNotice } from '@/platform/notices';
 import { registerServiceWorker } from '@/platform/pwa/register';
 import { bindBrowserLifecycle } from '@/platform/sessionTracker';
 import { bindConnectivitySync } from '@/platform/sync';
@@ -40,7 +42,19 @@ if (isAdminRoute()) {
   provideServices(game, services);
   bindBrowserLifecycle(services.sessionTracker);
   // Runs played offline are already saved on the device; send them once the connection is back.
-  bindConnectivitySync(services);
+  bindConnectivitySync(services, window, document, (scores) =>
+    publishNotice({
+      key: 'synced',
+      kind: 'success',
+      glyph: 'check',
+      title: 'Recordes sincronizados',
+      body:
+        scores === 1
+          ? 'O recorde que você fez offline já está no ranking global.'
+          : `${scores} recordes feitos offline já estão no ranking global.`,
+    }),
+  );
+  bindConnectivityNotices();
 
   fullscreenOnFirstTap();
 

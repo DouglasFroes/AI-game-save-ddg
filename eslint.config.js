@@ -16,5 +16,6 @@ export default tseslint.config(
       eqeqeq: 'error',
     },
   },
+  { files: ['scripts/**/*.mjs', 'vite.config.ts'], languageOptions: { globals: globals.node } },
   prettier,
 );

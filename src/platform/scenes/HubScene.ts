@@ -16,7 +16,9 @@ import {
 } from '@/platform/hubCategories';
 import { GLOBAL_TOP } from '@/platform/leaderboard';
 import { shareWithToast } from '@/platform/share';
-import { gameIdFromSearch } from '@/platform/shareLink';
+import { gameLaunchFromSearch } from '@/platform/shareLink';
+import { subscribeNotices } from '@/platform/notices';
+import { showNotice } from '@/platform/ui/noticeCard';
 import { formatNumber } from '@/platform/ranking';
 import type { Overtake } from '@/platform/rankWatch';
 import { drawIcon, type IconKind } from '@/platform/ui/icons';
@@ -94,11 +96,14 @@ const TREND_REFRESH_MS = 120_000;
 let savedTab: Tab = 'inicio';
 let savedFilter: HubFilter = 'todos';
 const savedScroll: Record<Tab, number> = { inicio: 0, jogos: 0, lista: 0 };
-/** Game asked for by a shared link (`?jogo=id`); opened once, after the player has a name. */
-let pendingLink: string | null =
+/**
+ * Game asked for by a link (`?jogo=id`, or `&jogar=1` from an app shortcut to start it right
+ * away); handled once, after the player has a name.
+ */
+let pendingLink: { id: string; play: boolean } | null =
   typeof window === 'undefined'
     ? null
-    : gameIdFromSearch(window.location.search, (id) => GAMES.some((g) => g.id === id));
+    : gameLaunchFromSearch(window.location.search, (id) => GAMES.some((g) => g.id === id));
 /** When the boards were last checked for overtakes (at most once a minute). */
 let lastRivalCheck = -Infinity;
 const RIVAL_CHECK_MS = 60_000;
@@ -259,18 +264,28 @@ export class HubScene extends Phaser.Scene {
 
     // A friend's link opens that game's details sheet (the URL is cleaned so a refresh shows the hub).
     const openLinked = () => {
-      const linked = pendingLink ? GAMES.find((g) => g.id === pendingLink) : undefined;
-      if (!linked) return;
+      const link = pendingLink;
+      const linked = link ? GAMES.find((g) => g.id === link.id) : undefined;
+      if (!link || !linked) return;
       pendingLink = null;
       window.history.replaceState(null, '', window.location.pathname);
       this.time.delayedCall(300, () => {
-        if (this.sys.isActive()) this.openSheet(linked);
+        if (!this.sys.isActive()) return;
+        if (link.play) this.open(linked);
+        else this.openSheet(linked);
       });
     };
     // No name, no hub: the player has to say who they are before touching anything else.
     if (profile.get().name) openLinked();
     else this.time.delayedCall(250, () => void this.requireName().then(openLinked));
 
+    // App-level notices (update ready, offline, synced) that waited while a game was running.
+    this.time.delayedCall(700, () => {
+      this.events.once(
+        'shutdown',
+        subscribeNotices((n) => showNotice(this, n)),
+      );
+    });
     void this.checkRivals();
 
     // Signing in or out changes the avatar badge and the home's sign-in card.
@@ -492,24 +507,8 @@ export class HubScene extends Phaser.Scene {
     this.fx = [];
   }
 
-  private toast(text: string): void {
-    const label = txt(this, 0, 0, text, 24, { color: UI.white, align: 'center' });
-    const w = Math.min(660, label.width + 64);
-    const h = label.height + 36;
-    const c = this.add.container(GAME_WIDTH / 2, DOCK_TOP - 60).setDepth(40);
-    const bg = this.add.graphics();
-    bg.fillStyle(0x0d0f22, 0.94).fillRoundedRect(-w / 2, -h / 2, w, h, Math.min(30, h / 2));
-    bg.lineStyle(2, 0xffffff, 0.16).strokeRoundedRect(-w / 2, -h / 2, w, h, Math.min(30, h / 2));
-    c.add([bg, label]);
-    c.setAlpha(0).y += 24;
-    this.tweens.add({ targets: c, alpha: 1, y: c.y - 24, duration: 260, ease: 'Cubic.easeOut' });
-    this.tweens.add({
-      targets: c,
-      alpha: 0,
-      delay: 3200,
-      duration: 400,
-      onComplete: () => c.destroy(),
-    });
+  private toast(text: string, kind: 'info' | 'warn' = 'info'): void {
+    showNotice(this, { key: `toast:${text}`, kind, title: text });
   }
 
   /** A soft contact shadow under a floating icon. */
@@ -1585,7 +1584,7 @@ export class HubScene extends Phaser.Scene {
       (err: unknown) => {
         console.warn(`Falha ao carregar ${game.id}`, err);
         this.opening = false;
-        if (this.sys.isActive()) this.toast('Sem conexão. Tente de novo.');
+        if (this.sys.isActive()) this.toast('Sem conexão. Tente de novo.', 'warn');
       },
     );
   }
@@ -1973,50 +1972,28 @@ export class HubScene extends Phaser.Scene {
     if (this.sys.isActive()) this.showOvertakes(found);
   }
 
-  /** One banner at a time above the dock; tap it to see that ranking. */
-  private showOvertakes(queue: Array<{ game: GameDefinition; o: Overtake }>): void {
-    const next = queue.shift();
-    if (!next) return;
-    const { game, o } = next;
+  /** One card per overtake (they queue); tap it to see that ranking, or jump straight back in. */
+  private showOvertakes(found: Array<{ game: GameDefinition; o: Overtake }>): void {
     const services = getServices(this);
-    services.sfx.play('hit');
-    const where = o.to ? `Você caiu de ${o.from}º para ${o.to}º` : `Você saiu do top ${GLOBAL_TOP}`;
-    const rest = DOCK_TOP - 96;
-    const banner = this.add.container(GAME_WIDTH / 2, rest).setDepth(30);
-    const bg = this.add.graphics();
-    bg.fillStyle(0x000000, 0.4).fillRoundedRect(-330, -58, 660, 136, 30);
-    bg.fillStyle(0x12142b).fillRoundedRect(-330, -68, 660, 136, 30);
-    bg.lineStyle(3, UI.pink, 0.9).strokeRoundedRect(-330, -68, 660, 136, 30);
-    const icon = this.add.image(-262, -2, game.icon);
-    icon.setScale(Math.min(92 / icon.width, 92 / icon.height));
-    banner.add([
-      bg,
-      this.halo(-262, -2, UI.pink, 1.1, 0.5),
-      icon,
-      txt(this, 40, -26, `${o.by} passou você no ${game.title}!`, 25, {
-        color: '#ffd166',
-      }).setWordWrapWidth(500),
-      txt(this, 40, 24, `${where} · toque para ver`, 21, {
-        color: UI.soft,
-        weight: 'normal',
-      }),
-    ]);
-    banner.setSize(660, 136).setInteractive({ useHandCursor: true });
-    const close = () => {
-      if (!banner.active) return;
-      this.tweens.add({
-        targets: banner,
-        y: GAME_HEIGHT + 120,
-        duration: 260,
-        onComplete: () => {
-          banner.destroy();
-          this.showOvertakes(queue);
-        },
+    for (const { game, o } of found) {
+      const where = o.to
+        ? `Você caiu de ${o.from}º para ${o.to}º`
+        : `Você saiu do top ${GLOBAL_TOP}`;
+      showNotice(this, {
+        key: `rival:${game.id}`,
+        kind: 'rival',
+        texture: game.icon,
+        title: `${o.by} passou você no ${game.title}!`,
+        body: where,
+        actions: [
+          {
+            label: 'Ver ranking',
+            run: () => this.scene.start(SceneKeys.Leaderboard, { gameId: game.id }),
+          },
+          { label: 'Jogar agora', run: () => this.open(game) },
+        ],
+        onShow: () => services.sfx.play('hit'),
       });
-    };
-    banner.on('pointerup', () => this.scene.start(SceneKeys.Leaderboard, { gameId: game.id }));
-    banner.y = GAME_HEIGHT + 120;
-    this.tweens.add({ targets: banner, y: rest, duration: 420, ease: 'Back.easeOut' });
-    this.time.delayedCall(5500, close);
+    }
   }
 }

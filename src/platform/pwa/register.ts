@@ -1,3 +1,5 @@
+import { publishNotice } from '@/platform/notices';
+
 /** How often an open app asks the server whether a new version exists. */
 const UPDATE_CHECK_MS = 30 * 60_000;
 
@@ -30,17 +32,38 @@ export function registerServiceWorker(): void {
           apply();
         };
 
+        // The hub offers the update as a notification; it also applies itself once the app is left.
+        const offerUpdate = (worker: ServiceWorker) => {
+          activateWhenHidden(worker);
+          publishNotice({
+            key: 'update',
+            kind: 'info',
+            glyph: 'retry',
+            sticky: true,
+            title: 'Nova versão disponível',
+            body: 'Atualize para ver as novidades. Seus recordes continuam salvos.',
+            actions: [{ label: 'Atualizar', run: () => worker.postMessage('SKIP_WAITING') }],
+          });
+        };
+
         // A previous visit may have left a downloaded update waiting.
         if (registration.waiting && navigator.serviceWorker.controller) {
-          activateWhenHidden(registration.waiting);
+          offerUpdate(registration.waiting);
         }
         registration.addEventListener('updatefound', () => {
           const worker = registration.installing;
           if (!worker) return;
           worker.addEventListener('statechange', () => {
-            if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-              activateWhenHidden(worker);
-            }
+            if (worker.state !== 'installed') return;
+            if (navigator.serviceWorker.controller) offerUpdate(worker);
+            else
+              publishNotice({
+                key: 'offline-ready',
+                kind: 'success',
+                glyph: 'check',
+                title: 'Pronto para jogar offline',
+                body: 'O Fliperama agora abre mesmo sem internet.',
+              });
           });
         });
 
