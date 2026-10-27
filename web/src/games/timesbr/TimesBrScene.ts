@@ -8,7 +8,7 @@ export class TimesBrScene extends DreamScene {
     super({
       key: SceneKeys.TimesBr,
       gameId: 'timesbr',
-      colors: [0x14532d, 0x854d0e],
+      colors: [0x053d2b, 0x0f766e],
       teams: CLUBS,
       edition: 'Temporada',
       title: 'Time dos Sonhos BR',

@@ -20,6 +20,7 @@ import { generateBolhaTextures } from '@/games/bolha/art';
 import { generatePacienciaTextures } from '@/games/paciencia/art';
 import { generateUltimaTextures } from '@/games/ultima/art';
 import { generateTerritorioTextures } from '@/games/territorio/art';
+import { generateFutebolTextures } from '@/games/selecao/art';
 import { GAMES } from '@/games/registry';
 import { emojiIcon } from '@/platform/ui/miniGame';
 import { loadHubFont } from '@/platform/fonts';
@@ -66,6 +67,7 @@ export class BootScene extends Phaser.Scene {
     generatePacienciaTextures(this);
     generateUltimaTextures(this);
     generateTerritorioTextures(this);
+    generateFutebolTextures(this);
     for (const game of GAMES)
       if (game.emoji) emojiIcon(this, game.icon, game.emoji, game.color, game.shade);
     performance.mark('textures-done');

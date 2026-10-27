@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, type SceneKey } from '@/config';
+import { canvasTexture } from '@/platform/art/textures';
 import { burst, flash, shockwave } from '@/platform/ui/juice';
 import { emojiText, MiniScene } from '@/platform/ui/miniGame';
 import { formatNumber } from '@/platform/ranking';
@@ -85,12 +86,114 @@ const ratingColor = (r: number) => (r >= 85 ? '#fde047' : r >= 75 ? '#86efac' : 
 const shortName = (name: string) =>
   name.length <= 9 ? name : (name.split(' ').pop() ?? name).slice(0, 9);
 
-/** Where a slot sits on a pitch (goalkeeper on the left). */
-function slotXY(s: Slot, p: { cx: number; cy: number; w: number; h: number }) {
+/**
+ * Where a slot sits on a pitch (goalkeeper on the left). The lines are spread over the pitch by
+ * their rank, not by `depth`, so the defence stays near its goal and the attack out of the box.
+ */
+function slotXY(s: Slot, p: { cx: number; cy: number; w: number; h: number }, slots: readonly Slot[]) {
+  const lines = [...new Set(slots.filter((o) => o.depth > 0).map((o) => o.depth))].sort(
+    (x, y) => x - y,
+  );
+  const rank = lines.indexOf(s.depth);
+  const frac =
+    s.depth <= 0 ? 0.07 : lines.length <= 1 ? 0.55 : 0.23 + (rank / (lines.length - 1)) * 0.62;
+  // The outer players of every line sit at the same height, whatever the line's size.
+  const mates = slots.filter((o) => o.depth === s.depth);
+  const lo = Math.min(...mates.map((o) => o.side));
+  const hi = Math.max(...mates.map((o) => o.side));
+  const side = hi > lo ? 0.04 + ((s.side - lo) / (hi - lo)) * 0.92 : 0.5;
   return {
-    x: p.cx - p.w / 2 + 40 + s.depth * (p.w - 80),
-    y: p.cy - p.h / 2 + 32 + s.side * (p.h - 64),
+    x: p.cx - p.w / 2 + frac * p.w,
+    y: p.cy - p.h / 2 + 32 + side * (p.h - 64),
   };
+}
+
+/** The grass, drawn once per size: mown stripes, light falloff and the chalk markings. */
+function pitchTexture(scene: Phaser.Scene, w: number, h: number): string {
+  const key = `dream-pitch-${w}x${h}`;
+  canvasTexture(scene, key, w, h, (ctx) => {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(0, 0, w, h, 22);
+    ctx.clip();
+    const bands = 10;
+    for (let i = 0; i < bands; i++) {
+      ctx.fillStyle = i % 2 === 0 ? '#34a057' : '#2c8e4b';
+      ctx.fillRect((i * w) / bands, 0, w / bands + 1, h);
+    }
+    const light = ctx.createLinearGradient(0, 0, 0, h);
+    light.addColorStop(0, 'rgba(255,255,255,0.16)');
+    light.addColorStop(0.5, 'rgba(255,255,255,0)');
+    light.addColorStop(1, 'rgba(0,0,0,0.22)');
+    ctx.fillStyle = light;
+    ctx.fillRect(0, 0, w, h);
+    const vignette = ctx.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, w * 0.62);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(0,20,6,0.38)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
+
+    const m = 16;
+    const fw = w - m * 2;
+    const fh = h - m * 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.82)';
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.strokeRect(m, m, fw, fh);
+    ctx.beginPath();
+    ctx.moveTo(w / 2, m);
+    ctx.lineTo(w / 2, h - m);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2, h * 0.17, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(w / 2, h / 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    const boxW = w * 0.15;
+    const boxH = h * 0.6;
+    const sixW = w * 0.055;
+    const sixH = h * 0.3;
+    const spotX = w * 0.105;
+    const arcR = h * 0.13;
+    const arcA = Math.acos((boxW - spotX) / arcR);
+    for (const dir of [1, -1]) {
+      const edge = dir === 1 ? m : w - m;
+      ctx.strokeRect(dir === 1 ? edge : edge - boxW, (h - boxH) / 2, boxW, boxH);
+      ctx.strokeRect(dir === 1 ? edge : edge - sixW, (h - sixH) / 2, sixW, sixH);
+      const sx = edge + dir * (spotX - m);
+      ctx.beginPath();
+      ctx.arc(sx, h / 2, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      if (dir === 1) ctx.arc(sx, h / 2, arcR, -arcA, arcA);
+      else ctx.arc(sx, h / 2, arcR, Math.PI - arcA, Math.PI + arcA);
+      ctx.stroke();
+    }
+    for (const [cx, cy, from] of [
+      [m, m, 0],
+      [w - m, m, 0.5],
+      [w - m, h - m, 1],
+      [m, h - m, 1.5],
+    ] as const) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 11, from * Math.PI, (from + 0.5) * Math.PI);
+      ctx.stroke();
+    }
+    // The goals sit just outside the touchline.
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    const gh = h * 0.16;
+    ctx.fillRect(2, (h - gh) / 2, m - 2, gh);
+    ctx.fillRect(w - m, (h - gh) / 2, m - 2, gh);
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(2, (h - gh) / 2, m - 2, gh);
+    ctx.strokeRect(w - m, (h - gh) / 2, m - 2, gh);
+    ctx.restore();
+  });
+  return key;
 }
 
 /** Totals of the cups already won in this series. */
@@ -128,6 +231,9 @@ export abstract class DreamScene extends MiniScene {
     this.busy = false;
     this.frame(this.cfg.title.toUpperCase());
     this.scoreText.setFontSize(36).setY(60).setStroke('#052e16', 8);
+    // Long titles shrink to stay clear of the back button and the record.
+    const room = 440 / this.scoreText.width;
+    if (room < 1) this.scoreText.setFontSize(Math.floor(36 * room));
     this.view = this.add.container(0, 0);
     this.showConfig();
   }
@@ -503,7 +609,7 @@ export abstract class DreamScene extends MiniScene {
     this.busy = true;
     const { sfx } = getServices(this);
     sfx.play('click');
-    const to = slotXY(g.slots[slot]!, PITCH);
+    const to = slotXY(g.slots[slot]!, PITCH, g.slots);
     const color = ROLE_COLOR[g.slots[slot]!.role];
     const chip = this.add.container(fromX, fromY, [
       this.add.circle(0, 0, 24, color).setStrokeStyle(4, 0xffffff),
@@ -614,7 +720,7 @@ export abstract class DreamScene extends MiniScene {
       v.add(group);
       rows.push({ group, dot, mark, left, right, y });
     }
-    this.drawPitch(v, { cx: CX, cy: 1115, w: 680, h: 270 }, g.slots, g.lineup, true);
+    this.drawPitch(v, { cx: CX, cy: 1098, w: 680, h: 330 }, g.slots, g.lineup, true);
 
     const play = (i: number) => {
       const m = result.matches[i];
@@ -1048,8 +1154,9 @@ export abstract class DreamScene extends MiniScene {
   // ---------------------------------------------------------------- pitch
 
   /**
-   * A pitch with the formation (goalkeeper on the left). Filled dots show the picks, coloured by
-   * position; empty ones glow gold when the team on the table has someone for them.
+   * A pitch with the formation (goalkeeper on the left). Filled tokens show the picks, coloured by
+   * position, with the name on a plate over their lower edge; empty ones glow gold when the team
+   * on the table has someone for them.
    */
   private drawPitch(
     v: Phaser.GameObjects.Container,
@@ -1060,66 +1167,62 @@ export abstract class DreamScene extends MiniScene {
     hot: ReadonlySet<Role> = new Set(),
   ): void {
     const { cx, cy, w, h } = box;
-    const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.3).fillRoundedRect(cx - w / 2 + 4, cy - h / 2 + 8, w, h, 22);
-    g.fillStyle(0x2f8f4e).fillRoundedRect(cx - w / 2, cy - h / 2, w, h, 22);
-    for (let i = 0; i < 8; i += 2)
-      g.fillStyle(0x000000, 0.07).fillRect(cx - w / 2 + (i * w) / 8, cy - h / 2, w / 8, h);
-    g.lineStyle(3, 0xffffff, 0.45);
-    g.strokeRoundedRect(cx - w / 2 + 8, cy - h / 2 + 8, w - 16, h - 16, 16);
-    g.lineBetween(cx, cy - h / 2 + 8, cx, cy + h / 2 - 8);
-    g.strokeCircle(cx, cy, h * 0.17);
-    g.strokeRect(cx - w / 2 + 8, cy - h * 0.25, w * 0.1, h * 0.5);
-    g.strokeRect(cx + w / 2 - 8 - w * 0.1, cy - h * 0.25, w * 0.1, h * 0.5);
-    v.add(g);
+    const frame = this.add.graphics();
+    frame.fillStyle(0x000000, 0.35).fillRoundedRect(cx - w / 2 + 3, cy - h / 2 + 9, w, h, 22);
+    v.add(frame);
+    v.add(this.add.image(cx, cy, pitchTexture(this, w, h)));
+    const rim = this.add.graphics();
+    rim.lineStyle(5, 0x0b3d1c, 0.95).strokeRoundedRect(cx - w / 2, cy - h / 2, w, h, 22);
+    rim.lineStyle(2, 0xffffff, 0.2).strokeRoundedRect(cx - w / 2 + 3, cy - h / 2 + 3, w - 6, h - 6, 19);
+    v.add(rim);
+
+    // Tokens shrink on a crowded line so the name plates of neighbours never touch.
+    const crowd = Math.max(...slots.map((s) => slots.filter((o) => o.depth === s.depth).length));
+    const r = Math.min(23, Math.max(14, ((h - 64) * 0.92) / Math.max(1, crowd - 1) / 2 - 8));
     slots.forEach((s, i) => {
-      const { x, y } = slotXY(s, box);
+      const { x, y } = slotXY(s, box, slots);
       const p = lineup[i] ?? null;
       const dot = this.add.graphics();
       if (p) {
-        dot.fillStyle(0x000000, 0.3).fillCircle(x, y + 3, 20);
-        dot.fillStyle(ROLE_COLOR[s.role]).fillCircle(x, y, 20);
-        dot.lineStyle(3, 0xffffff).strokeCircle(x, y, 20);
-        // Names sit beside the dot, or under it for the last line when it is thin: lines of
-        // five players are tight and the forwards' names would run into the midfield's.
-        const last = s.depth > 0.85;
-        const under = last && slots.filter((o) => o.depth === s.depth).length <= 2;
-        const left = last && !under;
+        const color = ROLE_COLOR[s.role];
+        dot.fillStyle(0x000000, 0.32).fillEllipse(x, y + r * 0.95, r * 1.9, r * 0.6);
+        dot.fillStyle(0x000000, 0.35).fillCircle(x, y + 2, r + 2);
+        dot.fillStyle(color).fillCircle(x, y, r);
+        dot.fillStyle(0xffffff, 0.38).fillEllipse(x - r * 0.18, y - r * 0.42, r * 1.05, r * 0.6);
+        dot.lineStyle(3, 0xffffff).strokeCircle(x, y, r);
+        const name = addText(this, x, y + r + 5, shortName(p.name), 14, {
+          color: '#ffffff',
+          weight: 'bold',
+        });
+        const pw = Math.max(48, name.width + 14);
+        dot.fillStyle(0x04210f, 0.88).fillRoundedRect(x - pw / 2, y + r - 4, pw, 20, 10);
+        dot.lineStyle(1, 0xffffff, 0.25).strokeRoundedRect(x - pw / 2, y + r - 4, pw, 20, 10);
         v.add([
           dot,
-          addText(this, x, y, showRatings ? String(p.rating) : p.name.charAt(0), 19, {
+          addText(this, x, y - 1, showRatings ? String(p.rating) : p.name.charAt(0), Math.round(r * 0.9), {
             color: '#052e16',
+            weight: 'bold',
           }),
-          addText(
-            this,
-            under ? x : left ? x - 26 : x + 26,
-            under ? y + 30 : y,
-            shortName(p.name),
-            14,
-            {
-              color: '#ffffff',
-              stroke: '#052e16',
-              strokeThickness: 4,
-            },
-          ).setOrigin(under ? 0.5 : left ? 1 : 0, 0.5),
+          name,
         ]);
       } else {
         const glow = hot.has(s.role);
+        dot.fillStyle(0x000000, glow ? 0.3 : 0.22).fillCircle(x, y, r);
         if (glow) {
-          dot.fillStyle(0xfde047, 0.25).fillCircle(x, y, 24);
-          const pulse = this.add.circle(x, y, 22).setStrokeStyle(2, 0xfde047, 0.9);
+          dot.fillStyle(0xfde047, 0.28).fillCircle(x, y, r + 4);
+          const pulse = this.add.circle(x, y, r).setStrokeStyle(2, 0xfde047, 0.9);
           v.add(pulse);
           this.loops.push(pulse);
-          this.tweens.add({ targets: pulse, scale: 1.5, alpha: 0, duration: 900, repeat: -1 });
+          this.tweens.add({ targets: pulse, scale: 1.55, alpha: 0, duration: 900, repeat: -1 });
         }
         dot
-          .lineStyle(glow ? 3 : 2, glow ? 0xfde047 : 0xffffff, glow ? 1 : 0.55)
-          .strokeCircle(x, y, 20);
+          .lineStyle(glow ? 3 : 2, glow ? 0xfde047 : 0xffffff, glow ? 1 : 0.6)
+          .strokeCircle(x, y, r);
         v.add([
           dot,
           addText(this, x, y, s.role, 14, {
-            color: glow ? '#fef08a' : '#ffffffaa',
-            weight: glow ? 'bold' : 'normal',
+            color: glow ? '#fef08a' : '#ffffffcc',
+            weight: 'bold',
           }),
         ]);
       }
