@@ -9,6 +9,7 @@ import { HubScene } from '@/platform/scenes/HubScene';
 import { LeaderboardScene } from '@/platform/scenes/LeaderboardScene';
 import { bindConnectivityNotices } from '@/platform/connectivityNotices';
 import { publishNotice } from '@/platform/notices';
+import '@/platform/pwa/installPrompt';
 import { registerServiceWorker } from '@/platform/pwa/register';
 import { bindBrowserLifecycle } from '@/platform/sessionTracker';
 import { bindConnectivitySync } from '@/platform/sync';

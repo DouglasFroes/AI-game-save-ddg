@@ -6,6 +6,7 @@ import { GoogleAccount, NO_ACCOUNT, type AccountService } from '@/platform/accou
 import { Sfx } from '@/platform/audio/Sfx';
 import { boardId } from '@/platform/boards';
 import { BestScores } from '@/platform/bestScores';
+import { BoardSnapshots } from '@/platform/boardSnapshots';
 import { Favorites } from '@/platform/favorites';
 import { FirebaseLeaderboard, readFirebaseSettings } from '@/platform/firebaseLeaderboard';
 import { FirebaseTelemetry } from '@/platform/firebaseTelemetry';
@@ -62,6 +63,7 @@ export function createServices(env: Record<string, unknown> = import.meta.env): 
     profile.get().playerId,
     undefined,
     new Outbox<PendingScore>(store, 'arcade.outbox.scores'),
+    new BoardSnapshots(store),
   );
   const telemetry = new ResilientTelemetry(
     new LocalTelemetry(store, isKnownGameId),

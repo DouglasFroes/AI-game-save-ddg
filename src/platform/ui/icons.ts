@@ -23,6 +23,7 @@ export type IconKind =
   | 'retry'
   | 'medal'
   | 'globe'
+  | 'download'
   | 'flame'
   | 'sparkle'
   | 'bolt'
@@ -170,6 +171,13 @@ export function drawIcon(
         [0.46, 0],
         [-0.3, 0.42],
       ]);
+      break;
+    case 'download':
+      g.lineStyle(s * 0.14, color);
+      g.lineBetween(0, -0.4 * s, 0, 0.18 * s);
+      g.lineBetween(-0.26 * s, -0.08 * s, 0, 0.18 * s);
+      g.lineBetween(0.26 * s, -0.08 * s, 0, 0.18 * s);
+      g.lineBetween(-0.4 * s, 0.4 * s, 0.4 * s, 0.4 * s);
       break;
     case 'plus':
       g.lineStyle(s * 0.14, color);

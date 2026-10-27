@@ -13,9 +13,12 @@ const UPDATE_CHECK_MS = 30 * 60_000;
 export function registerServiceWorker(): void {
   if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
 
+  // On the very first visit the new worker also takes control (clients.claim); that is not an
+  // update, so the page must not reload itself.
+  const hadController = navigator.serviceWorker.controller !== null;
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloading) return;
+    if (reloading || !hadController) return;
     reloading = true;
     window.location.reload();
   });

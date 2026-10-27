@@ -4,7 +4,9 @@ import { GAMES, type GameDefinition, type GameId } from '@/games/registry';
 import { trendingGames } from '@/platform/trending';
 import { HUB_FONT } from '@/platform/fonts';
 import { canFullscreen, isStandalone, toggleFullscreen } from '@/platform/fullscreen';
-import { loadGame } from '@/platform/gameLoader';
+import { loadGame, orderForWarmup, warmGames } from '@/platform/gameLoader';
+import { installPrompt } from '@/platform/pwa/installPrompt';
+import { hideSplash } from '@/platform/splash';
 import {
   CATEGORY_LABELS,
   filterGames,
@@ -208,6 +210,7 @@ export class HubScene extends Phaser.Scene {
   private slideFx: Phaser.Tweens.Tween[] = [];
 
   create(): void {
+    performance.mark('hub-start');
     this.opening = false;
     this.gesture = null;
     this.dragged = false;
@@ -305,9 +308,12 @@ export class HubScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
     void account.prepare();
 
+    performance.mark('hub-create');
+    hideSplash();
+
     // The hub is already on screen: warm the game chunks in the background so taps feel instant.
     this.time.delayedCall(1500, () => {
-      for (const game of GAMES) loadGame(this.game, game).catch(() => undefined);
+      warmGames(this.game, orderForWarmup(GAMES, getServices(this).recents.list()));
     });
   }
 
@@ -599,6 +605,44 @@ export class HubScene extends Phaser.Scene {
       });
       this.top.add(full.view);
     }
+    this.buildInstallButton(ax - 80 - 72 * 2, cy);
+  }
+
+  /** "Instalar app": shown while the app can be installed, gone once it is. */
+  private buildInstallButton(x: number, y: number): void {
+    let button: IconHandle | null = null;
+    const sync = () => {
+      if (!this.sys.isActive()) return;
+      const state = installPrompt.state();
+      const wanted = state === 'prompt' || state === 'ios';
+      if (wanted && !button) {
+        button = this.glassCircle(x, y, 62, 'download', 28, () => void this.installApp(), {
+          color: UI.cyan,
+        });
+        this.top.add(button.view);
+      } else if (!wanted && button) {
+        button.view.destroy();
+        button = null;
+      }
+    };
+    sync();
+    const off = installPrompt.onChange(sync);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+  }
+
+  private async installApp(): Promise<void> {
+    if (installPrompt.state() === 'ios') {
+      showNotice(this, {
+        key: 'install-ios',
+        kind: 'info',
+        glyph: 'download',
+        title: 'Instalar no iPhone',
+        body: 'Toque em Compartilhar e depois em "Adicionar à Tela de Início".',
+        sticky: true,
+      });
+      return;
+    }
+    await installPrompt.prompt();
   }
 
   private refreshName(): void {
@@ -1605,6 +1649,8 @@ export class HubScene extends Phaser.Scene {
   /** Details sheet: a banner, the big Play button and the My List / Ranking / Invite actions. */
   private openSheet(game: GameDefinition): void {
     if (this.sheet) return;
+    // The player is looking at this game: fetch its code now, so "Jogar" starts instantly.
+    loadGame(this.game, game).catch(() => undefined);
     const services = getServices(this);
     const top = GAME_HEIGHT - SHEET_H;
     const { root, dim } = this.scrim();

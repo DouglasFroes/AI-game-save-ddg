@@ -38,6 +38,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    performance.mark('boot-start');
     generatePlatformTextures(this);
     generateDoguinhoTextures(this);
     generateBlockBlastTextures(this);
@@ -67,8 +68,10 @@ export class BootScene extends Phaser.Scene {
     generateTerritorioTextures(this);
     for (const game of GAMES)
       if (game.emoji) emojiIcon(this, game.icon, game.emoji, game.color, game.shade);
+    performance.mark('textures-done');
     // The hub paints its art with the display font, so give it a moment to arrive.
     void loadHubFont().then(() => {
+      performance.mark('font-done');
       if (this.sys.isActive()) this.scene.start(SceneKeys.Hub);
     });
   }
