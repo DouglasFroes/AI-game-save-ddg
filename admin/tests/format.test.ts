@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   ago,
+  anomalyReasonLabel,
+  bytes,
   csvCell,
   duration,
   esc,
@@ -13,7 +15,7 @@ import {
 } from '../src/format';
 import { GAMES_CATALOG, getGameMeta } from '../src/games';
 import { renderPagination } from '../src/ui';
-import { gamesToCsv, playersToCsv, sessionsToCsv } from '../src/views';
+import { gamesToCsv, playersToCsv, renderHeatmapGrid, sessionsToCsv } from '../src/views';
 
 describe('format', () => {
   it('escapes HTML so API text can never become markup', () => {
@@ -120,5 +122,17 @@ describe('format', () => {
     expect(GAMES_CATALOG.length).toBeGreaterThanOrEqual(86);
     expect(getGameMeta('doguinho').title).toBe('Salve o Doguinho');
     expect(getGameMeta('unknown_game').title).toBe('Unknown_game');
+  });
+
+  it('formats byte sizes, anomaly labels and 24x7 heatmaps', () => {
+    expect(bytes(0)).toBe('0 B');
+    expect(bytes(512)).toBe('512 B');
+    expect(bytes(2048)).toBe('2,0 KB');
+    expect(bytes(5 * 1024 * 1024)).toBe('5,00 MB');
+    expect(anomalyReasonLabel('no_session').title).toBe('Recorde sem partida');
+    expect(anomalyReasonLabel('score_mismatch').title).toBe('Acima da maior sessão');
+    const heat = renderHeatmapGrid([{ dow: 5, hour: 21, sessions: 12, players: 8 }]);
+    expect(heat).toContain('Sex às 21h BRT');
+    expect(heat).toContain('12');
   });
 });

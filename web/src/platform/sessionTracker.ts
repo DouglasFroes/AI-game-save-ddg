@@ -215,7 +215,7 @@ export function attachSceneTelemetry(scene: Phaser.Scene, tracker: PlaySessionTr
   scene.events.on('destroy', onShutdown);
 }
 
-/** Installs global page visibility & unload listeners so leaving the browser saves the session. */
+/** Installs global page visibility, unload & client error listeners. */
 export function bindBrowserLifecycle(tracker: PlaySessionTracker): void {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   document.addEventListener('visibilitychange', () => {
@@ -224,4 +224,60 @@ export function bindBrowserLifecycle(tracker: PlaySessionTracker): void {
   window.addEventListener('pagehide', () => {
     tracker.flushCurrent();
   });
+
+  const seen = new Set<string>();
+  const sendError = (kind: 'error' | 'unhandledrejection' | 'webgl' | 'chunk', message: string, stack = '') => {
+    const cleanMsg = message.trim().slice(0, 300);
+    if (!cleanMsg || seen.size >= 8) return;
+    const key = `${kind}:${cleanMsg}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    let authHeader: Record<string, string> = {};
+    try {
+      const raw = localStorage.getItem('arcade.api.session.v1');
+      if (raw) {
+        const parsed = JSON.parse(raw) as { token?: string };
+        if (parsed.token) authHeader = { Authorization: `Bearer ${parsed.token}` };
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+
+    void fetch('/api/telemetry/errors', {
+      method: 'POST',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json', ...authHeader },
+      body: JSON.stringify({
+        kind,
+        message: cleanMsg,
+        stack: stack.slice(0, 1500),
+        gameId: tracker.activeGameId ?? '',
+        url: window.location.href.slice(0, 300),
+      }),
+    }).catch(() => {});
+  };
+
+  window.addEventListener('error', (e) => {
+    const msg = e.message || 'Runtime error';
+    const isChunk = /Loading chunk|Failed to fetch dynamically imported module/i.test(msg);
+    const stack = e.error instanceof Error && e.error.stack ? e.error.stack : `${e.filename ?? ''}:${e.lineno ?? 0}`;
+    sendError(isChunk ? 'chunk' : 'error', msg, stack);
+  });
+
+  window.addEventListener('unhandledrejection', (e) => {
+    const reason = e.reason;
+    const msg = reason instanceof Error ? reason.message : String(reason ?? 'Unhandled rejection');
+    const stack = reason instanceof Error && reason.stack ? reason.stack : '';
+    const isChunk = /Loading chunk|Failed to fetch dynamically imported module/i.test(msg);
+    sendError(isChunk ? 'chunk' : 'unhandledrejection', msg, stack);
+  });
+
+  window.addEventListener(
+    'webglcontextlost',
+    () => {
+      sendError('webgl', 'WebGL context lost', '');
+    },
+    true,
+  );
 }

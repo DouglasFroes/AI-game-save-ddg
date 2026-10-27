@@ -837,6 +837,69 @@ th {
   border: 1px solid rgba(255, 92, 122, 0.4);
 }
 
+.tag-warn {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.tag-ok {
+  background: rgba(16, 185, 129, 0.16);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.section-heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.heat-summary {
+  font-size: 13px;
+  color: var(--mute);
+  margin-bottom: 12px;
+}
+
+.heat-summary strong {
+  color: var(--gold);
+}
+
+.heat-table th,
+.heat-table td {
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 11px;
+}
+
+.heat-day {
+  text-align: left !important;
+  padding-left: 10px !important;
+  font-weight: 700;
+  color: var(--text) !important;
+}
+
+.heat-cell {
+  min-width: 32px;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+}
+
+.stack-box {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--mute);
+  max-height: 110px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
 .detail-chip {
   display: inline-block;
   font-size: 11px;

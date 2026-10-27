@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
-use crate::domain::session::NewSession;
+use crate::domain::session::{NewClientError, NewSession};
 
 #[derive(Debug, Clone, FromRow)]
 pub struct SessionRow {
@@ -56,4 +56,27 @@ pub async fn recent(
     .bind(limit)
     .fetch_all(pool)
     .await
+}
+
+/// Records a client-side runtime error, rate-limited to avoid flooding the table.
+pub async fn record_error(
+    pool: &PgPool,
+    player: Option<Uuid>,
+    err: &NewClientError,
+) -> sqlx::Result<()> {
+    sqlx::query(
+        "INSERT INTO client_errors (player_id, kind, message, stack, game_id, url, user_agent)
+         SELECT $1, $2, $3, $4, $5, $6, $7
+         WHERE (SELECT count(*) FROM client_errors WHERE created_at > now() - interval '1 minute') < 120",
+    )
+    .bind(player)
+    .bind(&err.kind)
+    .bind(&err.message)
+    .bind(&err.stack)
+    .bind(&err.game_id)
+    .bind(&err.url)
+    .bind(&err.user_agent)
+    .execute(pool)
+    .await?;
+    Ok(())
 }

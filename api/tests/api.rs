@@ -328,4 +328,21 @@ async fn admin_is_limited_to_listed_emails() {
     assert_eq!(app.call(Method::DELETE, &format!("/api/admin/chat/messages/{mid}"), Some(&boss), None).await.0, StatusCode::NO_CONTENT);
     let (_, reports) = app.call(Method::GET, "/api/admin/reports", Some(&boss), None).await;
     assert!(reports.as_array().unwrap().is_empty());
+
+    // Client error telemetry + monitoring snapshot.
+    let err_body = json!({
+        "kind": "webgl",
+        "message": "WebGL context lost",
+        "stack": "at GrauScene:12",
+        "gameId": "grau",
+        "url": "https://fliper.app/?jogo=grau"
+    });
+    assert_eq!(app.call(Method::POST, "/api/telemetry/errors", Some(&ana), Some(err_body)).await.0, StatusCode::NO_CONTENT);
+    let (s, mon) = app.call(Method::GET, "/api/admin/monitoring", Some(&boss), None).await;
+    assert_eq!(s, StatusCode::OK, "{mon}");
+    assert_eq!(mon["live"]["errors_24h"].as_i64(), Some(1));
+    assert!(mon["server"]["requests_total"].as_u64().unwrap() >= 1);
+    let (_, errs) = app.call(Method::GET, "/api/admin/errors?kind=webgl", Some(&boss), None).await;
+    assert_eq!(errs["total"].as_i64(), Some(1));
+    assert_eq!(app.call(Method::DELETE, "/api/admin/errors", Some(&boss), None).await.0, StatusCode::NO_CONTENT);
 }

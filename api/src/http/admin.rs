@@ -293,3 +293,100 @@ pub async fn moderate_message(
     s.hub.publish_room(&room, "update", &super::dto::MessageDto::from(row));
     Ok(StatusCode::NO_CONTENT)
 }
+
+#[derive(Deserialize)]
+pub struct MonitoringQuery {
+    days: Option<i32>,
+}
+
+#[derive(Serialize)]
+pub struct MonitoringSnapshot {
+    live: admin::LivePulse,
+    online_players: Vec<crate::chat::hub::Presence>,
+    recent_sessions: Vec<SessionDto>,
+    funnel: admin::FunnelStats,
+    retention: admin::RetentionStats,
+    heatmap: Vec<admin::HourlyCell>,
+    game_health: Vec<admin::GameHealthRow>,
+    anomalies: Vec<admin::AnomalyRow>,
+    server: crate::chat::hub::ServerMetrics,
+    db: admin::DbHealth,
+    error_groups: Vec<admin::ErrorGroupRow>,
+}
+
+pub async fn monitoring(
+    State(s): State<AppState>,
+    _: AdminPlayer,
+    Query(q): Query<MonitoringQuery>,
+) -> AppResult<Json<MonitoringSnapshot>> {
+    let now_ms = Utc::now().timestamp_millis();
+    let days = q.days.unwrap_or(30).clamp(7, 365);
+    let (_, recent_rows) = admin::sessions_page(
+        &s.db,
+        &admin::SessionsFilter {
+            since: Some(Utc::now() - Duration::hours(24)),
+            game: None,
+            player: None,
+            query: None,
+            sort: "recent",
+            page: 1,
+            per_page: 15,
+        },
+    )
+    .await?;
+
+    Ok(Json(MonitoringSnapshot {
+        live: admin::live_pulse(&s.db).await?,
+        online_players: s.hub.who_is_online(now_ms).await,
+        recent_sessions: recent_rows.into_iter().map(Into::into).collect(),
+        funnel: admin::funnel(&s.db).await?,
+        retention: admin::retention(&s.db).await?,
+        heatmap: admin::hourly_heatmap(&s.db, days).await?,
+        game_health: admin::game_health(&s.db).await?,
+        anomalies: admin::anomalies(&s.db).await?,
+        server: s.hub.snapshot_metrics(now_ms).await,
+        db: admin::db_health(&s.db).await?,
+        error_groups: admin::error_groups(&s.db).await?,
+    }))
+}
+
+#[derive(Deserialize)]
+pub struct ErrorsQuery {
+    kind: Option<String>,
+    game: Option<String>,
+    q: Option<String>,
+    page: Option<i64>,
+    per_page: Option<i64>,
+}
+
+pub async fn errors_list(
+    State(s): State<AppState>,
+    _: AdminPlayer,
+    Query(q): Query<ErrorsQuery>,
+) -> AppResult<Json<admin::Page<admin::ClientErrorRow>>> {
+    let kind = q.kind.as_deref().map(str::trim).filter(|k| !k.is_empty() && *k != "all");
+    let game = q.game.as_deref().map(str::trim).filter(|g| !g.is_empty() && *g != "all");
+    let query = q.q.as_deref().map(str::trim).filter(|t| !t.is_empty());
+    let page = q.page.unwrap_or(1).max(1);
+    let per_page = q.per_page.unwrap_or(25).clamp(1, 200);
+    Ok(Json(
+        admin::errors_page(&s.db, &admin::ErrorsFilter { kind, game, query, page, per_page }).await?,
+    ))
+}
+
+pub async fn clear_errors(State(s): State<AppState>, _: AdminPlayer) -> AppResult<StatusCode> {
+    admin::clear_client_errors(&s.db).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn delete_error(
+    State(s): State<AppState>,
+    _: AdminPlayer,
+    Path(id): Path<i64>,
+) -> AppResult<StatusCode> {
+    if admin::delete_client_error(&s.db, id).await? {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(AppError::NotFound)
+    }
+}

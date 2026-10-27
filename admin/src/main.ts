@@ -1,7 +1,17 @@
 import './style.css';
 import { api, ApiError, signInWithGoogle, token, type Overview, type Session } from './api';
 import { esc, number, parseHashRoute } from './format';
-import { gamesView, overview, players, rankings, reports, sessions, type View } from './views';
+import {
+  gamesView,
+  liveMonitoring,
+  overview,
+  players,
+  rankings,
+  reports,
+  securityAndHealth,
+  sessions,
+  type View,
+} from './views';
 
 declare global {
   interface Window {
@@ -15,11 +25,13 @@ const CLIENT_ID =
 
 const TABS: ReadonlyArray<{ id: string; icon: string; label: string; view: View }> = [
   { id: 'geral', icon: '📊', label: 'Visão geral', view: overview },
+  { id: 'monitoramento', icon: '🟢', label: 'Ao Vivo & Retenção', view: liveMonitoring },
+  { id: 'saude', icon: '🛡️', label: 'Anti-Cheat & Saúde', view: securityAndHealth },
   { id: 'jogos', icon: '🎮', label: 'Jogos', view: gamesView },
   { id: 'sessoes', icon: '🕒', label: 'Partidas', view: sessions },
   { id: 'jogadores', icon: '👥', label: 'Jogadores', view: players },
   { id: 'rankings', icon: '🏆', label: 'Rankings', view: rankings },
-  { id: 'denuncias', icon: '🛡️', label: 'Moderação', view: reports },
+  { id: 'denuncias', icon: '💬', label: 'Moderação', view: reports },
 ];
 
 const app = document.getElementById('app')!;

@@ -1,15 +1,15 @@
-//! Real-time fan-out of chat events, and who is online. In memory: both are rebuilt by clients
-//! after a restart (they re-subscribe and send a heartbeat), so nothing here needs the database.
+//! Real-time fan-out of chat events, who is online, and in-memory server telemetry counters.
 
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tokio::sync::{broadcast, RwLock};
 use uuid::Uuid;
@@ -45,10 +45,36 @@ pub struct Event {
     pub json: Arc<str>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct ServerMetrics {
+    pub started_at: DateTime<Utc>,
+    pub uptime_sec: u64,
+    pub ws_subscribers: usize,
+    pub online_players: usize,
+    pub requests_total: u64,
+    pub requests_api: u64,
+    pub status_2xx: u64,
+    pub status_4xx: u64,
+    pub status_429: u64,
+    pub status_5xx: u64,
+    pub avg_latency_ms: f64,
+    pub max_latency_ms: f64,
+}
+
 pub struct Hub {
     tx: broadcast::Sender<Event>,
     online: RwLock<HashMap<Uuid, Presence>>,
     dirty: AtomicBool,
+    started_instant: Instant,
+    started_wall: DateTime<Utc>,
+    requests_total: AtomicU64,
+    requests_api: AtomicU64,
+    status_2xx: AtomicU64,
+    status_4xx: AtomicU64,
+    status_429: AtomicU64,
+    status_5xx: AtomicU64,
+    latency_sum_us: AtomicU64,
+    latency_max_us: AtomicU64,
 }
 
 impl Default for Hub {
@@ -57,6 +83,16 @@ impl Default for Hub {
             tx: broadcast::channel(512).0,
             online: RwLock::default(),
             dirty: AtomicBool::new(false),
+            started_instant: Instant::now(),
+            started_wall: Utc::now(),
+            requests_total: AtomicU64::new(0),
+            requests_api: AtomicU64::new(0),
+            status_2xx: AtomicU64::new(0),
+            status_4xx: AtomicU64::new(0),
+            status_429: AtomicU64::new(0),
+            status_5xx: AtomicU64::new(0),
+            latency_sum_us: AtomicU64::new(0),
+            latency_max_us: AtomicU64::new(0),
         }
     }
 }
@@ -64,6 +100,57 @@ impl Default for Hub {
 impl Hub {
     pub fn subscribe(&self) -> broadcast::Receiver<Event> {
         self.tx.subscribe()
+    }
+
+    pub fn ws_subscribers(&self) -> usize {
+        self.tx.receiver_count()
+    }
+
+    pub fn record_http(&self, is_api: bool, status: u16, elapsed_us: u64) {
+        self.requests_total.fetch_add(1, Ordering::Relaxed);
+        if is_api {
+            self.requests_api.fetch_add(1, Ordering::Relaxed);
+        }
+        if (200..400).contains(&status) {
+            self.status_2xx.fetch_add(1, Ordering::Relaxed);
+        } else if (400..500).contains(&status) {
+            self.status_4xx.fetch_add(1, Ordering::Relaxed);
+            if status == 429 {
+                self.status_429.fetch_add(1, Ordering::Relaxed);
+            }
+        } else if status >= 500 {
+            self.status_5xx.fetch_add(1, Ordering::Relaxed);
+        }
+        self.latency_sum_us.fetch_add(elapsed_us, Ordering::Relaxed);
+        self.latency_max_us.fetch_max(elapsed_us, Ordering::Relaxed);
+    }
+
+    pub async fn snapshot_metrics(&self, now_ms: i64) -> ServerMetrics {
+        let online_count = self
+            .online
+            .read()
+            .await
+            .values()
+            .filter(|p| now_ms - p.at <= ONLINE_WINDOW_MS)
+            .count();
+        let total = self.requests_total.load(Ordering::Relaxed);
+        let sum_us = self.latency_sum_us.load(Ordering::Relaxed);
+        let max_us = self.latency_max_us.load(Ordering::Relaxed);
+        let avg_ms = if total > 0 { (sum_us as f64 / total as f64) / 1000.0 } else { 0.0 };
+        ServerMetrics {
+            started_at: self.started_wall,
+            uptime_sec: self.started_instant.elapsed().as_secs(),
+            ws_subscribers: self.tx.receiver_count(),
+            online_players: online_count,
+            requests_total: total,
+            requests_api: self.requests_api.load(Ordering::Relaxed),
+            status_2xx: self.status_2xx.load(Ordering::Relaxed),
+            status_4xx: self.status_4xx.load(Ordering::Relaxed),
+            status_429: self.status_429.load(Ordering::Relaxed),
+            status_5xx: self.status_5xx.load(Ordering::Relaxed),
+            avg_latency_ms: (avg_ms * 100.0).round() / 100.0,
+            max_latency_ms: ((max_us as f64 / 1000.0) * 100.0).round() / 100.0,
+        }
     }
 
     /// Announces a message (or a change to one) to everybody following the room.
@@ -142,5 +229,14 @@ mod tests {
         let event = rx.recv().await.unwrap();
         assert_eq!(event.scope, Scope::Room("geral".into()));
         assert!(event.json.contains("\"type\":\"message\""));
+    }
+
+    #[tokio::test]
+    async fn tracks_http_counters() {
+        let hub = Hub::default();
+        hub.record_http(true, 200, 1_500);
+        hub.record_http(true, 429, 500);
+        let m = hub.snapshot_metrics(0).await;
+        assert_eq!((m.requests_total, m.requests_api, m.status_2xx, m.status_429), (2, 2, 1, 1));
     }
 }

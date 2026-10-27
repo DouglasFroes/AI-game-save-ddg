@@ -173,3 +173,32 @@ export function parseHashRoute(hash: string): { tab: string; params: URLSearchPa
     params: new URLSearchParams(clean.slice(qIndex + 1)),
   };
 }
+
+export function bytes(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '0 B';
+  if (n < 1024) return `${Math.round(n)} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1).replace('.', ',')} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(2).replace('.', ',')} MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(2).replace('.', ',')} GB`;
+}
+
+export function anomalyReasonLabel(reason: string): { title: string; desc: string } {
+  switch (reason) {
+    case 'no_session':
+      return {
+        title: 'Recorde sem partida',
+        desc: 'Recorde enviado ao ranking sem nenhuma sessão registrada neste jogo.',
+      };
+    case 'score_mismatch':
+      return {
+        title: 'Acima da maior sessão',
+        desc: 'Pontuação no ranking maior que a maior pontuação já registrada nas partidas do jogador.',
+      };
+    case 'short_high_score':
+    default:
+      return {
+        title: 'Alta pontuação em ≤4s',
+        desc: 'Pontuação elevada obtida em uma sessão extremamente curta.',
+      };
+  }
+}

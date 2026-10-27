@@ -1,9 +1,12 @@
 import {
   api,
   type AdminMessage,
+  type ClientErrorRow,
   type DayStats,
   type Entry,
   type GameStats,
+  type HourlyCell,
+  type MonitoringSnapshot,
   type Overview,
   type Page,
   type PlayerSummary,
@@ -13,6 +16,8 @@ import {
 } from './api';
 import {
   ago,
+  anomalyReasonLabel,
+  bytes,
   csvCell,
   dateTime,
   duration,
@@ -1436,4 +1441,1005 @@ export const reports: View = async (root, onBadgeUpdate) => {
   });
 
   await render();
+};
+
+const DOW_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const;
+
+export function renderHeatmapGrid(cells: readonly HourlyCell[]): string {
+  const map = new Map<string, HourlyCell>();
+  let max = 1;
+  let peakCell: HourlyCell | null = null;
+  for (const c of cells) {
+    map.set(`${c.dow}:${c.hour}`, c);
+    if (c.sessions > max) max = c.sessions;
+    if (!peakCell || c.sessions > peakCell.sessions) peakCell = c;
+  }
+
+  const headerHours = Array.from({ length: 24 }, (_, h) => `<th>${String(h).padStart(2, '0')}h</th>`).join('');
+  const rows = DOW_LABELS.map((dayLabel, dow) => {
+    const cols = Array.from({ length: 24 }, (_, hour) => {
+      const cell = map.get(`${dow}:${hour}`);
+      const count = cell?.sessions ?? 0;
+      const players = cell?.players ?? 0;
+      const alpha = count === 0 ? 0.04 : Math.min(0.95, 0.18 + (count / max) * 0.77);
+      const tip = `${dayLabel} ${String(hour).padStart(2, '0')}h–${String((hour + 1) % 24).padStart(2, '0')}h (BRT): ${number(count)} partida(s), ${number(players)} jogador(es)`;
+      return `<td class="heat-cell ${count > 0 ? 'has-val' : ''}" style="background:rgba(124, 92, 255, ${alpha.toFixed(2)})" title="${esc(tip)}">${count > 0 ? number(count) : ''}</td>`;
+    }).join('');
+    return `<tr><th class="heat-day">${dayLabel}</th>${cols}</tr>`;
+  }).join('');
+
+  const peakSummary = peakCell
+    ? `Horário de maior pico: <strong>${DOW_LABELS[peakCell.dow] ?? ''} às ${String(peakCell.hour).padStart(2, '0')}h BRT</strong> (${number(peakCell.sessions)} partidas)`
+    : 'Sem partidas registradas no período';
+
+  return `
+    <div class="heat-summary">${peakSummary}</div>
+    <div class="table-wrap heat-wrap">
+      <table class="heat-table">
+        <thead>
+          <tr><th>Dia \\ Hora</th>${headerHours}</tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+export const liveMonitoring: View = async (root) => {
+  let days = 30;
+  let autoRefresh = false;
+  let bounceSort: 'bounce' | 'sessions' | 'avg' = 'bounce';
+  let bouncePage = 1;
+  let bouncePerPage = 15;
+  let snap = await api<MonitoringSnapshot>(`/api/admin/monitoring?days=${days}`);
+
+  let intervalId: ReturnType<typeof setInterval> | undefined;
+  const setupAutoRefresh = () => {
+    if (intervalId) clearInterval(intervalId);
+    if (!autoRefresh) return;
+    intervalId = setInterval(async () => {
+      if (!document.body.contains(root)) {
+        clearInterval(intervalId);
+        return;
+      }
+      try {
+        snap = await api<MonitoringSnapshot>(`/api/admin/monitoring?days=${days}`);
+        draw();
+      } catch {
+        /* ignore background refresh failure */
+      }
+    }, 10_000);
+  };
+
+  const draw = () => {
+    const { live, online_players, recent_sessions, funnel, retention, heatmap, game_health, server } = snap;
+    const d1Pct = percent(retention.d1_retained, retention.d1_eligible, 1);
+    const d7Pct = percent(retention.d7_retained, retention.d7_eligible, 1);
+    const d30Pct = percent(retention.d30_retained, retention.d30_eligible, 1);
+    const retPct = percent(retention.returning_players, funnel.played_1, 1);
+    const multiPct = percent(retention.multi_session_players, funnel.played_1, 1);
+
+    const funnelSteps = [
+      { label: '1. Visitantes / Contas criadas', val: funnel.total_players, base: funnel.total_players, color: '#6366f1' },
+      { label: '2. Jogaram ao menos 1 partida', val: funnel.played_1, base: funnel.total_players, color: '#8b5cf6' },
+      { label: '3. Jogaram 5 ou mais partidas', val: funnel.played_5, base: funnel.total_players, color: '#0ea5e9' },
+      { label: '4. Vincularam conta Google', val: funnel.google_linked, base: funnel.total_players, color: '#10b981' },
+      { label: '5. Publicaram recorde no Ranking', val: funnel.ranked, base: funnel.total_players, color: '#f59e0b' },
+      { label: '6. Enviaram mensagem no Chat', val: funnel.chatted, base: funnel.total_players, color: '#ec4899' },
+    ];
+
+    const sortedBounce = [...game_health].sort((a, b) => {
+      const rateA = a.sessions > 0 ? a.short_sessions / a.sessions : 0;
+      const rateB = b.sessions > 0 ? b.short_sessions / b.sessions : 0;
+      if (bounceSort === 'sessions') return b.sessions - a.sessions;
+      if (bounceSort === 'avg') return b.avg_duration_sec - a.avg_duration_sec;
+      return rateB - rateA || b.short_sessions - a.short_sessions;
+    });
+    const bouncePg = paginateSlice(sortedBounce, bouncePage, bouncePerPage);
+
+    root.innerHTML = `
+      <div class="toolbar">
+        <div>
+          <h2 class="section-heading">🟢 Pulso em Tempo Real & Engajamento</h2>
+          <p class="panel-sub">Presença ativa no WebSocket, tráfego imediato, funil de conversão, retenção e mapa de calor</p>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" id="toggle-live" class="btn ${autoRefresh ? 'btn-primary' : 'btn-secondary'}">
+            ${autoRefresh ? '⚡ Auto-atualizar (10s): ON' : '⏸ Auto-atualizar (10s): OFF'}
+          </button>
+          <button type="button" id="manual-live" class="btn btn-ghost">↻ Atualizar agora</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        ${kpiCard(
+          '🟢',
+          'Online Agora',
+          number(online_players.length),
+          `<strong>${number(server.ws_subscribers)}</strong> conexões WebSocket ativas`,
+          online_players.length > 0 ? 'stat-highlight' : '',
+        )}
+        ${kpiCard(
+          '⚡',
+          'Partidas (5m / 15m)',
+          `${number(live.sessions_5m)} / ${number(live.sessions_15m)}`,
+          `<strong>${number(live.active_players_15m)}</strong> jogadores ativos nos últimos 15 min`,
+        )}
+        ${kpiCard(
+          '🕹️',
+          'Última Hora (60m)',
+          number(live.sessions_60m),
+          `<strong>${number(live.active_players_60m)}</strong> jogadores · <strong>${number(live.entries_60m)}</strong> recordes`,
+        )}
+        ${kpiCard(
+          '🔄',
+          'Jogadores Recorrentes',
+          number(retention.returning_players),
+          `<strong>${esc(retPct)}</strong> jogaram em 2+ dias · <strong>${esc(multiPct)}</strong> 2+ partidas`,
+        )}
+        ${kpiCard(
+          '📅',
+          'Retenção D1 / D7',
+          `${d1Pct} / ${d7Pct}`,
+          `D1: ${number(retention.d1_retained)}/${number(retention.d1_eligible)} · D7: ${number(retention.d7_retained)}/${number(retention.d7_eligible)}`,
+        )}
+        ${kpiCard(
+          '🏅',
+          'Retenção D30',
+          d30Pct,
+          `${number(retention.d30_retained)} de ${number(retention.d30_eligible)} jogadores elegíveis (30d+)`,
+        )}
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>🟢 Jogadores Online Neste Instante (${online_players.length})</h2>
+              <p class="panel-sub">Heartbeats recebidos nos últimos 10 minutos</p>
+            </div>
+          </div>
+          ${
+            online_players.length === 0
+              ? `<div class="empty-state">Nenhum jogador com heartbeat ativo neste momento.</div>`
+              : `<div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Jogador</th>
+                        <th>Onde está</th>
+                        <th>Status no Chat</th>
+                        <th>Último Sinal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${online_players
+                        .map(
+                          (p) => `
+                        <tr>
+                          <td>${renderPlayerCell({ id: p.uid, name: p.name, google: true })}</td>
+                          <td>${p.g ? renderGameBadge(p.g, { linkTab: 'sessoes' }) : '<span class="muted">🏠 No Hub / Menus</span>'}</td>
+                          <td>${p.typing ? `<span class="tag">✍️ Digitando (${esc(p.typing)})</span>` : '<span class="muted">—</span>'}</td>
+                          <td>${ago(new Date(p.at).toISOString())}</td>
+                        </tr>
+                      `,
+                        )
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>`
+          }
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>⚡ Últimas Partidas Finalizadas</h2>
+              <p class="panel-sub">Feed em tempo real das sessões mais recentes</p>
+            </div>
+            <a href="#sessoes" class="btn btn-xs btn-ghost">Ver histórico completo →</a>
+          </div>
+          ${
+            recent_sessions.length === 0
+              ? `<div class="empty-state">Nenhuma partida registrada nas últimas 24 horas.</div>`
+              : `<div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Há</th>
+                        <th>Jogador</th>
+                        <th>Jogo</th>
+                        <th>Duração</th>
+                        <th>Pontos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${recent_sessions
+                        .slice(0, 8)
+                        .map(
+                          (s) => `
+                        <tr>
+                          <td><small class="muted">${ago(s.endedAt)}</small></td>
+                          <td>${renderPlayerCell({ id: s.playerId, name: s.playerName, showId: false })}</td>
+                          <td>${renderGameBadge(s.gameId)}</td>
+                          <td><span class="pill-duration">${duration(s.durationSec)}</span></td>
+                          <td><strong>${s.score > 0 ? number(s.score) : '—'}</strong></td>
+                        </tr>
+                      `,
+                        )
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>`
+          }
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>🔻 Funil de Conversão de Jogadores</h2>
+              <p class="panel-sub">Jornada desde o primeiro acesso até o ranking e chat</p>
+            </div>
+          </div>
+          <div class="progress-list">
+            ${funnelSteps
+              .map((step, idx) => {
+                const pctTotal = percent(step.val, step.base, 1);
+                const prevVal = idx > 0 ? funnelSteps[idx - 1]!.val : step.val;
+                const stepConv = idx > 0 ? ` · ${percent(step.val, prevVal, 0)} da etapa anterior` : '';
+                const barW = step.base > 0 ? Math.max(3, Math.round((step.val / step.base) * 100)) : 0;
+                return `
+                  <div class="progress-row">
+                    <div class="progress-meta">
+                      <strong>${esc(step.label)}</strong>
+                      <span class="progress-stats">
+                        <strong class="text-accent">${number(step.val)}</strong> (${esc(pctTotal)} do total${esc(stepConv)})
+                      </span>
+                    </div>
+                    <div class="progress-track">
+                      <div class="progress-fill" style="width:${barW}%;background:${step.color}"></div>
+                    </div>
+                  </div>
+                `;
+              })
+              .join('')}
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>📈 Coortes de Retenção & Fidelidade</h2>
+              <p class="panel-sub">Proporção de jogadores que retornam ao longo do tempo</p>
+            </div>
+          </div>
+          <div class="progress-list">
+            ${[
+              {
+                label: 'Engajamento Imediato (2+ partidas jogadas)',
+                num: retention.multi_session_players,
+                den: funnel.played_1,
+                color: '#8b5cf6',
+              },
+              {
+                label: 'Retorno Multi-Dia (jogaram em 2+ dias diferentes)',
+                num: retention.returning_players,
+                den: funnel.played_1,
+                color: '#0ea5e9',
+              },
+              {
+                label: 'Retenção D1 (jogou novamente ≥24h após cadastro)',
+                num: retention.d1_retained,
+                den: retention.d1_eligible,
+                color: '#10b981',
+              },
+              {
+                label: 'Retenção D7 (jogou novamente ≥7 dias após cadastro)',
+                num: retention.d7_retained,
+                den: retention.d7_eligible,
+                color: '#f59e0b',
+              },
+              {
+                label: 'Retenção D30 (jogou novamente ≥30 dias após cadastro)',
+                num: retention.d30_retained,
+                den: retention.d30_eligible,
+                color: '#ec4899',
+              },
+            ]
+              .map((r) => {
+                const p = percent(r.num, r.den, 1);
+                const w = r.den > 0 ? Math.max(3, Math.round((r.num / r.den) * 100)) : 0;
+                return `
+                  <div class="progress-row">
+                    <div class="progress-meta">
+                      <strong>${esc(r.label)}</strong>
+                      <span class="progress-stats">
+                        <strong class="text-gold">${esc(p)}</strong> (${number(r.num)} / ${number(r.den)} elegíveis)
+                      </span>
+                    </div>
+                    <div class="progress-track">
+                      <div class="progress-fill" style="width:${w}%;background:${r.color}"></div>
+                    </div>
+                  </div>
+                `;
+              })
+              .join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>🔥 Mapa de Calor de Horários de Pico (Dia da Semana × Hora BRT)</h2>
+            <p class="panel-sub">Distribuição das partidas por faixa horária nos últimos ${days} dias</p>
+          </div>
+          <div class="seg-group">
+            ${[7, 30, 90]
+              .map(
+                (d) =>
+                  `<button type="button" class="seg-btn ${days === d ? 'active' : ''}" data-heat-days="${d}">${d}d</button>`,
+              )
+              .join('')}
+          </div>
+        </div>
+        ${renderHeatmapGrid(heatmap)}
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>📉 Qualidade da Sessão & Taxa de Abandono Rápido (&lt;10s) por Jogo</h2>
+            <p class="panel-sub">Identifique jogos onde os jogadores saem nos primeiros 10 segundos (dificuldade inicial ou UX)</p>
+          </div>
+          <select id="bounce-sort">
+            <option value="bounce" ${bounceSort === 'bounce' ? 'selected' : ''}>Ordenar: Maior taxa de abandono (%)</option>
+            <option value="sessions" ${bounceSort === 'sessions' ? 'selected' : ''}>Ordenar: Mais partidas</option>
+            <option value="avg" ${bounceSort === 'avg' ? 'selected' : ''}>Ordenar: Maior duração média</option>
+          </select>
+        </div>
+        ${
+          bouncePg.total === 0
+            ? `<div class="empty-state">Nenhuma sessão registrada para calcular taxa de abandono.</div>`
+            : `
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Jogo</th>
+                      <th>Partidas</th>
+                      <th>Saídas &lt;10s</th>
+                      <th>Taxa de Abandono (Bounce)</th>
+                      <th>Duração Média</th>
+                      <th>Duração Máxima</th>
+                      <th>Média de Pontos</th>
+                      <th>Recorde de Sessão</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${bouncePg.items
+                      .map((g) => {
+                        const rate = g.sessions > 0 ? (g.short_sessions / g.sessions) * 100 : 0;
+                        const badgeClass =
+                          rate >= 35 ? 'tag-danger' : rate >= 18 ? 'tag-warn' : 'tag-ok';
+                        return `
+                          <tr>
+                            <td>${renderGameBadge(g.game_id, { showCategory: true, linkTab: 'sessoes' })}</td>
+                            <td><strong>${number(g.sessions)}</strong></td>
+                            <td>${number(g.short_sessions)}</td>
+                            <td><span class="tag ${badgeClass}">${percent(g.short_sessions, g.sessions, 1)}</span></td>
+                            <td><span class="pill-duration">${duration(g.avg_duration_sec)}</span></td>
+                            <td>${duration(g.max_duration_sec)}</td>
+                            <td>${number(g.avg_score)}</td>
+                            <td><strong class="text-gold">${number(g.max_score)}</strong></td>
+                          </tr>
+                        `;
+                      })
+                      .join('')}
+                  </tbody>
+                </table>
+              </div>
+              <div id="bounce-pag">
+                ${renderPagination({ total: bouncePg.total, page: bouncePg.page, per_page: bouncePg.per_page, noun: 'jogos' })}
+              </div>
+            `
+        }
+      </div>
+    `;
+
+    root.querySelector('#toggle-live')?.addEventListener('click', () => {
+      autoRefresh = !autoRefresh;
+      setupAutoRefresh();
+      draw();
+      toast(autoRefresh ? 'Auto-atualização ativada (a cada 10s).' : 'Auto-atualização pausada.', 'info');
+    });
+
+    root.querySelector('#manual-live')?.addEventListener('click', async () => {
+      snap = await api<MonitoringSnapshot>(`/api/admin/monitoring?days=${days}`);
+      draw();
+      toast('Dados em tempo real atualizados!', 'info');
+    });
+
+    root.querySelectorAll<HTMLButtonElement>('[data-heat-days]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const nextDays = Number(btn.dataset.heatDays);
+        if (!nextDays || nextDays === days) return;
+        days = nextDays;
+        snap = await api<MonitoringSnapshot>(`/api/admin/monitoring?days=${days}`);
+        draw();
+      });
+    });
+
+    root.querySelector<HTMLSelectElement>('#bounce-sort')?.addEventListener('change', (e) => {
+      bounceSort = (e.target as HTMLSelectElement).value as typeof bounceSort;
+      bouncePage = 1;
+      draw();
+    });
+
+    const bouncePagEl = root.querySelector<HTMLElement>('#bounce-pag');
+    if (bouncePagEl) {
+      bindPagination(
+        bouncePagEl,
+        (nextPage) => {
+          bouncePage = nextPage;
+          draw();
+        },
+        (nextPerPage) => {
+          bouncePerPage = nextPerPage;
+          bouncePage = 1;
+          draw();
+        },
+      );
+    }
+
+    bindPlayerTriggers(root, () => {
+      void api<MonitoringSnapshot>(`/api/admin/monitoring?days=${days}`).then((fresh) => {
+        snap = fresh;
+        draw();
+      });
+    });
+  };
+
+  draw();
+};
+
+export const securityAndHealth: View = async (root) => {
+  type SubMode = 'anticheat' | 'errors' | 'infra';
+  let subMode: SubMode = 'anticheat';
+
+  let anomSeverity = 'all';
+  let anomReason = 'all';
+  let anomSearch = '';
+  let anomPage = 1;
+  let anomPerPage = 25;
+
+  let errKind = 'all';
+  let errGame = 'all';
+  let errSearch = '';
+  let errPage = 1;
+  let errPerPage = 25;
+
+  let snap = await api<MonitoringSnapshot>('/api/admin/monitoring?days=30');
+
+  const draw = async () => {
+    const { anomalies, server, db, error_groups, live } = snap;
+    const highAnomalies = anomalies.filter((a) => a.severity === 'high').length;
+
+    root.innerHTML = `
+      <div class="stats">
+        ${kpiCard(
+          '🛡️',
+          'Recordes Suspeitos',
+          number(anomalies.length),
+          highAnomalies > 0
+            ? `<span class="stat-alert">${number(highAnomalies)} de alta severidade</span>`
+            : `<span class="text-success">✓ Nenhum alerta crítico</span>`,
+          highAnomalies > 0 ? 'stat-danger' : '',
+        )}
+        ${kpiCard(
+          '🐛',
+          'Erros no Cliente (24h)',
+          number(live.errors_24h),
+          `<strong>${number(error_groups.length)}</strong> tipos agrupados no histórico`,
+          live.errors_24h > 0 ? 'stat-danger' : '',
+        )}
+        ${kpiCard(
+          '⏱️',
+          'Uptime da API',
+          duration(server.uptime_sec),
+          `No ar desde <strong>${esc(dateTime(server.started_at))}</strong>`,
+        )}
+        ${kpiCard(
+          '⚡',
+          'Latência HTTP',
+          `${server.avg_latency_ms.toFixed(2).replace('.', ',')} ms`,
+          `Pico máx: <strong>${server.max_latency_ms.toFixed(1).replace('.', ',')} ms</strong>`,
+          'stat-highlight',
+        )}
+        ${kpiCard(
+          '📡',
+          'Requisições HTTP',
+          number(server.requests_total),
+          `2xx: <strong>${number(server.status_2xx)}</strong> · 4xx: <strong>${number(server.status_4xx)}</strong> · 429: <strong>${number(server.status_429)}</strong> · 5xx: <strong>${number(server.status_5xx)}</strong>`,
+        )}
+        ${kpiCard(
+          '🗄️',
+          'Banco PostgreSQL',
+          bytes(db.database_size_bytes),
+          `Pool: <strong>${db.pool_size}</strong> conexões (${db.pool_idle} ociosas)`,
+        )}
+      </div>
+
+      <div class="subtabs">
+        <button type="button" class="subtab ${subMode === 'anticheat' ? 'active' : ''}" data-submode="anticheat">
+          🛡️ Detector Anti-Cheat & Anomalias
+          ${anomalies.length > 0 ? `<span class="badge-count">${number(anomalies.length)}</span>` : ''}
+        </button>
+        <button type="button" class="subtab ${subMode === 'errors' ? 'active' : ''}" data-submode="errors">
+          🐛 Telemetria de Erros do Cliente
+          ${live.errors_24h > 0 ? `<span class="badge-count">${number(live.errors_24h)}</span>` : ''}
+        </button>
+        <button type="button" class="subtab ${subMode === 'infra' ? 'active' : ''}" data-submode="infra">
+          🗄️ Saúde do Servidor & Banco PostgreSQL
+        </button>
+      </div>
+
+      <div id="sec-body"></div>
+    `;
+
+    root.querySelectorAll<HTMLButtonElement>('[data-submode]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        subMode = btn.dataset.submode as SubMode;
+        void draw();
+      });
+    });
+
+    const body = root.querySelector<HTMLElement>('#sec-body')!;
+
+    if (subMode === 'anticheat') {
+      const renderAnomalies = () => {
+        const q = anomSearch.trim().toLowerCase();
+        const filtered = anomalies.filter((a) => {
+          if (anomSeverity !== 'all' && a.severity !== anomSeverity) return false;
+          if (anomReason !== 'all' && a.reason !== anomReason) return false;
+          if (q) {
+            const meta = getGameMeta(a.game_id);
+            const hay = `${a.player_name} ${a.player_id} ${a.game_id} ${meta.title}`.toLowerCase();
+            if (!hay.includes(q)) return false;
+          }
+          return true;
+        });
+        const pg = paginateSlice(filtered, anomPage, anomPerPage);
+        anomPage = pg.page;
+
+        body.innerHTML = `
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>🛡️ Auditoria Automática de Rankings (Anti-Cheat)</h2>
+                <p class="panel-sub">Cruza os recordes do ranking (<code>entries</code>) com o histórico real de partidas (<code>play_sessions</code>) para detectar submissões forjadas ou discrepantes</p>
+              </div>
+            </div>
+            <div class="toolbar">
+              <input id="anom-q" type="search" class="input-search" placeholder="🔍 Buscar por jogador, ID ou jogo..." value="${esc(anomSearch)}" />
+              <div class="toolbar-filters">
+                <select id="anom-sev">
+                  <option value="all" ${anomSeverity === 'all' ? 'selected' : ''}>Todas as severidades</option>
+                  <option value="high" ${anomSeverity === 'high' ? 'selected' : ''}>🚨 Alta severidade</option>
+                  <option value="medium" ${anomSeverity === 'medium' ? 'selected' : ''}>⚠️ Média severidade</option>
+                </select>
+                <select id="anom-reason">
+                  <option value="all" ${anomReason === 'all' ? 'selected' : ''}>Todos os diagnósticos</option>
+                  <option value="no_session" ${anomReason === 'no_session' ? 'selected' : ''}>Recorde sem partida registrada</option>
+                  <option value="score_mismatch" ${anomReason === 'score_mismatch' ? 'selected' : ''}>Recorde maior que a maior sessão</option>
+                  <option value="short_high_score" ${anomReason === 'short_high_score' ? 'selected' : ''}>Alta pontuação em ≤4s</option>
+                </select>
+              </div>
+            </div>
+            ${
+              pg.total === 0
+                ? `<div class="empty-state">Nenhuma anomalia encontrada nos rankings! Todos os recordes possuem sessões compatíveis. ✅</div>`
+                : `
+                  ${renderPagination({ total: pg.total, page: pg.page, per_page: pg.per_page, noun: 'anomalias' })}
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Severidade</th>
+                          <th>Diagnóstico</th>
+                          <th>Jogo</th>
+                          <th>Jogador</th>
+                          <th>Pontos no Ranking</th>
+                          <th>Maior Sessão</th>
+                          <th>Nº Partidas</th>
+                          <th>Data</th>
+                          <th class="text-right">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${pg.items
+                          .map((a) => {
+                            const info = anomalyReasonLabel(a.reason);
+                            return `
+                              <tr>
+                                <td>
+                                  <span class="tag ${a.severity === 'high' ? 'tag-danger' : 'tag-warn'}">
+                                    ${a.severity === 'high' ? '🚨 Alta' : '⚠️ Média'}
+                                  </span>
+                                </td>
+                                <td title="${esc(info.desc)}">
+                                  <strong>${esc(info.title)}</strong>
+                                  <small class="cell-sub">${esc(info.desc)}</small>
+                                </td>
+                                <td>${renderGameBadge(a.game_id, { linkTab: 'rankings' })}</td>
+                                <td>${renderPlayerCell({ id: a.player_id, name: a.player_name })}</td>
+                                <td><strong class="text-gold">${number(a.score)}</strong></td>
+                                <td>${a.max_session_score !== null ? number(a.max_session_score) : '<span class="muted">Nenhuma</span>'}</td>
+                                <td>${number(a.session_count)}</td>
+                                <td>
+                                  <div>${dateTime(a.created_at)}</div>
+                                  <small class="muted">${ago(a.created_at)}</small>
+                                </td>
+                                <td class="text-right actions-cell">
+                                  <button type="button" class="btn btn-xs btn-ghost" data-player-modal="${esc(a.player_id)}">Ficha</button>
+                                  <button type="button" class="btn btn-xs btn-danger" data-del-anom="${esc(a.entry_id)}" data-name="${esc(a.player_name)}">Remover Recorde</button>
+                                </td>
+                              </tr>
+                            `;
+                          })
+                          .join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                  ${renderPagination({ total: pg.total, page: pg.page, per_page: pg.per_page, noun: 'anomalias' })}
+                `
+            }
+          </div>
+        `;
+
+        const qInput = body.querySelector<HTMLInputElement>('#anom-q');
+        qInput?.addEventListener('input', () => {
+          anomSearch = qInput.value;
+          anomPage = 1;
+          const pos = qInput.selectionStart ?? qInput.value.length;
+          renderAnomalies();
+          const next = body.querySelector<HTMLInputElement>('#anom-q');
+          next?.focus();
+          next?.setSelectionRange(pos, pos);
+        });
+        body.querySelector<HTMLSelectElement>('#anom-sev')?.addEventListener('change', (e) => {
+          anomSeverity = (e.target as HTMLSelectElement).value;
+          anomPage = 1;
+          renderAnomalies();
+        });
+        body.querySelector<HTMLSelectElement>('#anom-reason')?.addEventListener('change', (e) => {
+          anomReason = (e.target as HTMLSelectElement).value;
+          anomPage = 1;
+          renderAnomalies();
+        });
+
+        bindPagination(
+          body,
+          (nextPage) => {
+            anomPage = nextPage;
+            renderAnomalies();
+          },
+          (nextPerPage) => {
+            anomPerPage = nextPerPage;
+            anomPage = 1;
+            renderAnomalies();
+          },
+        );
+        bindPlayerTriggers(body, async () => {
+          snap = await api<MonitoringSnapshot>('/api/admin/monitoring?days=30');
+          void draw();
+        });
+
+        body.querySelectorAll<HTMLButtonElement>('[data-del-anom]').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const id = btn.dataset.delAnom;
+            if (!id) return;
+            const ok = await confirmDialog({
+              title: 'Remover recorde suspeito',
+              message: `Confirmar a remoção do recorde suspeito de ${btn.dataset.name ?? ''}?`,
+              confirmLabel: 'Remover do ranking',
+              danger: true,
+            });
+            if (!ok) return;
+            try {
+              await api(`/api/admin/entries/${encodeURIComponent(id)}`, 'DELETE');
+              snap.anomalies = snap.anomalies.filter((a) => a.entry_id !== id);
+              toast('Recorde suspeito removido com sucesso.');
+              void draw();
+            } catch (err) {
+              toast(err instanceof Error ? err.message : 'Erro ao remover recorde.', 'error');
+            }
+          });
+        });
+      };
+
+      renderAnomalies();
+    } else if (subMode === 'errors') {
+      const sp = new URLSearchParams();
+      sp.set('kind', errKind);
+      sp.set('game', errGame);
+      sp.set('page', String(errPage));
+      sp.set('per_page', String(errPerPage));
+      if (errSearch.trim()) sp.set('q', errSearch.trim());
+
+      const errPg = await api<Page<ClientErrorRow>>(`/api/admin/errors?${sp.toString()}`);
+
+      body.innerHTML = `
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>📊 Erros Agrupados por Frequência</h2>
+              <p class="panel-sub">Exceções JavaScript, falhas de carregamento de chunk e perda de contexto WebGL nos dispositivos dos jogadores</p>
+            </div>
+            ${
+              errPg.total > 0 || error_groups.length > 0
+                ? `<button type="button" id="clear-all-errors" class="btn btn-xs btn-danger">🗑️ Limpar todos os erros</button>`
+                : ''
+            }
+          </div>
+          ${
+            error_groups.length === 0
+              ? `<div class="empty-state">Nenhum erro de cliente registrado até o momento! 🎉</div>`
+              : `<div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Tipo</th>
+                        <th>Jogo</th>
+                        <th>Mensagem do Erro</th>
+                        <th>Ocorrências</th>
+                        <th>Jogadores Afetados</th>
+                        <th>Última Vez</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${error_groups
+                        .map(
+                          (g) => `
+                        <tr>
+                          <td><span class="tag ${g.kind === 'webgl' || g.kind === 'error' ? 'tag-danger' : 'tag-warn'}">${esc(g.kind)}</span></td>
+                          <td>${g.game_id ? renderGameBadge(g.game_id) : '<span class="muted">Global / Hub</span>'}</td>
+                          <td class="msg-cell"><strong>${esc(g.message)}</strong></td>
+                          <td><strong>${number(g.occurrences)}</strong></td>
+                          <td>${number(g.affected_players)}</td>
+                          <td>${ago(g.last_seen_at)} <small class="muted">(${dateTime(g.last_seen_at)})</small></td>
+                        </tr>
+                      `,
+                        )
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>`
+          }
+        </div>
+
+        <div class="panel" style="margin-top:20px">
+          <div class="panel-head">
+            <div>
+              <h2>📋 Log Detalhado de Erros do Cliente</h2>
+              <p class="panel-sub">Eventos individuais com stack trace, URL e navegador (User-Agent)</p>
+            </div>
+          </div>
+          <div class="toolbar">
+            <input id="err-q" type="search" class="input-search" placeholder="🔍 Buscar por mensagem, stack, URL ou aparelho..." value="${esc(errSearch)}" />
+            <div class="toolbar-filters">
+              <select id="err-kind">
+                <option value="all" ${errKind === 'all' ? 'selected' : ''}>Todos os tipos</option>
+                <option value="error" ${errKind === 'error' ? 'selected' : ''}>error (Exceção JS)</option>
+                <option value="unhandledrejection" ${errKind === 'unhandledrejection' ? 'selected' : ''}>unhandledrejection (Promise)</option>
+                <option value="webgl" ${errKind === 'webgl' ? 'selected' : ''}>webgl (Contexto perdido)</option>
+                <option value="chunk" ${errKind === 'chunk' ? 'selected' : ''}>chunk (Falha de rede/deploy)</option>
+              </select>
+              <select id="err-game">
+                <option value="all" ${errGame === 'all' ? 'selected' : ''}>Todos os jogos</option>
+                ${sortedCatalog
+                  .map(
+                    (g) =>
+                      `<option value="${esc(g.id)}" ${errGame === g.id ? 'selected' : ''}>${esc(g.emoji)} ${esc(g.title)}</option>`,
+                  )
+                  .join('')}
+              </select>
+            </div>
+          </div>
+          ${
+            errPg.items.length === 0
+              ? `<div class="empty-state">Nenhum registro de erro para este filtro.</div>`
+              : `
+                ${renderPagination({ total: errPg.total, page: errPg.page, per_page: errPg.per_page, noun: 'erros' })}
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Quando</th>
+                        <th>Tipo</th>
+                        <th>Jogo</th>
+                        <th>Erro & Stack Trace</th>
+                        <th>Aparelho / Jogador</th>
+                        <th class="text-right"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${errPg.items
+                        .map(
+                          (er) => `
+                        <tr>
+                          <td>
+                            <div>${dateTime(er.created_at)}</div>
+                            <small class="muted">${ago(er.created_at)}</small>
+                          </td>
+                          <td><span class="tag tag-danger">${esc(er.kind)}</span></td>
+                          <td>${er.game_id ? renderGameBadge(er.game_id) : '<span class="muted">Hub</span>'}</td>
+                          <td class="msg-cell">
+                            <div><strong>${esc(er.message)}</strong></div>
+                            ${er.url ? `<small class="cell-sub mono">${esc(er.url)}</small>` : ''}
+                            ${er.stack ? `<pre class="stack-box">${esc(er.stack)}</pre>` : ''}
+                          </td>
+                          <td class="msg-cell">
+                            ${er.player_id ? renderPlayerCell({ id: er.player_id, name: er.player_id.slice(0, 8) }) : '<span class="muted">Sem sessão</span>'}
+                            <small class="cell-sub">${esc(er.user_agent)}</small>
+                          </td>
+                          <td class="text-right">
+                            <button type="button" class="btn btn-xs btn-ghost" data-del-err="${er.id}">✕</button>
+                          </td>
+                        </tr>
+                      `,
+                        )
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>
+                ${renderPagination({ total: errPg.total, page: errPg.page, per_page: errPg.per_page, noun: 'erros' })}
+              `
+          }
+        </div>
+      `;
+
+      body.querySelector('#clear-all-errors')?.addEventListener('click', async () => {
+        const ok = await confirmDialog({
+          title: 'Limpar telemetria de erros',
+          message: 'Deseja apagar todos os registros de erros do cliente armazenados?',
+          confirmLabel: 'Limpar tudo',
+          danger: true,
+        });
+        if (!ok) return;
+        await api('/api/admin/errors', 'DELETE');
+        snap = await api<MonitoringSnapshot>('/api/admin/monitoring?days=30');
+        toast('Log de erros limpo.');
+        void draw();
+      });
+
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      body.querySelector<HTMLInputElement>('#err-q')?.addEventListener('input', (e) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          errSearch = (e.target as HTMLInputElement).value;
+          errPage = 1;
+          void draw();
+        }, 280);
+      });
+      body.querySelector<HTMLSelectElement>('#err-kind')?.addEventListener('change', (e) => {
+        errKind = (e.target as HTMLSelectElement).value;
+        errPage = 1;
+        void draw();
+      });
+      body.querySelector<HTMLSelectElement>('#err-game')?.addEventListener('change', (e) => {
+        errGame = (e.target as HTMLSelectElement).value;
+        errPage = 1;
+        void draw();
+      });
+
+      bindPagination(
+        body,
+        (nextPage) => {
+          errPage = nextPage;
+          void draw();
+        },
+        (nextPerPage) => {
+          errPerPage = nextPerPage;
+          errPage = 1;
+          void draw();
+        },
+      );
+      bindPlayerTriggers(body);
+
+      body.querySelectorAll<HTMLButtonElement>('[data-del-err]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.delErr;
+          if (!id) return;
+          await api(`/api/admin/errors/${encodeURIComponent(id)}`, 'DELETE');
+          snap = await api<MonitoringSnapshot>('/api/admin/monitoring?days=30');
+          void draw();
+        });
+      });
+    } else {
+      const totalReqs = Math.max(1, server.requests_total);
+      const totalDbBytes = Math.max(1, db.database_size_bytes);
+
+      body.innerHTML = `
+        <div class="grid-2">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>📡 Saúde HTTP & Processo Rust (Axum)</h2>
+                <p class="panel-sub">Contadores em memória desde o boot (${esc(dateTime(server.started_at))})</p>
+              </div>
+            </div>
+            <div class="progress-list">
+              ${[
+                { label: 'Respostas de Sucesso (2xx / 3xx)', val: server.status_2xx, color: '#10b981' },
+                { label: 'Erros de Cliente / Validação (4xx)', val: server.status_4xx, color: '#f59e0b' },
+                { label: 'Rate-Limits Acionados (HTTP 429)', val: server.status_429, color: '#ec4899' },
+                { label: 'Erros Internos de Servidor (5xx)', val: server.status_5xx, color: '#ff5c7a' },
+              ]
+                .map((s) => {
+                  const pct = percent(s.val, totalReqs, 1);
+                  const w = server.requests_total > 0 ? Math.max(2, Math.round((s.val / totalReqs) * 100)) : 0;
+                  return `
+                    <div class="progress-row">
+                      <div class="progress-meta">
+                        <strong>${esc(s.label)}</strong>
+                        <span class="progress-stats"><strong>${number(s.val)}</strong> (${esc(pct)})</span>
+                      </div>
+                      <div class="progress-track">
+                        <div class="progress-fill" style="width:${w}%;background:${s.color}"></div>
+                      </div>
+                    </div>
+                  `;
+                })
+                .join('')}
+            </div>
+            <div class="summary-strip" style="margin-top:18px;margin-bottom:0">
+              <span>Uptime: <strong>${duration(server.uptime_sec)}</strong></span>
+              <span>Requisições API: <strong>${number(server.requests_api)}</strong> / ${number(server.requests_total)}</span>
+              <span>Latência média: <strong>${server.avg_latency_ms.toFixed(2).replace('.', ',')} ms</strong></span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>🗄️ Armazenamento PostgreSQL por Tabela</h2>
+                <p class="panel-sub">Tamanho total do banco: <strong>${bytes(db.database_size_bytes)}</strong> · Pool SQLx: <strong>${db.pool_size}</strong> conexões (${db.pool_idle} ociosas)</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tabela</th>
+                    <th>Registros (Linhas)</th>
+                    <th>Espaço em Disco</th>
+                    <th>% do Banco</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${db.tables
+                    .map(
+                      (tb) => `
+                    <tr>
+                      <td><code class="code-id">${esc(tb.table_name)}</code></td>
+                      <td><strong>${number(tb.rows)}</strong></td>
+                      <td><span class="pill-duration">${bytes(tb.size_bytes)}</span></td>
+                      <td>${percent(tb.size_bytes, totalDbBytes, 1)}</td>
+                    </tr>
+                  `,
+                    )
+                    .join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  };
+
+  await draw();
 };

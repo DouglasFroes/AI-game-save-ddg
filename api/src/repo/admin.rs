@@ -456,3 +456,341 @@ pub async fn dismiss_reports(pool: &PgPool, message: Uuid) -> sqlx::Result<u64> 
         .await?
         .rows_affected())
 }
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct LivePulse {
+    pub sessions_5m: i64,
+    pub sessions_15m: i64,
+    pub sessions_60m: i64,
+    pub active_players_15m: i64,
+    pub active_players_60m: i64,
+    pub entries_60m: i64,
+    pub messages_60m: i64,
+    pub errors_24h: i64,
+}
+
+pub async fn live_pulse(pool: &PgPool) -> sqlx::Result<LivePulse> {
+    sqlx::query_as(
+        "SELECT
+           (SELECT count(*) FROM play_sessions WHERE created_at > now() - interval '5 minutes') AS sessions_5m,
+           (SELECT count(*) FROM play_sessions WHERE created_at > now() - interval '15 minutes') AS sessions_15m,
+           (SELECT count(*) FROM play_sessions WHERE created_at > now() - interval '60 minutes') AS sessions_60m,
+           (SELECT count(DISTINCT player_id) FROM play_sessions WHERE created_at > now() - interval '15 minutes') AS active_players_15m,
+           (SELECT count(DISTINCT player_id) FROM play_sessions WHERE created_at > now() - interval '60 minutes') AS active_players_60m,
+           (SELECT count(*) FROM entries WHERE created_at > now() - interval '60 minutes') AS entries_60m,
+           (SELECT count(*) FROM chat_messages WHERE NOT deleted AND created_at > now() - interval '60 minutes') AS messages_60m,
+           (SELECT count(*) FROM client_errors WHERE created_at > now() - interval '24 hours') AS errors_24h",
+    )
+    .fetch_one(pool)
+    .await
+}
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct FunnelStats {
+    pub total_players: i64,
+    pub played_1: i64,
+    pub played_5: i64,
+    pub google_linked: i64,
+    pub ranked: i64,
+    pub chatted: i64,
+}
+
+pub async fn funnel(pool: &PgPool) -> sqlx::Result<FunnelStats> {
+    sqlx::query_as(
+        "SELECT
+           (SELECT count(*) FROM players) AS total_players,
+           (SELECT count(DISTINCT player_id) FROM play_sessions) AS played_1,
+           (SELECT count(*) FROM (SELECT player_id FROM play_sessions GROUP BY player_id HAVING count(*) >= 5) t) AS played_5,
+           (SELECT count(*) FROM players WHERE google_sub IS NOT NULL) AS google_linked,
+           (SELECT count(DISTINCT player_id) FROM entries) AS ranked,
+           (SELECT count(DISTINCT player_id) FROM chat_messages WHERE NOT deleted) AS chatted",
+    )
+    .fetch_one(pool)
+    .await
+}
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct RetentionStats {
+    pub returning_players: i64,
+    pub multi_session_players: i64,
+    pub d1_eligible: i64,
+    pub d1_retained: i64,
+    pub d7_eligible: i64,
+    pub d7_retained: i64,
+    pub d30_eligible: i64,
+    pub d30_retained: i64,
+}
+
+pub async fn retention(pool: &PgPool) -> sqlx::Result<RetentionStats> {
+    sqlx::query_as(
+        "SELECT
+           (SELECT count(*) FROM (
+              SELECT player_id FROM play_sessions
+              GROUP BY player_id HAVING count(DISTINCT (created_at AT TIME ZONE 'UTC')::date) >= 2
+           ) r) AS returning_players,
+           (SELECT count(*) FROM (
+              SELECT player_id FROM play_sessions GROUP BY player_id HAVING count(*) >= 2
+           ) m) AS multi_session_players,
+           (SELECT count(*) FROM players WHERE created_at <= now() - interval '1 day') AS d1_eligible,
+           (SELECT count(*) FROM players p
+              WHERE p.created_at <= now() - interval '1 day'
+                AND EXISTS (
+                  SELECT 1 FROM play_sessions s
+                  WHERE s.player_id = p.id AND s.created_at >= p.created_at + interval '1 day'
+                )) AS d1_retained,
+           (SELECT count(*) FROM players WHERE created_at <= now() - interval '7 days') AS d7_eligible,
+           (SELECT count(*) FROM players p
+              WHERE p.created_at <= now() - interval '7 days'
+                AND EXISTS (
+                  SELECT 1 FROM play_sessions s
+                  WHERE s.player_id = p.id AND s.created_at >= p.created_at + interval '7 days'
+                )) AS d7_retained,
+           (SELECT count(*) FROM players WHERE created_at <= now() - interval '30 days') AS d30_eligible,
+           (SELECT count(*) FROM players p
+              WHERE p.created_at <= now() - interval '30 days'
+                AND EXISTS (
+                  SELECT 1 FROM play_sessions s
+                  WHERE s.player_id = p.id AND s.created_at >= p.created_at + interval '30 days'
+                )) AS d30_retained",
+    )
+    .fetch_one(pool)
+    .await
+}
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct HourlyCell {
+    /// 0 = Sunday .. 6 = Saturday (in BRT, UTC-3).
+    pub dow: i32,
+    /// 0..=23 (in BRT, UTC-3).
+    pub hour: i32,
+    pub sessions: i64,
+    pub players: i64,
+}
+
+pub async fn hourly_heatmap(pool: &PgPool, days: i32) -> sqlx::Result<Vec<HourlyCell>> {
+    sqlx::query_as(
+        "SELECT EXTRACT(DOW FROM (created_at - interval '3 hours'))::int AS dow,
+                EXTRACT(HOUR FROM (created_at - interval '3 hours'))::int AS hour,
+                count(*) AS sessions,
+                count(DISTINCT player_id) AS players
+         FROM play_sessions
+         WHERE created_at > now() - make_interval(days => $1)
+         GROUP BY dow, hour
+         ORDER BY dow, hour",
+    )
+    .bind(days)
+    .fetch_all(pool)
+    .await
+}
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct GameHealthRow {
+    pub game_id: String,
+    pub sessions: i64,
+    pub short_sessions: i64,
+    pub avg_duration_sec: i64,
+    pub max_duration_sec: i64,
+    pub avg_score: i64,
+    pub max_score: i64,
+}
+
+pub async fn game_health(pool: &PgPool) -> sqlx::Result<Vec<GameHealthRow>> {
+    sqlx::query_as(
+        "SELECT game_id,
+                count(*) AS sessions,
+                count(*) FILTER (WHERE duration_sec < 10) AS short_sessions,
+                COALESCE(round(avg(duration_sec)), 0)::bigint AS avg_duration_sec,
+                COALESCE(max(duration_sec), 0)::bigint AS max_duration_sec,
+                COALESCE(round(avg(score)), 0)::bigint AS avg_score,
+                COALESCE(max(score), 0)::bigint AS max_score
+         FROM play_sessions
+         GROUP BY game_id
+         ORDER BY sessions DESC",
+    )
+    .fetch_all(pool)
+    .await
+}
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct AnomalyRow {
+    pub entry_id: Uuid,
+    pub game_id: String,
+    pub player_id: Uuid,
+    pub player_name: String,
+    pub score: i64,
+    pub max_session_score: Option<i64>,
+    pub session_count: i64,
+    pub min_duration_sec: Option<i32>,
+    pub reason: String,
+    pub severity: String,
+    pub created_at: DateTime<Utc>,
+}
+
+pub async fn anomalies(pool: &PgPool) -> sqlx::Result<Vec<AnomalyRow>> {
+    sqlx::query_as(
+        "SELECT e.id AS entry_id, e.game_id, e.player_id, e.name AS player_name, e.score,
+                s_agg.max_score AS max_session_score,
+                COALESCE(s_agg.cnt, 0) AS session_count,
+                s_agg.min_dur AS min_duration_sec,
+                CASE
+                  WHEN COALESCE(s_agg.cnt, 0) = 0 THEN 'no_session'
+                  WHEN e.score > COALESCE(s_agg.max_score, 0) AND COALESCE(s_agg.max_score, 0) > 0 THEN 'score_mismatch'
+                  ELSE 'short_high_score'
+                END AS reason,
+                CASE
+                  WHEN COALESCE(s_agg.cnt, 0) = 0 OR e.score > COALESCE(s_agg.max_score, 0) THEN 'high'
+                  ELSE 'medium'
+                END AS severity,
+                e.created_at
+         FROM entries e
+         LEFT JOIN (
+             SELECT player_id, game_id, count(*) AS cnt, max(score) AS max_score, min(duration_sec) AS min_dur
+             FROM play_sessions
+             GROUP BY player_id, game_id
+         ) s_agg ON s_agg.player_id = e.player_id AND s_agg.game_id = e.game_id
+         WHERE COALESCE(s_agg.cnt, 0) = 0
+            OR (e.score > COALESCE(s_agg.max_score, 0) AND COALESCE(s_agg.max_score, 0) > 0)
+            OR (COALESCE(s_agg.min_dur, 999) <= 4 AND e.score >= 500)
+         ORDER BY
+            CASE WHEN COALESCE(s_agg.cnt, 0) = 0 THEN 0 ELSE 1 END,
+            e.score DESC,
+            e.created_at DESC
+         LIMIT 100",
+    )
+    .fetch_all(pool)
+    .await
+}
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct TableStat {
+    pub table_name: String,
+    pub rows: i64,
+    pub size_bytes: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct DbHealth {
+    pub database_size_bytes: i64,
+    pub pool_size: u32,
+    pub pool_idle: usize,
+    pub tables: Vec<TableStat>,
+}
+
+pub async fn db_health(pool: &PgPool) -> sqlx::Result<DbHealth> {
+    let database_size_bytes: i64 =
+        sqlx::query_scalar("SELECT pg_database_size(current_database())::bigint")
+            .fetch_one(pool)
+            .await?;
+    let tables: Vec<TableStat> = sqlx::query_as(
+        "SELECT 'players' AS table_name, (SELECT count(*) FROM players) AS rows, pg_total_relation_size('players')::bigint AS size_bytes
+         UNION ALL
+         SELECT 'play_sessions', (SELECT count(*) FROM play_sessions), pg_total_relation_size('play_sessions')::bigint
+         UNION ALL
+         SELECT 'entries', (SELECT count(*) FROM entries), pg_total_relation_size('entries')::bigint
+         UNION ALL
+         SELECT 'chat_messages', (SELECT count(*) FROM chat_messages), pg_total_relation_size('chat_messages')::bigint
+         UNION ALL
+         SELECT 'chat_reports', (SELECT count(*) FROM chat_reports), pg_total_relation_size('chat_reports')::bigint
+         UNION ALL
+         SELECT 'client_errors', (SELECT count(*) FROM client_errors), pg_total_relation_size('client_errors')::bigint",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(DbHealth {
+        database_size_bytes,
+        pool_size: pool.size(),
+        pool_idle: pool.num_idle(),
+        tables,
+    })
+}
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct ErrorGroupRow {
+    pub kind: String,
+    pub message: String,
+    pub game_id: String,
+    pub occurrences: i64,
+    pub affected_players: i64,
+    pub last_seen_at: DateTime<Utc>,
+}
+
+pub async fn error_groups(pool: &PgPool) -> sqlx::Result<Vec<ErrorGroupRow>> {
+    sqlx::query_as(
+        "SELECT kind, message, game_id, count(*) AS occurrences,
+                count(DISTINCT player_id) AS affected_players,
+                max(created_at) AS last_seen_at
+         FROM client_errors
+         GROUP BY kind, message, game_id
+         ORDER BY occurrences DESC, last_seen_at DESC
+         LIMIT 25",
+    )
+    .fetch_all(pool)
+    .await
+}
+
+#[derive(Debug, Serialize, FromRow)]
+pub struct ClientErrorRow {
+    pub id: i64,
+    pub player_id: Option<Uuid>,
+    pub kind: String,
+    pub message: String,
+    pub stack: String,
+    pub game_id: String,
+    pub url: String,
+    pub user_agent: String,
+    pub created_at: DateTime<Utc>,
+}
+
+pub struct ErrorsFilter<'a> {
+    pub kind: Option<&'a str>,
+    pub game: Option<&'a str>,
+    pub query: Option<&'a str>,
+    pub page: i64,
+    pub per_page: i64,
+}
+
+pub async fn errors_page(pool: &PgPool, f: &ErrorsFilter<'_>) -> sqlx::Result<Page<ClientErrorRow>> {
+    let where_clause = "WHERE ($1::text IS NULL OR kind = $1)
+          AND ($2::text IS NULL OR game_id = $2)
+          AND ($3::text IS NULL OR message ILIKE '%' || $3 || '%'
+               OR stack ILIKE '%' || $3 || '%'
+               OR url ILIKE '%' || $3 || '%'
+               OR user_agent ILIKE '%' || $3 || '%')";
+
+    let total: i64 = sqlx::query_scalar(&format!("SELECT count(*) FROM client_errors {where_clause}"))
+        .bind(f.kind)
+        .bind(f.game)
+        .bind(f.query)
+        .fetch_one(pool)
+        .await?;
+
+    let offset = (f.page - 1).max(0) * f.per_page;
+    let items: Vec<ClientErrorRow> = sqlx::query_as(&format!(
+        "SELECT id, player_id, kind, message, stack, game_id, url, user_agent, created_at
+         FROM client_errors {where_clause}
+         ORDER BY created_at DESC LIMIT $4 OFFSET $5"
+    ))
+    .bind(f.kind)
+    .bind(f.game)
+    .bind(f.query)
+    .bind(f.per_page)
+    .bind(offset)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(Page { items, total, page: f.page, per_page: f.per_page })
+}
+
+pub async fn clear_client_errors(pool: &PgPool) -> sqlx::Result<u64> {
+    Ok(sqlx::query("DELETE FROM client_errors").execute(pool).await?.rows_affected())
+}
+
+pub async fn delete_client_error(pool: &PgPool, id: i64) -> sqlx::Result<bool> {
+    Ok(sqlx::query("DELETE FROM client_errors WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await?
+        .rows_affected()
+        > 0)
+}

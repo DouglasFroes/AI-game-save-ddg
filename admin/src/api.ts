@@ -170,6 +170,139 @@ export interface Report {
   last_reported_at: string;
 }
 
+export interface Presence {
+  uid: string;
+  name: string;
+  at: number;
+  g: string;
+  typing: string;
+}
+
+export interface LivePulse {
+  sessions_5m: number;
+  sessions_15m: number;
+  sessions_60m: number;
+  active_players_15m: number;
+  active_players_60m: number;
+  entries_60m: number;
+  messages_60m: number;
+  errors_24h: number;
+}
+
+export interface FunnelStats {
+  total_players: number;
+  played_1: number;
+  played_5: number;
+  google_linked: number;
+  ranked: number;
+  chatted: number;
+}
+
+export interface RetentionStats {
+  returning_players: number;
+  multi_session_players: number;
+  d1_eligible: number;
+  d1_retained: number;
+  d7_eligible: number;
+  d7_retained: number;
+  d30_eligible: number;
+  d30_retained: number;
+}
+
+export interface HourlyCell {
+  dow: number;
+  hour: number;
+  sessions: number;
+  players: number;
+}
+
+export interface GameHealthRow {
+  game_id: string;
+  sessions: number;
+  short_sessions: number;
+  avg_duration_sec: number;
+  max_duration_sec: number;
+  avg_score: number;
+  max_score: number;
+}
+
+export interface AnomalyRow {
+  entry_id: string;
+  game_id: string;
+  player_id: string;
+  player_name: string;
+  score: number;
+  max_session_score: number | null;
+  session_count: number;
+  min_duration_sec: number | null;
+  reason: string;
+  severity: string;
+  created_at: string;
+}
+
+export interface ServerMetrics {
+  started_at: string;
+  uptime_sec: number;
+  ws_subscribers: number;
+  online_players: number;
+  requests_total: number;
+  requests_api: number;
+  status_2xx: number;
+  status_4xx: number;
+  status_429: number;
+  status_5xx: number;
+  avg_latency_ms: number;
+  max_latency_ms: number;
+}
+
+export interface TableStat {
+  table_name: string;
+  rows: number;
+  size_bytes: number;
+}
+
+export interface DbHealth {
+  database_size_bytes: number;
+  pool_size: number;
+  pool_idle: number;
+  tables: TableStat[];
+}
+
+export interface ErrorGroupRow {
+  kind: string;
+  message: string;
+  game_id: string;
+  occurrences: number;
+  affected_players: number;
+  last_seen_at: string;
+}
+
+export interface ClientErrorRow {
+  id: number;
+  player_id: string | null;
+  kind: string;
+  message: string;
+  stack: string;
+  game_id: string;
+  url: string;
+  user_agent: string;
+  created_at: string;
+}
+
+export interface MonitoringSnapshot {
+  live: LivePulse;
+  online_players: Presence[];
+  recent_sessions: PlaySession[];
+  funnel: FunnelStats;
+  retention: RetentionStats;
+  heatmap: HourlyCell[];
+  game_health: GameHealthRow[];
+  anomalies: AnomalyRow[];
+  server: ServerMetrics;
+  db: DbHealth;
+  error_groups: ErrorGroupRow[];
+}
+
 export interface Session {
   token: string;
   playerId?: string;
