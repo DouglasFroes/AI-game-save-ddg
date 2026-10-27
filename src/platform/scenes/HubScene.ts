@@ -672,6 +672,13 @@ export class HubScene extends Phaser.Scene {
 
   private async installApp(): Promise<void> {
     if (installPrompt.state() === 'ios') {
+      // iOS cannot install from code, but its share sheet holds "Adicionar à Tela de Início".
+      // Must start straight from the tap; a cancelled sheet just rejects, which is fine.
+      if (typeof navigator.share === 'function') {
+        navigator
+          .share({ title: document.title, url: window.location.origin + '/' })
+          .catch(() => undefined);
+      }
       showNotice(this, {
         key: 'install-ios',
         kind: 'info',
