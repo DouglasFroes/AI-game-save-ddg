@@ -19,6 +19,12 @@ See [docs/patterns/game-architecture.md](docs/patterns/game-architecture.md): sh
 (hub, profile, ranking, generic GameOver/Leaderboard scenes) + one folder per game in `src/games`, each
 with a pure, unit-tested `core`. Games plug in via `src/games/registry.ts`.
 
+## Chat
+
+Real-time chat in `src/platform/chat` (pure `core.ts`, Firestore `backend.ts`, `service.ts` for
+presence/unread, DOM `overlay.ts`). Only players signed in with Google can read or write it — enforced
+in `firestore.rules` (`chat_rooms`, `chat_users`, `presence`, `chat_reports`).
+
 ## Game feel
 
 Shared effects for new games (particles, shockwave, flash, banner, tutorial hint, ambient dust) live in

@@ -50,6 +50,67 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Chat: only players signed in with Google can read or write anything ──────
+    // chat_rooms/{room}/messages/{id}: room is 'geral' or a game id. A message is created in a
+    // batch with chat_users/{uid}.last = now, which may only move forward 2 s after the previous
+    // one: the server itself refuses floods. Authors may blank their own message; anyone may
+    // set or clear their own reaction (one of a fixed set). Nothing is ever deleted.
+    match /chat_rooms/{room}/messages/{msgId} {
+      allow read: if isGoogle() && validRoom(room);
+
+      allow create: if isGoogle()
+        && validRoom(room)
+        && validMessage(request.resource.data)
+        && getAfter(/databases/$(database)/documents/chat_users/$(request.auth.uid)).data.last == request.time;
+
+      allow update: if isGoogle() && validRoom(room)
+        && ((resource.data.uid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'del'])
+            && request.resource.data.text == ''
+            && request.resource.data.del == true)
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['r'])
+            && validReaction()));
+
+      allow delete: if false;
+    }
+
+    match /chat_users/{uid} {
+      allow read: if isGoogle() && request.auth.uid == uid;
+      allow create: if isGoogle() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['last'])
+        && request.resource.data.last == request.time;
+      allow update: if isGoogle() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['last'])
+        && request.resource.data.last == request.time
+        && resource.data.last < request.time - duration.value(2, 's');
+      allow delete: if false;
+    }
+
+    // Who is online: one heartbeat document per player, written only by its owner.
+    match /presence/{uid} {
+      allow read: if isGoogle();
+      allow create, update: if isGoogle() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'g', 'typing', 'at'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 16
+        && request.resource.data.g is string && request.resource.data.g.size() <= 24
+        && request.resource.data.typing is string && request.resource.data.typing.size() <= 24
+        && request.resource.data.at == request.time;
+      allow delete: if false;
+    }
+
+    // Reports for moderation: written by players, read only from the Firebase console.
+    match /chat_reports/{reportId} {
+      allow create: if isGoogle()
+        && request.resource.data.keys().hasOnly(['by', 'room', 'msg', 'uid', 'at'])
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.room is string && request.resource.data.room.size() <= 24
+        && request.resource.data.msg is string && request.resource.data.msg.size() <= 40
+        && request.resource.data.uid is string && request.resource.data.uid.size() <= 128
+        && request.resource.data.at == request.time;
+      allow read, update, delete: if false;
+    }
+
     match /telemetry_sessions/{sessionId} {
       allow read: if true;
 
@@ -77,7 +138,36 @@ service cloud.firestore {
     }
 
     function isGoogle() {
-      return 'google.com' in request.auth.token.firebase.identities;
+      return request.auth != null && 'google.com' in request.auth.token.firebase.identities;
+    }
+
+    function validRoom(room) {
+      return room == 'geral' || room in gameIds();
+    }
+
+    function validMessage(d) {
+      return d.keys().hasOnly(['uid', 'name', 'text', 'at', 're'])
+        && d.keys().hasAll(['uid', 'name', 'text', 'at'])
+        && d.uid == request.auth.uid
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 16
+        && d.text is string && d.text.size() > 0 && d.text.size() <= 280
+        && !d.text.matches('(?s).*(https?://|www[.]).*')
+        && d.at == request.time
+        && (!('re' in d) || (d.re is map
+          && d.re.keys().hasOnly(['id', 'name', 'text'])
+          && d.re.id is string && d.re.id.size() <= 40
+          && d.re.name is string && d.re.name.size() <= 16
+          && d.re.text is string && d.re.text.size() <= 80));
+    }
+
+    // A player only touches their own key in the reaction map, with an allowed emoji.
+    function validReaction() {
+      let before = resource.data.get('r', {});
+      let after = request.resource.data.get('r', {});
+      return after is map && after.size() <= 500
+        && after.diff(before).affectedKeys().hasOnly([request.auth.uid])
+        && (!(request.auth.uid in after)
+          || after[request.auth.uid] in ['❤️', '🔥', '😂', '👏', '😮', '🏆']);
     }
 
     function campaignIds() {

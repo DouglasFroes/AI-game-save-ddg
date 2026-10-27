@@ -38,6 +38,8 @@ if (isAdminRoute()) {
   bindBrowserLifecycle(services.sessionTracker);
   // Runs played offline are already saved on the device; send them once the connection is back.
   bindConnectivitySync(services);
+  // Presence heartbeats and the unread badge (only for signed-in players).
+  services.chat.start();
 
   fullscreenOnFirstTap();
 

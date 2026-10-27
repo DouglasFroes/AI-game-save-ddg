@@ -26,7 +26,8 @@ export type IconKind =
   | 'flame'
   | 'sparkle'
   | 'bolt'
-  | 'gamepad';
+  | 'gamepad'
+  | 'chat';
 
 type Pt = readonly [number, number];
 
@@ -299,6 +300,17 @@ export function drawIcon(
         [0.3, -0.1],
         [0.02, -0.1],
       ]);
+      break;
+    case 'chat':
+      // A speech bubble with three dots.
+      g.fillRoundedRect(-0.46 * s, -0.4 * s, 0.92 * s, 0.66 * s, 0.24 * s);
+      poly(g, s, [
+        [-0.26, 0.2],
+        [-0.36, 0.46],
+        [-0.02, 0.22],
+      ]);
+      g.fillStyle(0x000000, 0.5);
+      for (const x of [-0.2, 0, 0.2]) g.fillCircle(x * s, -0.07 * s, 0.065 * s);
       break;
     case 'gamepad':
       g.fillRoundedRect(-0.5 * s, -0.26 * s, s, 0.52 * s, 0.22 * s);

@@ -4,6 +4,8 @@ import { MemoProgressRepository } from '@/games/memofases/progress';
 import { GAMES, type GameId } from '@/games/registry';
 import { GoogleAccount, NO_ACCOUNT, type AccountService } from '@/platform/account';
 import { Sfx } from '@/platform/audio/Sfx';
+import { FirestoreChat } from '@/platform/chat/backend';
+import { ChatService } from '@/platform/chat/service';
 import { boardId } from '@/platform/boards';
 import { BestScores } from '@/platform/bestScores';
 import { Favorites } from '@/platform/favorites';
@@ -36,6 +38,8 @@ export interface Services {
   readonly leaderboard: ResilientLeaderboard;
   /** Google sign-in, required for the global ranking. */
   readonly account: AccountService;
+  /** Real-time chat (signed-in players only). */
+  readonly chat: ChatService;
   /** Play time and session analytics (local + optional Firebase). */
   readonly telemetry: ResilientTelemetry;
   readonly sessionTracker: PlaySessionTracker;
@@ -77,6 +81,13 @@ export function createServices(env: Record<string, unknown> = import.meta.env): 
       })
     : NO_ACCOUNT;
   const sessionTracker = new PlaySessionTracker(telemetry);
+  const chat = new ChatService(
+    remoteBoard ? new FirestoreChat(remoteBoard.session) : null,
+    account,
+    profile,
+    store,
+    sessionTracker,
+  );
   const sfx = new Sfx();
   sfx.configure(profile.get());
   return {
@@ -85,6 +96,7 @@ export function createServices(env: Record<string, unknown> = import.meta.env): 
     localTop: new LocalTop(store),
     leaderboard,
     account,
+    chat,
     telemetry,
     sessionTracker,
     favorites: new Favorites(store),
