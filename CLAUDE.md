@@ -15,7 +15,7 @@ Torre Helix, Zigue-Zague, Ponte Certa, Cor Certa, Conta Rápida, Cesto Maluco, S
 - `admin/` — admin panel (Vite, vanilla TS), served at `/admin`; only `ADMIN_EMAILS` Google accounts.
 - `legacy/` — the old Firebase code and admin dashboard, kept for reference only (not built).
 - `tools/firestore-export/` — one-off export of the old Firebase data for `fliper-api import`.
-- `Dockerfile`, `docker-compose.yml`, `.env.example` — deployment (Dokploy).
+- `Dockerfile`, `.env.example` — deployment (Dokploy).
 
 ## Commands
 

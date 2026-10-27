@@ -6,13 +6,26 @@ export interface ApiSettings {
   readonly googleClientId: string;
 }
 
-/** The API is on when a Google client id is set (the ranking needs sign-in). */
-export function readApiSettings(env: Record<string, unknown>): ApiSettings | null {
+/** Settings the server puts into the page (`window.__FLIPER__`), so nothing is baked into the build. */
+declare global {
+  interface Window {
+    __FLIPER__?: { googleClientId?: string };
+  }
+}
+
+/**
+ * The API is on when a Google client id is set (the ranking needs sign-in). The build's
+ * `VITE_GOOGLE_CLIENT_ID` wins, otherwise the one the server injected into the page.
+ */
+export function readApiSettings(
+  env: Record<string, unknown>,
+  runtime: { googleClientId?: string } | undefined = globalThis.window?.__FLIPER__,
+): ApiSettings | null {
   const get = (k: string) => {
     const v = env[k];
     return typeof v === 'string' && v.trim() ? v.trim() : undefined;
   };
-  const googleClientId = get('VITE_GOOGLE_CLIENT_ID');
+  const googleClientId = get('VITE_GOOGLE_CLIENT_ID') ?? runtime?.googleClientId?.trim();
   if (!googleClientId) return null;
   return { baseUrl: (get('VITE_API_URL') ?? '').replace(/\/+$/, ''), googleClientId };
 }

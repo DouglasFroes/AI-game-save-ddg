@@ -1,15 +1,11 @@
 # One image runs the whole product: the Rust API serves the game (/) and the admin panel (/admin).
-# Build:  docker build --build-arg VITE_GOOGLE_CLIENT_ID=... -t fliper .
+# Build:  docker build -t fliper .   (settings such as GOOGLE_CLIENT_ID are read at runtime)
 
 FROM node:22-alpine AS web
 WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/ ./
-# Public build-time settings of the game (see web/.env.example).
-ARG VITE_GOOGLE_CLIENT_ID=""
-ARG VITE_API_URL=""
-ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 FROM node:22-alpine AS admin
@@ -17,8 +13,6 @@ WORKDIR /app/admin
 COPY admin/package.json admin/package-lock.json ./
 RUN npm ci
 COPY admin/ ./
-ARG VITE_GOOGLE_CLIENT_ID=""
-ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 RUN npm run build
 
 FROM rust:1-slim-bookworm AS api

@@ -178,6 +178,18 @@ describe('api helpers', () => {
     ).toMatchObject({ baseUrl: 'https://api.x.dev' });
   });
 
+  it('takes the client id the server injected into the page when the build has none', () => {
+    expect(readApiSettings({}, { googleClientId: 'from-server' })).toMatchObject({
+      googleClientId: 'from-server',
+    });
+    expect(
+      readApiSettings({ VITE_GOOGLE_CLIENT_ID: 'build' }, { googleClientId: 'x' }),
+    ).toMatchObject({
+      googleClientId: 'build',
+    });
+    expect(readApiSettings({}, { googleClientId: '' })).toBeNull();
+  });
+
   it('times out slow promises', async () => {
     await expect(withTimeout(new Promise(() => {}), 10)).rejects.toThrow('Tempo esgotado');
     await expect(withTimeout(Promise.resolve(1), 10)).resolves.toBe(1);

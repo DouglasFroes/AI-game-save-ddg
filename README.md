@@ -101,11 +101,12 @@ Para testar no celular: rode `npm run dev`, conecte o celular na mesma rede Wi-F
 
 Um único contêiner roda tudo: a API em Rust serve o jogo em `/` e o admin em `/admin`.
 
-1. No Dokploy, crie um serviço **Compose** apontando para este repositório (`docker-compose.yml`), ou uma
-   **Application** usando o `Dockerfile`. O PostgreSQL fica fora: o contêiner só precisa da URL.
+1. No Dokploy, crie uma **Application** apontando para este repositório, com *Build Type* **Dockerfile**
+   (caminho `Dockerfile`, contexto na raiz). O PostgreSQL fica fora: o contêiner só precisa da URL.
 2. Na aba **Environment**, preencha as variáveis de [.env.example](.env.example):
    `DATABASE_URL` (ex.: `postgres://usuario:senha@host:5432/fliper?sslmode=require`), `JWT_SECRET` (`openssl rand -hex 32`), `GOOGLE_CLIENT_ID` e `ADMIN_EMAILS`.
-3. Aponte o domínio para o serviço `app`, porta `8080`.
+3. Aponte o domínio para a aplicação, porta `8080`. Tudo é lido em tempo de execução (nada precisa ser
+   passado como *build arg*): trocar uma variável só pede reiniciar.
 4. No [Google Cloud](https://console.cloud.google.com/apis/credentials), crie um **ID do cliente OAuth**
    (tipo *Aplicativo da Web*) e adicione o endereço do site em *Origens JavaScript autorizadas*.
 

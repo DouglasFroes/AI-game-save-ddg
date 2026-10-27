@@ -3,7 +3,15 @@ import { api, ApiError, signInWithGoogle, token } from './api';
 import { esc } from './format';
 import { overview, players, rankings, reports, sessions, type View } from './views';
 
-const CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? '';
+declare global {
+  interface Window {
+    __FLIPER__?: { googleClientId?: string };
+  }
+}
+
+// Injected by the server into the page; `VITE_GOOGLE_CLIENT_ID` only matters for local development.
+const CLIENT_ID =
+  window.__FLIPER__?.googleClientId || (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) || '';
 
 const TABS: ReadonlyArray<{ id: string; label: string; view: View }> = [
   { id: 'geral', label: 'Visão geral', view: overview },
