@@ -191,7 +191,7 @@ export async function mountAdminDashboard(
           <div class="ch-brand">
             <div class="ch-logo">🕹️</div>
             <div>
-              <h1>Fliperama · Painel Admin <span class="ch-route-pill">/ch</span></h1>
+              <h1>Fliper · Painel Admin <span class="ch-route-pill">/ch</span></h1>
               <div class="ch-sub">
                 ${sourceBadge}
                 <span class="ch-updated">${escapeHtml(updatedText)}</span>

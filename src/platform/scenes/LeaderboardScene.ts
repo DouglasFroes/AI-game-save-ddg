@@ -1020,8 +1020,8 @@ export class LeaderboardScene extends Phaser.Scene {
       () => {
         const best = this.def.personalBest(getServices(this));
         const msg = best
-          ? `Meu recorde em ${this.def.title} no Fliperama é ${formatNumber(best.score)}! Consegue superar? 🏆`
-          : `Vem disputar o ranking de ${this.def.title} comigo no Fliperama! 🏆`;
+          ? `Meu recorde em ${this.def.title} no Fliper é ${formatNumber(best.score)}! Consegue superar? 🏆`
+          : `Vem disputar o ranking de ${this.def.title} comigo no Fliper! 🏆`;
         void shareWithToast(this, this.def.id, this.def.title, msg);
       },
       { downScale: 0.9 },

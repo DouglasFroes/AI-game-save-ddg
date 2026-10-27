@@ -772,8 +772,8 @@ export class GameOverScene extends Phaser.Scene {
     const stats = (data.lines ?? []).join(' · ');
     const challenge =
       score !== undefined
-        ? `Fiz ${formatNumber(score)} pontos em ${game.title} no Fliperama!${stats ? ` (${stats})` : ''} Consegue me superar? 🏆`
-        : `Joga ${game.title} comigo no Fliperama! 🎮`;
+        ? `Fiz ${formatNumber(score)} pontos em ${game.title} no Fliper!${stats ? ` (${stats})` : ''} Consegue me superar? 🏆`
+        : `Joga ${game.title} comigo no Fliper! 🎮`;
 
     const shareBtn = buildGlassActionButton(
       this,

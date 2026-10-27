@@ -589,7 +589,7 @@ export class HubScene extends Phaser.Scene {
         ease: 'Sine.easeInOut',
       });
     }
-    const logo = logoArt(this, 'FLIPERAMA');
+    const logo = logoArt(this, 'FLIPER');
     this.top.add(
       this.add
         .image(MARGIN + 68, cy + 1, logo.key)
@@ -648,7 +648,6 @@ export class HubScene extends Phaser.Scene {
   private buildInstallButton(x: number, y: number): void {
     let button: IconHandle | null = null;
     const sync = () => {
-      if (!this.sys.isActive()) return;
       const state = installPrompt.state();
       const wanted = state === 'prompt' || state === 'ios';
       this.fullscreenView?.setVisible(!wanted);
@@ -662,8 +661,11 @@ export class HubScene extends Phaser.Scene {
         button = null;
       }
     };
+    // Not active yet while `create` runs, so only later (browser) events are guarded.
     sync();
-    const off = installPrompt.onChange(sync);
+    const off = installPrompt.onChange(() => {
+      if (this.sys.isActive()) sync();
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
   }
 
@@ -1867,7 +1869,7 @@ export class HubScene extends Phaser.Scene {
       this.scene.start(SceneKeys.Leaderboard, { gameId: game.id }),
     );
     action(GAME_WIDTH / 2 + 200, 'share', 'Convidar', () => {
-      void shareWithToast(this, game.id, game.title, `Joga ${game.title} comigo no Fliperama!`);
+      void shareWithToast(this, game.id, game.title, `Joga ${game.title} comigo no Fliper!`);
     });
 
     // Slide up (the exit is faster than the entrance).
@@ -1902,7 +1904,7 @@ export class HubScene extends Phaser.Scene {
     root.add([card, body, this.halo(cx, top + 30, UI.violet, 4.4, 0.32)]);
     root.add(txt(this, cx, top + 66, 'Som e vibração', 38, { color: '#ffffff' }));
     root.add(
-      txt(this, cx, top + 110, 'Deixe o Fliperama do seu jeito', 19, {
+      txt(this, cx, top + 110, 'Deixe o Fliper do seu jeito', 19, {
         color: UI.mute,
         weight: 'normal',
       }),

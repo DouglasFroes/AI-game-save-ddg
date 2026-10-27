@@ -65,7 +65,7 @@ export function registerServiceWorker(): void {
                 kind: 'success',
                 glyph: 'check',
                 title: 'Pronto para jogar offline',
-                body: 'O Fliperama agora abre mesmo sem internet.',
+                body: 'O Fliper agora abre mesmo sem internet.',
               });
           });
         });

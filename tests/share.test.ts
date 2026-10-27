@@ -24,11 +24,11 @@ describe('share links', () => {
   it('combines challenge text and url on separate lines so share sheets keep both', () => {
     expect(
       formatShareMessage(
-        'Fiz 1.200 pontos em Stack no Fliperama! Consegue me superar? 🏆',
+        'Fiz 1.200 pontos em Stack no Fliper! Consegue me superar? 🏆',
         'https://play.hubdsf.com.br/?jogo=stack',
       ),
     ).toBe(
-      'Fiz 1.200 pontos em Stack no Fliperama! Consegue me superar? 🏆\nhttps://play.hubdsf.com.br/?jogo=stack',
+      'Fiz 1.200 pontos em Stack no Fliper! Consegue me superar? 🏆\nhttps://play.hubdsf.com.br/?jogo=stack',
     );
     expect(formatShareMessage('  ', 'https://play.hubdsf.com.br/?jogo=stack')).toBe(
       'https://play.hubdsf.com.br/?jogo=stack',

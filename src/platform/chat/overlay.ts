@@ -193,7 +193,7 @@ class ChatOverlay {
     const scrim = h('div', 'fxc-scrim');
     scrim.addEventListener('click', () => this.close());
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', 'Chat do Fliperama');
+    panel.setAttribute('aria-label', 'Chat do Fliper');
 
     // Header.
     const head = h('header', 'fxc-head');
@@ -418,8 +418,8 @@ class ChatOverlay {
       'p',
       '',
       mode === 'login'
-        ? 'O chat do Fliperama é exclusivo para jogadores com conta. Entre com Google para conversar, desafiar amigos e ver quem está online.'
-        : 'O chat precisa de conexão com o servidor do Fliperama. Tente de novo quando estiver online.',
+        ? 'O chat do Fliper é exclusivo para jogadores com conta. Entre com Google para conversar, desafiar amigos e ver quem está online.'
+        : 'O chat precisa de conexão com o servidor do Fliper. Tente de novo quando estiver online.',
     );
     card.append(lock, title, text);
     if (mode === 'login') {
@@ -516,7 +516,7 @@ class ChatOverlay {
       h(
         'b',
         '',
-        this.room === GENERAL_ROOM ? 'Bem-vindo ao chat do Fliperama!' : `Sala de ${name}`,
+        this.room === GENERAL_ROOM ? 'Bem-vindo ao chat do Fliper!' : `Sala de ${name}`,
       ),
       h(
         'span',

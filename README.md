@@ -1,4 +1,4 @@
-# 🕹️ Fliperama
+# 🕹️ Fliper
 
 Coleção de 30 jogos mobile-first no navegador, cada um com seu próprio ranking (top 20 global
 com envio automático, mais os seus 10 melhores no aparelho). Marque os favoritos com ⭐ e receba um aviso

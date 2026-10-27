@@ -1,4 +1,4 @@
-/* Fliperama service worker. The version and file list below are placeholders filled in at build
+/* Fliper service worker. The version and file list below are placeholders filled in at build
  * time by the `pwaServiceWorker` plugin in vite.config.ts, so every deploy produces a different
  * worker file — that is what makes browsers notice the update. */
 const VERSION = '__VERSION__';

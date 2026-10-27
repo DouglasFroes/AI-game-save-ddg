@@ -48,7 +48,7 @@ export class InstallPrompt {
         key: 'installed',
         kind: 'success',
         glyph: 'check',
-        title: 'Fliperama instalado!',
+        title: 'Fliper instalado!',
         body: 'Abra pelo ícone na tela inicial, em tela cheia e até sem internet.',
       });
     });
