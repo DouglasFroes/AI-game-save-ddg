@@ -93,6 +93,15 @@ export const SCENE_TO_GAME: Readonly<Record<string, GameId>> = {
   [SceneKeys.Naval]: 'naval',
   [SceneKeys.Domino]: 'domino',
   [SceneKeys.Hoquei]: 'hoquei',
+  [SceneKeys.Reversi]: 'reversi',
+  [SceneKeys.Nonograma]: 'nonograma',
+  [SceneKeys.Canos]: 'canos',
+  [SceneKeys.Submarino]: 'submarino',
+  [SceneKeys.Asteroides]: 'asteroides',
+  [SceneKeys.Cofre]: 'cofre',
+  [SceneKeys.Malabares]: 'malabares',
+  [SceneKeys.Volei]: 'volei',
+  [SceneKeys.Blackjack]: 'blackjack',
 };
 
 interface ActiveRun {
@@ -226,7 +235,11 @@ export function bindBrowserLifecycle(tracker: PlaySessionTracker): void {
   });
 
   const seen = new Set<string>();
-  const sendError = (kind: 'error' | 'unhandledrejection' | 'webgl' | 'chunk', message: string, stack = '') => {
+  const sendError = (
+    kind: 'error' | 'unhandledrejection' | 'webgl' | 'chunk',
+    message: string,
+    stack = '',
+  ) => {
     const cleanMsg = message.trim().slice(0, 300);
     if (!cleanMsg || seen.size >= 8) return;
     const key = `${kind}:${cleanMsg}`;
@@ -261,7 +274,10 @@ export function bindBrowserLifecycle(tracker: PlaySessionTracker): void {
   window.addEventListener('error', (e) => {
     const msg = e.message || 'Runtime error';
     const isChunk = /Loading chunk|Failed to fetch dynamically imported module/i.test(msg);
-    const stack = e.error instanceof Error && e.error.stack ? e.error.stack : `${e.filename ?? ''}:${e.lineno ?? 0}`;
+    const stack =
+      e.error instanceof Error && e.error.stack
+        ? e.error.stack
+        : `${e.filename ?? ''}:${e.lineno ?? 0}`;
     sendError(isChunk ? 'chunk' : 'error', msg, stack);
   });
 

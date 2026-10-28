@@ -141,6 +141,15 @@ export const SceneKeys = {
   Naval: 'Naval',
   Domino: 'Domino',
   Hoquei: 'Hoquei',
+  Reversi: 'Reversi',
+  Nonograma: 'Nonograma',
+  Canos: 'Canos',
+  Submarino: 'Submarino',
+  Asteroides: 'Asteroides',
+  Cofre: 'Cofre',
+  Malabares: 'Malabares',
+  Volei: 'Volei',
+  Blackjack: 'Blackjack',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

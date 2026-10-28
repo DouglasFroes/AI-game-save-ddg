@@ -94,7 +94,16 @@ export type GameId =
   | 'damas'
   | 'naval'
   | 'domino'
-  | 'hoquei';
+  | 'hoquei'
+  | 'reversi'
+  | 'nonograma'
+  | 'canos'
+  | 'submarino'
+  | 'asteroides'
+  | 'cofre'
+  | 'malabares'
+  | 'volei'
+  | 'blackjack';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -1458,6 +1467,159 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'goals', label: 'Gols', x: 655 },
     ],
     personalBest: storedBest('hoquei'),
+  },
+  {
+    id: 'reversi',
+    title: 'Reversi',
+    tagline: 'Vire as peças e domine o tabuleiro',
+    icon: 'reversi-icon',
+    emoji: '⚪',
+    color: 0x10b981,
+    shade: 0x064e3b,
+    entryScene: SceneKeys.Reversi,
+    load: () => import('./reversi/ReversiScene').then((m) => [m.ReversiScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'discs', label: 'Peças', x: 655 },
+    ],
+    personalBest: storedBest('reversi'),
+  },
+  {
+    id: 'nonograma',
+    title: 'Nonograma',
+    tagline: 'Descubra o desenho pelos números',
+    icon: 'nonograma-icon',
+    emoji: '🖼️',
+    color: 0x6366f1,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Nonograma,
+    load: () => import('./nonograma/NonogramaScene').then((m) => [m.NonogramaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'puzzles', label: 'Desenhos', x: 565 },
+      { key: 'perfect', label: 'Perfeitos', x: 655 },
+    ],
+    personalBest: storedBest('nonograma'),
+  },
+  {
+    id: 'canos',
+    title: 'Mestre dos Canos',
+    tagline: 'Gire os canos e leve a água',
+    icon: 'canos-icon',
+    emoji: '🔧',
+    color: 0x0ea5e9,
+    shade: 0x0c4a6e,
+    entryScene: SceneKeys.Canos,
+    load: () => import('./canos/CanosScene').then((m) => [m.CanosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Redes', x: 565 },
+      { key: 'moves', label: 'Giros', x: 655 },
+    ],
+    personalBest: storedBest('canos'),
+  },
+  {
+    id: 'submarino',
+    title: 'Caça Submarina',
+    tagline: 'Lance cargas de profundidade no sonar',
+    icon: 'submarino-icon',
+    emoji: '🚤',
+    color: 0x0284c7,
+    shade: 0x082f49,
+    entryScene: SceneKeys.Submarino,
+    load: () => import('./submarino/SubmarinoScene').then((m) => [m.SubmarinoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'subs', label: 'Submarinos', x: 565 },
+      { key: 'wave', label: 'Onda', x: 655 },
+    ],
+    personalBest: storedBest('submarino'),
+  },
+  {
+    id: 'asteroides',
+    title: 'Asteroides Neon',
+    tagline: 'Destrua rochas espaciais em 360°',
+    icon: 'asteroides-icon',
+    emoji: '☄️',
+    color: 0x8b5cf6,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Asteroides,
+    load: () => import('./asteroides/AsteroidesScene').then((m) => [m.AsteroidesScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'rocks', label: 'Rochas', x: 565 },
+      { key: 'wave', label: 'Onda', x: 655 },
+    ],
+    personalBest: storedBest('asteroides'),
+  },
+  {
+    id: 'cofre',
+    title: 'Estoura Cofre',
+    tagline: 'Toque no pino exato e abra o cofre',
+    icon: 'cofre-icon',
+    emoji: '🔐',
+    color: 0xf59e0b,
+    shade: 0x451a03,
+    entryScene: SceneKeys.Cofre,
+    load: () => import('./cofre/CofreScene').then((m) => [m.CofreScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'vaults', label: 'Cofres', x: 565 },
+      { key: 'streak', label: 'Sequência', x: 655 },
+    ],
+    personalBest: storedBest('cofre'),
+  },
+  {
+    id: 'malabares',
+    title: 'Malabares',
+    tagline: 'Não deixe nenhuma bola cair',
+    icon: 'malabares-icon',
+    emoji: '🤹',
+    color: 0xec4899,
+    shade: 0x500724,
+    entryScene: SceneKeys.Malabares,
+    load: () => import('./malabares/MalabaresScene').then((m) => [m.MalabaresScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'kicks', label: 'Toques', x: 565 },
+      { key: 'maxBalls', label: 'Bolas', x: 655 },
+    ],
+    personalBest: storedBest('malabares'),
+  },
+  {
+    id: 'volei',
+    title: 'Vôlei de Praia',
+    tagline: 'Receba, levante e corte na areia',
+    icon: 'volei-icon',
+    emoji: '🏐',
+    color: 0xfbbf24,
+    shade: 0x0369a1,
+    entryScene: SceneKeys.Volei,
+    load: () => import('./volei/VoleiScene').then((m) => [m.VoleiScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'sets', label: 'Sets', x: 565 },
+      { key: 'points', label: 'Pontos', x: 655 },
+    ],
+    personalBest: storedBest('volei'),
+  },
+  {
+    id: 'blackjack',
+    title: 'Vinte e Um',
+    tagline: 'Chegue a 21 sem estourar a banca',
+    icon: 'blackjack-icon',
+    emoji: '🂡',
+    color: 0x15803d,
+    shade: 0x052e16,
+    entryScene: SceneKeys.Blackjack,
+    load: () => import('./blackjack/BlackjackScene').then((m) => [m.BlackjackScene]),
+    columns: [
+      { key: 'score', label: 'Fichas', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'blackjacks', label: '21 Natural', x: 655 },
+    ],
+    personalBest: storedBest('blackjack'),
   },
 ];
 
