@@ -27,7 +27,8 @@ const game = new Phaser.Game({
   transparent: true,
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    // #game is already the game's height and pinned to the bottom (index.html): centre across only.
+    autoCenter: Phaser.Scale.CENTER_HORIZONTALLY,
   },
   dom: { createContainer: true },
   disableContextMenu: true,

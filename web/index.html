@@ -72,7 +72,14 @@
       }
       #game {
         position: fixed;
-        inset: 0;
+        left: 0;
+        right: 0;
+        /* Exactly as tall as the 9:16 game and pinned right above the home indicator: on phones
+           taller than 9:16 the spare height goes to the top (behind the status bar) instead of
+           leaving a gap under the bottom bar. */
+        bottom: env(safe-area-inset-bottom);
+        height: min(calc(100vh - env(safe-area-inset-bottom)), calc(100vw * 16 / 9));
+        height: min(calc(100dvh - env(safe-area-inset-bottom)), calc(100vw * 16 / 9));
         touch-action: none;
       }
       #game canvas {
