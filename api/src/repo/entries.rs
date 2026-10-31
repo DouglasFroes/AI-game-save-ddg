@@ -18,10 +18,15 @@ pub struct EntryRow {
 
 const COLUMNS: &str = "id, player_id, game_id, name, score, details, created_at";
 
-/// The best runs of a board: higher score first, the older run wins a tie.
+/// The best runs of a board: higher score first, the older run wins a tie. Only players signed in
+/// with Google are listed: older runs of anonymous players (imported, or from before sign-in was
+/// required) stay hidden until that player links a Google account.
 pub async fn top(pool: &PgPool, game: &str, limit: i64) -> sqlx::Result<Vec<EntryRow>> {
+    let columns = COLUMNS.split(", ").map(|c| format!("e.{c}")).collect::<Vec<_>>().join(", ");
     sqlx::query_as(&format!(
-        "SELECT {COLUMNS} FROM entries WHERE game_id = $1 ORDER BY score DESC, created_at ASC LIMIT $2"
+        "SELECT {columns} FROM entries e JOIN players p ON p.id = e.player_id
+         WHERE e.game_id = $1 AND p.google_sub IS NOT NULL
+         ORDER BY e.score DESC, e.created_at ASC LIMIT $2"
     ))
     .bind(game)
     .bind(limit)

@@ -152,6 +152,27 @@ async fn only_google_players_reach_the_ranking() {
 }
 
 #[tokio::test]
+async fn old_runs_of_anonymous_players_are_not_listed() {
+    let app = app_or_skip!();
+    // A run left by a player without a Google account (imported, or from before sign-in was
+    // required): it is kept, but the public board does not show it.
+    let anon = Uuid::new_v4();
+    sqlx::query("INSERT INTO players (id) VALUES ($1)").bind(anon).execute(&app.state.db).await.unwrap();
+    sqlx::query("INSERT INTO entries (id, game_id, player_id, name, score) VALUES ($1, 'stack', $2, 'Anon', 999)")
+        .bind(Uuid::new_v4())
+        .bind(anon)
+        .execute(&app.state.db)
+        .await
+        .unwrap();
+    let token = app.google("1", "ana@example.com", None).await["token"].as_str().unwrap().to_owned();
+    app.call(Method::POST, "/api/boards/stack/entries", Some(&token), Some(run(10))).await;
+
+    let (_, board) = app.call(Method::GET, "/api/boards/stack?limit=5", None, None).await;
+    let names: Vec<&str> = board.as_array().unwrap().iter().map(|e| e["name"].as_str().unwrap()).collect();
+    assert_eq!(names, ["Ana"]);
+}
+
+#[tokio::test]
 async fn refuses_bad_runs() {
     let app = app_or_skip!();
     let token = app.google("1", "ana@example.com", None).await["token"].as_str().unwrap().to_owned();
