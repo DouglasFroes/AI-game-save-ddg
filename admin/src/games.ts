@@ -199,6 +199,15 @@ export const GAMES_CATALOG: readonly GameMeta[] = [
   },
   { id: 'ligapontos2', title: 'Liga Pontos II', emoji: '🔗', color: '#06b6d4', category: 'puzzle' },
   { id: 'lunar2', title: 'Pouso Lunar II', emoji: '🚀', color: '#64748b', category: 'acao' },
+  { id: 'ritmo', title: 'Círculos do Ritmo', emoji: '🎵', color: '#e879f9', category: 'reflexo' },
+  { id: 'paraquedas', title: 'Paraquedas', emoji: '🪂', color: '#38bdf8', category: 'acao' },
+  { id: 'letras', title: 'Chuva de Letras', emoji: '⌨️', color: '#3b82f6', category: 'reflexo' },
+  { id: 'cubo', title: 'Cubo Saltitante', emoji: '🟪', color: '#a855f7', category: 'reflexo' },
+  { id: 'colinas', title: 'Pássaro das Colinas', emoji: '🐦', color: '#22c55e', category: 'acao' },
+  { id: 'canhao', title: 'Canhão', emoji: '💣', color: '#6366f1', category: 'acao' },
+  { id: 'equilibrio', title: 'Equilíbrio', emoji: '🤹‍♂️', color: '#10b981', category: 'reflexo' },
+  { id: 'desarme', title: 'Desarme a Bomba', emoji: '🧨', color: '#dc2626', category: 'puzzle' },
+  { id: 'trafego', title: 'Controle de Tráfego', emoji: '🚦', color: '#16a34a', category: 'acao' },
 ];
 
 const BY_ID = new Map<string, GameMeta>(GAMES_CATALOG.map((g) => [g.id, g]));

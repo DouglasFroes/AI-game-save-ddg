@@ -123,6 +123,15 @@ export const SCENE_TO_GAME: Readonly<Record<string, GameId>> = {
   [SceneKeys.SomaDez]: 'somadez',
   [SceneKeys.Tesouro]: 'tesouro',
   [SceneKeys.Labirinto]: 'labirinto',
+  [SceneKeys.Ritmo]: 'ritmo',
+  [SceneKeys.Paraquedas]: 'paraquedas',
+  [SceneKeys.Letras]: 'letras',
+  [SceneKeys.Cubo]: 'cubo',
+  [SceneKeys.Colinas]: 'colinas',
+  [SceneKeys.Canhao]: 'canhao',
+  [SceneKeys.Equilibrio]: 'equilibrio',
+  [SceneKeys.Desarme]: 'desarme',
+  [SceneKeys.Trafego]: 'trafego',
 };
 
 interface ActiveRun {

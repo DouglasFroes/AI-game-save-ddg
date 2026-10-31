@@ -171,6 +171,15 @@ export const SceneKeys = {
   SomaDez: 'SomaDez',
   Tesouro: 'Tesouro',
   Labirinto: 'Labirinto',
+  Ritmo: 'Ritmo',
+  Paraquedas: 'Paraquedas',
+  Letras: 'Letras',
+  Cubo: 'Cubo',
+  Colinas: 'Colinas',
+  Canhao: 'Canhao',
+  Equilibrio: 'Equilibrio',
+  Desarme: 'Desarme',
+  Trafego: 'Trafego',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

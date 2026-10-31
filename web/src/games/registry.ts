@@ -124,7 +124,16 @@ export type GameId =
   | 'binario'
   | 'somadez'
   | 'tesouro'
-  | 'labirinto';
+  | 'labirinto'
+  | 'ritmo'
+  | 'paraquedas'
+  | 'letras'
+  | 'cubo'
+  | 'colinas'
+  | 'canhao'
+  | 'equilibrio'
+  | 'desarme'
+  | 'trafego';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -1994,6 +2003,154 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'coins', label: 'Moedas', x: 655 },
     ],
     personalBest: storedBest('labirinto'),
+  },
+  {
+    id: 'ritmo',
+    title: 'Círculos do Ritmo',
+    tagline: 'Toque no círculo no tempo certo',
+    icon: 'ritmo-icon',
+    emoji: '🎵',
+    color: 0xe879f9,
+    shade: 0x4a044e,
+    entryScene: SceneKeys.Ritmo,
+    load: () => import('./ritmo/RitmoScene').then((m) => [m.RitmoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'combo', label: 'Combo', x: 565 },
+      { key: 'perfect', label: 'Perfeitos', x: 655 },
+    ],
+    personalBest: storedBest('ritmo'),
+  },
+  {
+    id: 'paraquedas',
+    title: 'Paraquedas',
+    tagline: 'Abra o mais baixo que puder',
+    icon: 'paraquedas-icon',
+    emoji: '🪂',
+    color: 0x38bdf8,
+    shade: 0x0369a1,
+    entryScene: SceneKeys.Paraquedas,
+    load: () => import('./paraquedas/ParaquedasScene').then((m) => [m.ParaquedasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'jumps', label: 'Saltos', x: 565 },
+      { key: 'rings', label: 'Anéis', x: 655 },
+    ],
+    personalBest: storedBest('paraquedas'),
+  },
+  {
+    id: 'letras',
+    title: 'Chuva de Letras',
+    tagline: 'Digite antes que caiam',
+    icon: 'letras-icon',
+    emoji: '⌨️',
+    color: 0x3b82f6,
+    shade: 0x172554,
+    entryScene: SceneKeys.Letras,
+    load: () => import('./letras/LetrasScene').then((m) => [m.LetrasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'letters', label: 'Letras', x: 565 },
+      { key: 'combo', label: 'Sequência', x: 655 },
+    ],
+    personalBest: storedBest('letras'),
+  },
+  {
+    id: 'cubo',
+    title: 'Cubo Saltitante',
+    tagline: 'Pule os espinhos no ritmo',
+    icon: 'cubo-icon',
+    emoji: '🟪',
+    color: 0xa855f7,
+    shade: 0x0f0a1e,
+    entryScene: SceneKeys.Cubo,
+    load: () => import('./cubo/CuboScene').then((m) => [m.CuboScene]),
+    columns: [
+      { key: 'score', label: 'Metros', x: 450, format: formatNumber },
+      { key: 'jumps', label: 'Pulos', x: 600 },
+    ],
+    personalBest: storedBest('cubo'),
+  },
+  {
+    id: 'colinas',
+    title: 'Pássaro das Colinas',
+    tagline: 'Mergulhe e voe pelas colinas',
+    icon: 'colinas-icon',
+    emoji: '🐦',
+    color: 0x22c55e,
+    shade: 0x0c4a6e,
+    entryScene: SceneKeys.Colinas,
+    load: () => import('./colinas/ColinasScene').then((m) => [m.ColinasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'meters', label: 'Metros', x: 565 },
+      { key: 'perfect', label: 'Perfeitos', x: 655 },
+    ],
+    personalBest: storedBest('colinas'),
+  },
+  {
+    id: 'canhao',
+    title: 'Canhão',
+    tagline: 'Quebre as pedras numeradas',
+    icon: 'canhao-icon',
+    emoji: '💣',
+    color: 0x6366f1,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Canhao,
+    load: () => import('./canhao/CanhaoScene').then((m) => [m.CanhaoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wave', label: 'Onda', x: 600 },
+    ],
+    personalBest: storedBest('canhao'),
+  },
+  {
+    id: 'equilibrio',
+    title: 'Equilíbrio',
+    tagline: 'Não deixe a vara cair',
+    icon: 'equilibrio-icon',
+    emoji: '🤹‍♂️',
+    color: 0x10b981,
+    shade: 0x064e3b,
+    entryScene: SceneKeys.Equilibrio,
+    load: () => import('./equilibrio/EquilibrioScene').then((m) => [m.EquilibrioScene]),
+    columns: [
+      { key: 'score', label: 'Tempo', x: 450, format: (v) => `${(v / 10).toFixed(1)}s` },
+      { key: 'seconds', label: 'Segundos', x: 620 },
+    ],
+    personalBest: storedBest('equilibrio'),
+  },
+  {
+    id: 'desarme',
+    title: 'Desarme a Bomba',
+    tagline: 'Leia as regras e corte o fio',
+    icon: 'desarme-icon',
+    emoji: '🧨',
+    color: 0xdc2626,
+    shade: 0x1c1917,
+    entryScene: SceneKeys.Desarme,
+    load: () => import('./desarme/DesarmeScene').then((m) => [m.DesarmeScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'bombs', label: 'Bombas', x: 600 },
+    ],
+    personalBest: storedBest('desarme'),
+  },
+  {
+    id: 'trafego',
+    title: 'Controle de Tráfego',
+    tagline: 'Troque os sinais sem batidas',
+    icon: 'trafego-icon',
+    emoji: '🚦',
+    color: 0x16a34a,
+    shade: 0x14532d,
+    entryScene: SceneKeys.Trafego,
+    load: () => import('./trafego/TrafegoScene').then((m) => [m.TrafegoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'cars', label: 'Carros', x: 600 },
+    ],
+    personalBest: storedBest('trafego'),
   },
 ];
 
