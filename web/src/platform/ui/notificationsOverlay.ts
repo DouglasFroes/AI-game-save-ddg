@@ -1,5 +1,6 @@
 import { GAMES } from '@/games/registry';
 import type { Sfx } from '@/platform/audio/Sfx';
+import { applyUpdate, UPDATE_NOTICE_KEY } from '@/platform/pwa/register';
 import {
   browserNotificationState,
   clearNoticeHistory,
@@ -555,6 +556,14 @@ class NotificationsOverlay {
         this.close(() => this.opts.onPlayGame?.(gameId));
       });
       actions.append(rankBtn, playBtn);
+    } else if (item.key === UPDATE_NOTICE_KEY) {
+      // The saved entry has no callback of its own: ask the service worker module directly.
+      const updateBtn = document.createElement('button');
+      updateBtn.type = 'button';
+      updateBtn.className = 'fxn-btn primary';
+      updateBtn.textContent = 'Atualizar agora';
+      updateBtn.addEventListener('click', () => applyUpdate());
+      actions.appendChild(updateBtn);
     } else if (item.category === 'chat') {
       const chatBtn = document.createElement('button');
       chatBtn.type = 'button';

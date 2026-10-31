@@ -3,6 +3,7 @@ import { isReplyToMe } from '@/platform/chat/core';
 import { bindConnectivityNotices } from '@/platform/connectivityNotices';
 import {
   clearNoticeHistory,
+  forgetNotice,
   inferNoticeCategory,
   listNoticeHistory,
   markAllNoticesRead,
@@ -97,6 +98,13 @@ describe('notice bus & history inbox', () => {
     off = subscribeNotices((n) => got.push(n.key));
     expect(got).toEqual([]);
     expect(listNoticeHistory()).toEqual([]);
+  });
+
+  it('forgets a stale entry by key (an update notice once the app is up to date)', () => {
+    recordNotice({ key: 'update', title: 'Nova versão disponível' }, 1000);
+    recordNotice({ key: 'rival:snake', kind: 'rival', title: 'Ana passou você' }, 2000);
+    forgetNotice('update');
+    expect(listNoticeHistory().map((i) => i.key)).toEqual(['rival:snake']);
   });
 
   it('records non-ephemeral notices in history, tracks unread count, and marks read', () => {

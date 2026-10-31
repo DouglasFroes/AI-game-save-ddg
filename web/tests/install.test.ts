@@ -47,6 +47,22 @@ describe('InstallPrompt', () => {
     expect(await install.prompt()).toBe('unavailable');
   });
 
+  it('keeps the install event when the dialog could not open (no user gesture)', async () => {
+    const { install, fire } = setup();
+    const e = promptEvent('accepted');
+    let fail = true;
+    e.prompt = async () => {
+      if (fail) throw new DOMException('needs a user gesture', 'NotAllowedError');
+      e.prompted++;
+    };
+    fire('beforeinstallprompt', e);
+    expect(await install.prompt()).toBe('unavailable');
+    expect(install.state()).toBe('prompt');
+    fail = false;
+    expect(await install.prompt()).toBe('accepted');
+    expect(e.prompted).toBe(1);
+  });
+
   it('points iPhone players to the share sheet instead', () => {
     expect(setup({ ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)' }).install.state()).toBe('ios');
   });

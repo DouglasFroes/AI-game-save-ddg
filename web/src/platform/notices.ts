@@ -240,6 +240,13 @@ export function removeNoticeHistory(id: string): void {
   if (next.length !== current.length) saveHistory(next);
 }
 
+/** Drops every history entry with this key (e.g. an update notice once the update is applied). */
+export function forgetNotice(key: string): void {
+  const current = loadHistory();
+  const next = current.filter((item) => item.key !== key);
+  if (next.length !== current.length) saveHistory(next);
+}
+
 export function clearNoticeHistory(): void {
   saveHistory([]);
 }

@@ -3,7 +3,13 @@ import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '@/config';
 import { GAMES, type GameDefinition, type GameId } from '@/games/registry';
 import { trendingGames } from '@/platform/trending';
 import { HUB_FONT } from '@/platform/fonts';
-import { canFullscreen, isStandalone, toggleFullscreen } from '@/platform/fullscreen';
+import {
+  canFullscreen,
+  exitFullscreen,
+  isFullscreen,
+  isStandalone,
+  toggleFullscreen,
+} from '@/platform/fullscreen';
 import { loadGame, orderForWarmup, warmGames } from '@/platform/gameLoader';
 import { iosInstallSteps } from '@/platform/pwa/install';
 import { installPrompt } from '@/platform/pwa/installPrompt';
@@ -723,7 +729,18 @@ export class HubScene extends Phaser.Scene {
       this.openInstallGuide();
       return;
     }
-    await installPrompt.prompt();
+    // Android Chrome may not show its install dialog over a full-screen page.
+    if (isFullscreen()) await exitFullscreen();
+    const result = await installPrompt.prompt();
+    if (result === 'unavailable' && this.sys.isActive()) {
+      showNotice(this, {
+        key: 'install-help',
+        kind: 'info',
+        glyph: 'download',
+        title: 'Instale pelo menu do navegador',
+        body: 'Toque em ⋮ (canto superior direito) e escolha "Instalar app" ou "Adicionar à tela inicial".',
+      });
+    }
   }
 
   /** "Instalar no iPhone": iOS cannot install from code, so this walks the player through it. */

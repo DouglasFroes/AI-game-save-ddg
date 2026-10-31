@@ -73,9 +73,16 @@ export class InstallPrompt {
   async prompt(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
     const event = this.deferred;
     if (!event) return 'unavailable';
+    try {
+      await event.prompt();
+    } catch (err) {
+      // Usually "no user gesture" (something else in the same tap used it up). The event was not
+      // spent, so keep it: the next tap on the button can still open the dialog.
+      console.warn('Install prompt failed', err);
+      return 'unavailable';
+    }
     // The event can be used once; a dismissed dialog is offered again by the browser later.
     this.deferred = null;
-    await event.prompt();
     const { outcome } = await event.userChoice;
     this.emit();
     return outcome;

@@ -57,10 +57,16 @@ export function toggleFullscreen(): Promise<boolean> {
   return enterFullscreen();
 }
 
-/** On phones: go full screen on the first tap of the session (needs a gesture). */
-export function fullscreenOnFirstTap(): void {
+/**
+ * On phones: go full screen on the first tap of the session (needs a gesture).
+ * Entering full screen uses up the tap's "user gesture", so while `skip()` is true (the app can be
+ * installed) taps are left alone: the install dialog needs that gesture, and the installed app
+ * opens full screen anyway.
+ */
+export function fullscreenOnFirstTap(skip: () => boolean = () => false): void {
   if (!isPhone() || isStandalone() || !canFullscreen()) return;
   const go = () => {
+    if (skip()) return;
     window.removeEventListener('pointerup', go);
     void enterFullscreen();
   };

@@ -8,7 +8,7 @@ import { HubScene } from '@/platform/scenes/HubScene';
 import { LeaderboardScene } from '@/platform/scenes/LeaderboardScene';
 import { bindConnectivityNotices } from '@/platform/connectivityNotices';
 import { publishNotice } from '@/platform/notices';
-import '@/platform/pwa/installPrompt';
+import { installPrompt } from '@/platform/pwa/installPrompt';
 import { registerServiceWorker } from '@/platform/pwa/register';
 import { bindBrowserLifecycle } from '@/platform/sessionTracker';
 import { bindConnectivitySync } from '@/platform/sync';
@@ -55,7 +55,7 @@ bindConnectivityNotices();
 // Presence heartbeats and the unread badge (only for signed-in players).
 services.chat.start();
 
-fullscreenOnFirstTap();
+fullscreenOnFirstTap(() => installPrompt.state() === 'prompt');
 
 // Audio may only start after a user gesture.
 window.addEventListener('pointerdown', () => services.sfx.unlock(), { passive: true });
