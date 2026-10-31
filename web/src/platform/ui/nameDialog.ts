@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { GAME_WIDTH } from '@/config';
+import { GAME_HEIGHT, GAME_WIDTH } from '@/config';
 import { HUB_FONT } from '@/platform/fonts';
 import { MAX_NAME_LENGTH, sanitizeName } from '@/platform/leaderboard';
 import { getServices } from '@/services';
@@ -75,7 +75,7 @@ export function askName(
 
     add(
       scene.add
-        .rectangle(0, 0, GAME_WIDTH, scene.scale.height, 0x03040a, 0.86)
+        .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x03040a, 0.86)
         .setOrigin(0)
         .setInteractive(),
     );

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, SCREEN_HEIGHT, SceneKeys } from '@/config';
+import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '@/config';
 import { GAMES, type GameDefinition, type GameId } from '@/games/registry';
 import { trendingGames } from '@/platform/trending';
 import { HUB_FONT } from '@/platform/fonts';
@@ -70,7 +70,7 @@ const CHIPS_H = 96;
 const SEARCH_H = 84;
 const DOCK_W = 624;
 const DOCK_H = 104;
-const DOCK_CY = SCREEN_HEIGHT - 34 - DOCK_H / 2;
+const DOCK_CY = GAME_HEIGHT - 34 - DOCK_H / 2;
 const DOCK_TOP = DOCK_CY - DOCK_H / 2;
 const HERO_Y = 238;
 const HERO_W = CONTENT_W;
@@ -234,12 +234,6 @@ export class HubScene extends Phaser.Scene {
   private slideFx: Phaser.Tweens.Tween[] = [];
 
   create(): void {
-    // The hub fills the whole phone screen (taller than 9:16 on most phones); every other scene
-    // keeps the 720×1280 world, so the canvas goes back to that size when the hub closes.
-    this.scale.setGameSize(GAME_WIDTH, SCREEN_HEIGHT);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
-      this.scale.setGameSize(GAME_WIDTH, GAME_HEIGHT),
-    );
     performance.mark('hub-start');
     this.opening = false;
     this.fullscreenView = null;
@@ -273,7 +267,7 @@ export class HubScene extends Phaser.Scene {
     this.buildBackdrop();
     this.list = this.add.container(0, 0);
     this.add
-      .image(0, SCREEN_HEIGHT - 300, fadeArt(this, GAME_WIDTH, 300, false))
+      .image(0, GAME_HEIGHT - 300, fadeArt(this, GAME_WIDTH, 300, false))
       .setOrigin(0)
       .setDepth(15);
     this.top = this.add.container(0, 0).setDepth(20);
@@ -399,7 +393,7 @@ export class HubScene extends Phaser.Scene {
   /** Night sky with slow colour glows drifting across it and a few twinkling stars. */
   private buildBackdrop(): void {
     this.add
-      .image(0, 0, auroraBackground(this, GAME_WIDTH, SCREEN_HEIGHT))
+      .image(0, 0, auroraBackground(this, GAME_WIDTH, GAME_HEIGHT))
       .setOrigin(0)
       .setDepth(-10);
     const still = reducedMotion();
@@ -430,7 +424,7 @@ export class HubScene extends Phaser.Scene {
     for (let i = 0; i < 16; i++) {
       const seed = hashOf(`star${i}`);
       const star = this.add
-        .circle((seed % 700) + 10, ((seed >>> 8) % (SCREEN_HEIGHT - 20)) + 10, 1.6 + (seed % 3) * 0.5, 0xffffff)
+        .circle((seed % 700) + 10, ((seed >>> 8) % 1260) + 10, 1.6 + (seed % 3) * 0.5, 0xffffff)
         .setAlpha(0.1)
         .setDepth(-8);
       this.tweens.add({
@@ -2012,7 +2006,7 @@ export class HubScene extends Phaser.Scene {
     const root = this.add.container(0, 0).setDepth(50);
     this.sheet = root;
     this.placeSearch();
-    const dim = this.add.rectangle(0, 0, GAME_WIDTH, SCREEN_HEIGHT, 0x03040a, 0.8).setOrigin(0);
+    const dim = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x03040a, 0.8).setOrigin(0);
     dim.setInteractive();
     dim.on('pointerup', () => this.closeSheet());
     root.add(dim);
@@ -2025,11 +2019,11 @@ export class HubScene extends Phaser.Scene {
     // The player is looking at this game: fetch its code now, so "Jogar" starts instantly.
     loadGame(this.game, game).catch(() => undefined);
     const services = getServices(this);
-    const top = SCREEN_HEIGHT - SHEET_H;
+    const top = GAME_HEIGHT - SHEET_H;
     const { root, dim } = this.scrim();
 
     // The panel is laid out at its final position and slides up from below.
-    const panel = this.add.container(0, SCREEN_HEIGHT);
+    const panel = this.add.container(0, GAME_HEIGHT);
     root.add(panel);
     const bg = this.add.graphics();
     const topRound = { tl: 40, tr: 40, bl: 0, br: 0 };

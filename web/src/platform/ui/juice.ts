@@ -77,7 +77,7 @@ export function shockwave(
 /** A brief full-screen tint (hits, level-ups). */
 export function flash(scene: Phaser.Scene, color: number, alpha = 0.25, ms = 220): void {
   const veil = scene.add
-    .rectangle(0, 0, GAME_WIDTH, scene.scale.height, color, alpha)
+    .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, color, alpha)
     .setOrigin(0)
     .setDepth(60);
   scene.tweens.add({
@@ -92,7 +92,7 @@ export function flash(scene: Phaser.Scene, color: number, alpha = 0.25, ms = 220
 export function ambient(scene: Phaser.Scene, color = 0xffffff, count = 18): void {
   for (let i = 0; i < count; i++) {
     const x = Math.random() * GAME_WIDTH;
-    const y = Math.random() * scene.scale.height;
+    const y = Math.random() * GAME_HEIGHT;
     const mote = scene.add
       .circle(x, y, 2 + Math.random() * 3, color, 0.18)
       .setDepth(-8)
