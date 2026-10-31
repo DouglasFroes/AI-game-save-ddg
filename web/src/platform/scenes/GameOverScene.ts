@@ -70,24 +70,34 @@ export class GameOverScene extends Phaser.Scene {
     this.achievementBox = null;
     // The finished board stays on screen for a moment (to see what happened or take a
     // screenshot) before the result card. "Ver partida" holds it there until the player asks for
-    // the result; "Pular" skips straight to it. The invisible layer keeps stray taps away from
-    // the game that just ended.
+    // the result; "Pular" skips straight to it; "Jogar de novo" starts another run right away.
+    // The invisible layer keeps stray taps away from the game that just ended.
     let shown = false;
     const guard = this.add.zone(0, 0, GAME_WIDTH, GAME_HEIGHT).setOrigin(0).setInteractive();
     const y = GAME_HEIGHT - 70;
+    const w = 216;
+    const gap = 12;
+    const clear = () => {
+      timer.remove(false);
+      for (const o of [guard, peek, replay, skip, result]) o.destroy();
+    };
     const show = () => {
       if (shown) return;
       shown = true;
-      timer.remove(false);
-      for (const o of [guard, peek, skip, result]) o.destroy();
+      clear();
       this.showResult(data);
+    };
+    // The result card is what stores the run (record, device top, ranking): build it, then leave.
+    const again = () => {
+      show();
+      this.go(data, data.retry.scene, data.retry.data);
     };
     const timer = this.time.delayedCall(RESULT_DELAY_MS, show);
     const peek = buildGlassActionButton(
       this,
-      GAME_WIDTH / 2 - 150,
+      GAME_WIDTH / 2 - w - gap,
       y,
-      280,
+      w,
       76,
       'expand',
       UI.cyan,
@@ -96,33 +106,46 @@ export class GameOverScene extends Phaser.Scene {
         timer.remove(false);
         peek.setVisible(false);
         skip.setVisible(false);
+        replay.setX(GAME_WIDTH / 2 - 150);
         result.setVisible(true);
       },
-      { fontSize: 24, tint: UI.cyan },
+      { fontSize: 22, tint: UI.cyan },
+    );
+    const replay = buildGlassActionButton(
+      this,
+      GAME_WIDTH / 2,
+      y,
+      w,
+      76,
+      'retry',
+      UI.pink,
+      'Jogar de novo',
+      again,
+      { fontSize: 22, tint: UI.pink },
     );
     const skip = buildGlassActionButton(
       this,
-      GAME_WIDTH / 2 + 150,
+      GAME_WIDTH / 2 + w + gap,
       y,
-      280,
+      w,
       76,
       'play',
       UI.gold,
       'Pular',
       show,
-      { fontSize: 24, tint: UI.gold },
+      { fontSize: 22, tint: UI.gold },
     );
     const result = buildGlassActionButton(
       this,
-      GAME_WIDTH / 2,
+      GAME_WIDTH / 2 + 150,
       y,
-      380,
+      280,
       76,
       'trophy',
       UI.gold,
       'Ver resultado',
       show,
-      { fontSize: 24, tint: UI.gold },
+      { fontSize: 22, tint: UI.gold },
     ).setVisible(false);
   }
 
