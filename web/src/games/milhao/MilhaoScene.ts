@@ -73,6 +73,8 @@ export class MilhaoScene extends Phaser.Scene {
   }
 
   create(): void {
+    // A restart destroys the old letters; forget them so `letters()` draws them again.
+    this.letterTexts = [];
     const bg = this.add.graphics();
     bg.fillGradientStyle(0x0b1a4a, 0x0b1a4a, 0x02061a, 0x02061a, 1).fillRect(
       0,

@@ -235,17 +235,32 @@ export function drawIcon(
       g.lineBetween(0.16 * s, -0.34 * s, -0.18 * s, 0);
       g.lineBetween(-0.18 * s, 0, 0.16 * s, 0.34 * s);
       break;
-    case 'retry':
-      g.lineStyle(s * 0.13, color);
+    case 'retry': {
+      // A clockwise circular arrow (↻): open at the top right, the head sits on the arc's end
+      // and points along it.
+      const r = 0.3 * s;
+      const end = (-100 * Math.PI) / 180;
+      g.lineStyle(s * 0.12, color);
       g.beginPath()
-        .arc(0, 0.02 * s, 0.34 * s, -Math.PI * 0.85, Math.PI * 0.72)
+        .arc(0, 0.04 * s, r, (-55 * Math.PI) / 180, end + Math.PI * 2 - 0.12, false)
         .strokePath();
-      poly(g, s, [
-        [0.14, -0.44],
-        [0.44, -0.32],
-        [0.24, -0.08],
-      ]);
+      const px = Math.cos(end) * r;
+      const py = 0.04 * s + Math.sin(end) * r;
+      const tx = -Math.sin(end);
+      const ty = Math.cos(end);
+      const nx = Math.cos(end);
+      const ny = Math.sin(end);
+      const head = 0.17 * s;
+      g.fillStyle(color, 1).fillTriangle(
+        px + tx * head * 1.3,
+        py + ty * head * 1.3,
+        px + nx * head - tx * head * 0.35,
+        py + ny * head - ty * head * 0.35,
+        px - nx * head - tx * head * 0.35,
+        py - ny * head - ty * head * 0.35,
+      );
       break;
+    }
     case 'medal':
       poly(g, s, [
         [-0.26, -0.46],

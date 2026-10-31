@@ -47,6 +47,10 @@ web/src/   (the game; the server is in ../api)
                        core.ts (pure) · <Name>Scene.ts extending MiniScene (platform/ui/miniGame.ts:
                        background, back button, score, finish() -> GameOver). Hub icon = `emoji` field
                        in the registry, drawn by BootScene (no art.ts needed).
+    hexagono/ termo/ estaciona/ ligapontos/ pescaria/ lunar/ misseis/ motoluz/ sinuca/ maiormenor/ dalgona/ mahjong/
+                       same MiniScene + emoji-icon recipe; cores unit-tested in tests/arcade10.test.ts, with bots
+                       proving each is playable (puzzles are generated solvable: BFS for the parking lot, a
+                       Hamiltonian path for Liga Pontos, a reverse-removal deal for Mahjong).
 tests/               Vitest for every core + the platform
 (the server lives outside web/: see docs/patterns/backend-architecture.md)
 ```

@@ -28,6 +28,8 @@ export class VelhaScene extends MiniScene {
   create(): void {
     this.wins = 0;
     this.round = 0;
+    // "Jogar de novo" restarts the scene: drop the marks of the previous run (already destroyed).
+    this.marks = [];
     this.frame();
     const g = this.add.graphics();
     g.lineStyle(10, 0xffffff, 0.8);

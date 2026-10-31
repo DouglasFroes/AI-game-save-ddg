@@ -110,6 +110,18 @@ export const GAME_CATEGORY: Readonly<Record<GameId, CategoryId>> = {
   malabares: 'esporte',
   volei: 'esporte',
   blackjack: 'mesa',
+  hexagono: 'reflexo',
+  termo: 'puzzle',
+  estaciona: 'puzzle',
+  ligapontos: 'puzzle',
+  pescaria: 'acao',
+  lunar: 'acao',
+  misseis: 'acao',
+  motoluz: 'acao',
+  sinuca: 'esporte',
+  maiormenor: 'mesa',
+  dalgona: 'reflexo',
+  mahjong: 'mesa',
 };
 
 /** Games shown under a filter. `favorites` is the starred ids (the order given is kept). */

@@ -50,6 +50,8 @@ const CARD_W = 660;
 const CARD_H = 1136;
 const INNER_W = 608;
 const HEADER_H = 208;
+/** How long the finished game stays on screen before the result card. */
+const RESULT_DELAY_MS = 3000;
 const CONFETTI = [0xff5d8f, 0xffd166, 0x34d399, 0x38e1ff, 0xc084fc, 0xff9a2e];
 
 /**
@@ -66,6 +68,65 @@ export class GameOverScene extends Phaser.Scene {
 
   create(data: GameOverData): void {
     this.achievementBox = null;
+    // The finished board stays on screen for a moment (to see what happened or take a
+    // screenshot) before the result card. "Ver partida" holds it there until the player asks for
+    // the result; "Pular" skips straight to it. The invisible layer keeps stray taps away from
+    // the game that just ended.
+    let shown = false;
+    const guard = this.add.zone(0, 0, GAME_WIDTH, GAME_HEIGHT).setOrigin(0).setInteractive();
+    const y = GAME_HEIGHT - 70;
+    const show = () => {
+      if (shown) return;
+      shown = true;
+      timer.remove(false);
+      for (const o of [guard, peek, skip, result]) o.destroy();
+      this.showResult(data);
+    };
+    const timer = this.time.delayedCall(RESULT_DELAY_MS, show);
+    const peek = buildGlassActionButton(
+      this,
+      GAME_WIDTH / 2 - 150,
+      y,
+      280,
+      76,
+      'expand',
+      UI.cyan,
+      'Ver partida',
+      () => {
+        timer.remove(false);
+        peek.setVisible(false);
+        skip.setVisible(false);
+        result.setVisible(true);
+      },
+      { fontSize: 24, tint: UI.cyan },
+    );
+    const skip = buildGlassActionButton(
+      this,
+      GAME_WIDTH / 2 + 150,
+      y,
+      280,
+      76,
+      'play',
+      UI.gold,
+      'Pular',
+      show,
+      { fontSize: 24, tint: UI.gold },
+    );
+    const result = buildGlassActionButton(
+      this,
+      GAME_WIDTH / 2,
+      y,
+      380,
+      76,
+      'trophy',
+      UI.gold,
+      'Ver resultado',
+      show,
+      { fontSize: 24, tint: UI.gold },
+    ).setVisible(false);
+  }
+
+  private showResult(data: GameOverData): void {
     const services = getServices(this);
     services.sessionTracker.completeRun(data.gameId, data.record?.score ?? 0);
     const game = getGame(data.gameId);
@@ -142,9 +203,6 @@ export class GameOverScene extends Phaser.Scene {
 
     // 7. Irresistible 3D Action Buttons
     this.buildActionButtons(card, game, data);
-
-    // 8. Peek at the finished board (to screenshot it or see what went wrong)
-    this.buildPeekButtons();
 
     // Entrance choreography
     if (!prefersReducedMotion()) {
@@ -617,50 +675,6 @@ export class GameOverScene extends Phaser.Scene {
     });
   }
 
-  /**
-   * The card covers the board the run ended on. "Ver partida" hides the whole overlay so the
-   * player can look at it (or take a screenshot); "Voltar ao resultado" brings it back.
-   */
-  private buildPeekButtons(): void {
-    const peek = buildGlassActionButton(
-      this,
-      GAME_WIDTH / 2,
-      46,
-      300,
-      64,
-      'expand',
-      UI.cyan,
-      'Ver partida',
-      () => toggle(true),
-      { fontSize: 22, tint: UI.cyan },
-    );
-    const back = buildGlassActionButton(
-      this,
-      GAME_WIDTH / 2,
-      GAME_HEIGHT - 56,
-      360,
-      72,
-      'back',
-      UI.gold,
-      'Voltar ao resultado',
-      () => toggle(false),
-      { fontSize: 24, tint: UI.gold },
-    ).setVisible(false);
-    peek.setDepth(10);
-    back.setDepth(10);
-
-    const toggle = (peeking: boolean): void => {
-      for (const child of this.children.list) {
-        if (child === peek || child === back) continue;
-        (child as Phaser.GameObjects.GameObject & { setVisible(v: boolean): unknown }).setVisible(
-          !peeking,
-        );
-      }
-      peek.setVisible(!peeking);
-      back.setVisible(peeking);
-    };
-  }
-
   // ── Ranking Submission & Action Buttons ───────────────────────────────────
 
   /**
@@ -730,7 +744,8 @@ export class GameOverScene extends Phaser.Scene {
                 services.leaderboard.online,
               ),
           );
-          if (newBest && (!sent || !('result' in sent) || sent.result !== 'login')) this.nudgeSync(status, card, buttonY, mine);
+          if (newBest && (!sent || !('result' in sent) || sent.result !== 'login'))
+            this.nudgeSync(status, card, buttonY, mine);
         }
       },
       {

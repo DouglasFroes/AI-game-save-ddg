@@ -150,6 +150,18 @@ export const SceneKeys = {
   Malabares: 'Malabares',
   Volei: 'Volei',
   Blackjack: 'Blackjack',
+  Hexagono: 'Hexagono',
+  Termo: 'Termo',
+  Estaciona: 'Estaciona',
+  LigaPontos: 'LigaPontos',
+  Pescaria: 'Pescaria',
+  Lunar: 'Lunar',
+  Misseis: 'Misseis',
+  MotoLuz: 'MotoLuz',
+  Sinuca: 'Sinuca',
+  MaiorMenor: 'MaiorMenor',
+  Dalgona: 'Dalgona',
+  Mahjong: 'Mahjong',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

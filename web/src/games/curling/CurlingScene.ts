@@ -52,6 +52,7 @@ export class CurlingScene extends MiniScene {
     this.sim = new CurlingSim();
     this.drag = null;
     this.waiting = false;
+    this.curlButtons = [];
     this.boardTexts = [];
     this.frame('0');
     this.drawSheet();

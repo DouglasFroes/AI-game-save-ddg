@@ -103,7 +103,19 @@ export type GameId =
   | 'cofre'
   | 'malabares'
   | 'volei'
-  | 'blackjack';
+  | 'blackjack'
+  | 'hexagono'
+  | 'termo'
+  | 'estaciona'
+  | 'ligapontos'
+  | 'pescaria'
+  | 'lunar'
+  | 'misseis'
+  | 'motoluz'
+  | 'sinuca'
+  | 'maiormenor'
+  | 'dalgona'
+  | 'mahjong';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -1620,6 +1632,209 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'blackjacks', label: '21 Natural', x: 655 },
     ],
     personalBest: storedBest('blackjack'),
+  },
+  {
+    id: 'hexagono',
+    title: 'Hexágono',
+    tagline: 'Gire e escape das paredes',
+    icon: 'hexagono-icon',
+    emoji: '🔷',
+    color: 0xec4899,
+    shade: 0x500724,
+    entryScene: SceneKeys.Hexagono,
+    load: () => import('./hexagono/HexagonoScene').then((m) => [m.HexagonoScene]),
+    columns: [
+      { key: 'score', label: 'Tempo', x: 450, format: (v) => `${(v / 10).toFixed(1)}s` },
+      { key: 'stage', label: 'Forma', x: 620 },
+    ],
+    personalBest: storedBest('hexagono'),
+  },
+  {
+    id: 'termo',
+    title: 'Palavra Secreta',
+    tagline: 'Adivinhe a palavra em 6 tentativas',
+    icon: 'termo-icon',
+    emoji: '🔤',
+    color: 0x22c55e,
+    shade: 0x14532d,
+    entryScene: SceneKeys.Termo,
+    load: () => import('./termo/TermoScene').then((m) => [m.TermoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'words', label: 'Palavras', x: 565 },
+      { key: 'streak', label: 'Sequência', x: 655 },
+    ],
+    personalBest: storedBest('termo'),
+  },
+  {
+    id: 'estaciona',
+    title: 'Estacionamento',
+    tagline: 'Tire o carro vermelho do aperto',
+    icon: 'estaciona-icon',
+    emoji: '🚗',
+    color: 0xef4444,
+    shade: 0x450a0a,
+    entryScene: SceneKeys.Estaciona,
+    load: () => import('./estaciona/EstacionaScene').then((m) => [m.EstacionaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 565 },
+      { key: 'perfect', label: 'Perfeitas', x: 655 },
+    ],
+    personalBest: storedBest('estaciona'),
+  },
+  {
+    id: 'ligapontos',
+    title: 'Liga Pontos',
+    tagline: 'Ligue as cores sem cruzar',
+    icon: 'ligapontos-icon',
+    emoji: '🔗',
+    color: 0x06b6d4,
+    shade: 0x083344,
+    entryScene: SceneKeys.LigaPontos,
+    load: () => import('./ligapontos/LigaPontosScene').then((m) => [m.LigaPontosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Desenhos', x: 565 },
+      { key: 'perfect', label: 'Cheios', x: 655 },
+    ],
+    personalBest: storedBest('ligapontos'),
+  },
+  {
+    id: 'pescaria',
+    title: 'Pescaria',
+    tagline: 'Desça desviando, suba pescando',
+    icon: 'pescaria-icon',
+    emoji: '🎣',
+    color: 0x0ea5e9,
+    shade: 0x0c4a6e,
+    entryScene: SceneKeys.Pescaria,
+    load: () => import('./pescaria/PescariaScene').then((m) => [m.PescariaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'fish', label: 'Peixes', x: 565 },
+      { key: 'depth', label: 'Metros', x: 655 },
+    ],
+    personalBest: storedBest('pescaria'),
+  },
+  {
+    id: 'lunar',
+    title: 'Pouso Lunar',
+    tagline: 'Pouse suave na plataforma',
+    icon: 'lunar-icon',
+    emoji: '🚀',
+    color: 0x64748b,
+    shade: 0x0f172a,
+    entryScene: SceneKeys.Lunar,
+    load: () => import('./lunar/LunarScene').then((m) => [m.LunarScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'landings', label: 'Pousos', x: 565 },
+      { key: 'level', label: 'Nível', x: 655 },
+    ],
+    personalBest: storedBest('lunar'),
+  },
+  {
+    id: 'misseis',
+    title: 'Defesa Antimísseis',
+    tagline: 'Proteja as cidades do céu',
+    icon: 'misseis-icon',
+    emoji: '💥',
+    color: 0xf97316,
+    shade: 0x431407,
+    entryScene: SceneKeys.Misseis,
+    load: () => import('./misseis/MisseisScene').then((m) => [m.MisseisScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wave', label: 'Onda', x: 565 },
+      { key: 'kills', label: 'Abates', x: 655 },
+    ],
+    personalBest: storedBest('misseis'),
+  },
+  {
+    id: 'motoluz',
+    title: 'Moto de Luz',
+    tagline: 'Prenda os rivais no seu rastro',
+    icon: 'motoluz-icon',
+    emoji: '🏍️',
+    color: 0x22d3ee,
+    shade: 0x0b1120,
+    entryScene: SceneKeys.MotoLuz,
+    load: () => import('./motoluz/MotoLuzScene').then((m) => [m.MotoLuzScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'rounds', label: 'Rodadas', x: 565 },
+      { key: 'kills', label: 'Abates', x: 655 },
+    ],
+    personalBest: storedBest('motoluz'),
+  },
+  {
+    id: 'sinuca',
+    title: 'Sinuca',
+    tagline: 'Encaçape uma por tacada',
+    icon: 'sinuca-icon',
+    emoji: '🎱',
+    color: 0x16a34a,
+    shade: 0x052e16,
+    entryScene: SceneKeys.Sinuca,
+    load: () => import('./sinuca/SinucaScene').then((m) => [m.SinucaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'balls', label: 'Bolas', x: 565 },
+      { key: 'racks', label: 'Mesas', x: 655 },
+    ],
+    personalBest: storedBest('sinuca'),
+  },
+  {
+    id: 'maiormenor',
+    title: 'Maior ou Menor',
+    tagline: 'Arrisque ou guarde o pote',
+    icon: 'maiormenor-icon',
+    emoji: '🃏',
+    color: 0xa855f7,
+    shade: 0x3b0764,
+    entryScene: SceneKeys.MaiorMenor,
+    load: () => import('./maiormenor/MaiorMenorScene').then((m) => [m.MaiorMenorScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'streak', label: 'Sequência', x: 565 },
+      { key: 'banks', label: 'Potes', x: 655 },
+    ],
+    personalBest: storedBest('maiormenor'),
+  },
+  {
+    id: 'dalgona',
+    title: 'Biscoito Dalgona',
+    tagline: 'Recorte a forma sem rachar',
+    icon: 'dalgona-icon',
+    emoji: '🍪',
+    color: 0xd97706,
+    shade: 0x451a03,
+    entryScene: SceneKeys.Dalgona,
+    load: () => import('./dalgona/DalgonaScene').then((m) => [m.DalgonaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'shapes', label: 'Formas', x: 565 },
+      { key: 'perfect', label: 'Perfeitas', x: 655 },
+    ],
+    personalBest: storedBest('dalgona'),
+  },
+  {
+    id: 'mahjong',
+    title: 'Mahjong',
+    tagline: 'Pares livres, combos e tempo',
+    icon: 'mahjong-icon',
+    emoji: '🀄',
+    color: 0xdc2626,
+    shade: 0x3f0d0d,
+    entryScene: SceneKeys.Mahjong,
+    load: () => import('./mahjong/MahjongScene').then((m) => [m.MahjongScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'pairs', label: 'Pares', x: 565 },
+      { key: 'boards', label: 'Tabuleiros', x: 655 },
+    ],
+    personalBest: storedBest('mahjong'),
   },
 ];
 
