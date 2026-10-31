@@ -477,6 +477,7 @@ import {
   BowlingSim,
   frameOf,
   frameScores,
+  runningTotal,
   freshRack,
   gameOver,
   pinSpots,
@@ -491,6 +492,12 @@ describe('boliche: pontuação oficial', () => {
     expect(frameScores(new Array(20).fill(0)).at(-1)).toBe(0);
     expect(frameScores([10, 7, 3, 9, 0])).toEqual([20, 39, 48]);
     expect(frameScores([10, 7])).toEqual([null]); // strike waiting for its bonus
+    // The live score counts the pins already knocked, bonuses still open as zero.
+    expect(runningTotal([10])).toBe(10);
+    expect(runningTotal([10, 7])).toBe(24);
+    expect(runningTotal([10, 7, 3, 9])).toBe(48);
+    expect(runningTotal(new Array(12).fill(10))).toBe(300);
+    expect(runningTotal(new Array(21).fill(5))).toBe(150);
   });
 
   it('knows frames, racks and the end of the game', () => {

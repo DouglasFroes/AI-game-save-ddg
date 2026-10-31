@@ -117,6 +117,26 @@ export function frameScores(rolls: readonly number[]): Array<number | null> {
   return out;
 }
 
+/** Total so far, counting every pin already knocked and any bonus not rolled yet as zero. */
+export function runningTotal(rolls: readonly number[]): number {
+  let total = 0;
+  let i = 0;
+  for (let f = 0; f < 10 && i < rolls.length; f++) {
+    const a = rolls[i]!;
+    const b = rolls[i + 1] ?? 0;
+    const c = rolls[i + 2] ?? 0;
+    if (f === 9) return total + rolls.slice(i).reduce((sum, v) => sum + v, 0);
+    if (a === 10) {
+      total += 10 + b + c;
+      i += 1;
+    } else {
+      total += a + b + (a + b === 10 ? c : 0);
+      i += 2;
+    }
+  }
+  return total;
+}
+
 /** Where each roll goes on the score sheet: frame index and ball within it. */
 export function frameOf(rolls: readonly number[]): { frame: number; ball: number } {
   let f = 0;
@@ -196,7 +216,7 @@ export class BowlingSim {
 
   /** Total so far counting the open bonuses as zero (for the live score). */
   get runningScore(): number {
-    return this.score;
+    return runningTotal(this.rolls);
   }
 
   /** Puts the ball at `x` on the foul line, ready to roll. */

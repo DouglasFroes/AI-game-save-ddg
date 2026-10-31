@@ -304,7 +304,7 @@ export class BolicheScene extends MiniScene {
           this.pop(CX, 640, `${e.knocked} pino${e.knocked > 1 ? 's' : ''}`, '#ffffff', 48);
         else this.pop(CX, 640, 'Nenhum pino…', '#fca5a5', 44);
         this.trail = [];
-        this.setScore(this.sim.score);
+        this.setScore(this.sim.runningScore);
         this.drawSheet();
         if (this.sim.over) {
           const strikes = marks(this.sim.rolls)

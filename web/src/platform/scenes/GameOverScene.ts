@@ -143,6 +143,9 @@ export class GameOverScene extends Phaser.Scene {
     // 7. Irresistible 3D Action Buttons
     this.buildActionButtons(card, game, data);
 
+    // 8. Peek at the finished board (to screenshot it or see what went wrong)
+    this.buildPeekButtons();
+
     // Entrance choreography
     if (!prefersReducedMotion()) {
       dim.setAlpha(0);
@@ -614,6 +617,50 @@ export class GameOverScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * The card covers the board the run ended on. "Ver partida" hides the whole overlay so the
+   * player can look at it (or take a screenshot); "Voltar ao resultado" brings it back.
+   */
+  private buildPeekButtons(): void {
+    const peek = buildGlassActionButton(
+      this,
+      GAME_WIDTH / 2,
+      46,
+      300,
+      64,
+      'expand',
+      UI.cyan,
+      'Ver partida',
+      () => toggle(true),
+      { fontSize: 22, tint: UI.cyan },
+    );
+    const back = buildGlassActionButton(
+      this,
+      GAME_WIDTH / 2,
+      GAME_HEIGHT - 56,
+      360,
+      72,
+      'back',
+      UI.gold,
+      'Voltar ao resultado',
+      () => toggle(false),
+      { fontSize: 24, tint: UI.gold },
+    ).setVisible(false);
+    peek.setDepth(10);
+    back.setDepth(10);
+
+    const toggle = (peeking: boolean): void => {
+      for (const child of this.children.list) {
+        if (child === peek || child === back) continue;
+        (child as Phaser.GameObjects.GameObject & { setVisible(v: boolean): unknown }).setVisible(
+          !peeking,
+        );
+      }
+      peek.setVisible(!peeking);
+      back.setVisible(peeking);
+    };
+  }
+
   // ── Ranking Submission & Action Buttons ───────────────────────────────────
 
   /**
@@ -654,6 +701,7 @@ export class GameOverScene extends Phaser.Scene {
       status.setText(mine + rankMessage(result, services.leaderboard.online));
       if (result) status.setColor('#ffe08a');
       if (result?.result === 'login') this.offerSignIn(status, card, buttonY, mine);
+      else if (newBest) this.nudgeSync(status, card, buttonY, mine);
       return;
     }
 
@@ -682,6 +730,7 @@ export class GameOverScene extends Phaser.Scene {
                 services.leaderboard.online,
               ),
           );
+          if (newBest && (!sent || !('result' in sent) || sent.result !== 'login')) this.nudgeSync(status, card, buttonY, mine);
         }
       },
       {
@@ -694,12 +743,27 @@ export class GameOverScene extends Phaser.Scene {
     card.add(btn);
   }
 
+  /** A new personal best from a signed-out player only lives on this device: ask to sign in. */
+  private nudgeSync(
+    status: Phaser.GameObjects.Text,
+    card: Phaser.GameObjects.Container,
+    buttonY: number,
+    mine: string,
+  ): void {
+    const { account } = getServices(this);
+    if (!account.available || account.current()) return;
+    status.setText(`${mine}Novo recorde! Entre com Google para sincronizar`);
+    status.setColor('#ffd166');
+    this.offerSignIn(status, card, buttonY, mine, 'Recorde sincronizado!');
+  }
+
   /** The run made the top 20 but stays on the device until the player signs in with Google. */
   private offerSignIn(
     status: Phaser.GameObjects.Text,
     card: Phaser.GameObjects.Container,
     buttonY: number,
     mine: string,
+    doneText = 'Enviado ao ranking global!',
   ): void {
     const { account } = getServices(this);
     void account.prepare();
@@ -715,7 +779,7 @@ export class GameOverScene extends Phaser.Scene {
           if (!account.current() || !status.active) return;
           btn.destroy();
           // Signing in sends the runs that were waiting, this one included.
-          status.setText(`${mine}Enviado ao ranking global!`);
+          status.setText(`${mine}${doneText}`);
         });
       },
       { colors: [0x4285f4, 0x2563eb, 0x1d4ed8], lipColor: 0x1e3a8a, fontSize: 24, glow: false },
