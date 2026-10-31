@@ -177,6 +177,7 @@ export const GAMES_CATALOG: readonly GameMeta[] = [
     category: 'acao',
   },
   { id: 'ligapontos2', title: 'Liga Pontos II', emoji: '🔗', color: '#06b6d4', category: 'puzzle' },
+  { id: 'lunar2', title: 'Pouso Lunar II', emoji: '🚀', color: '#64748b', category: 'acao' },
 ];
 
 const BY_ID = new Map<string, GameMeta>(GAMES_CATALOG.map((g) => [g.id, g]));

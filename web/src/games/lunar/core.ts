@@ -29,7 +29,11 @@ export function makeTerrain(level: number, rng: () => number = Math.random): Ter
   const points: Array<{ x: number; y: number }> = [];
   const pads: Pad[] = [];
   const padCount = 3;
-  const widths = [130, 96, Math.max(60, 80 - level * 2)];
+  const widths = [
+    Math.max(84, 130 - level * 7),
+    Math.max(66, 96 - level * 5),
+    Math.max(50, 76 - level * 4),
+  ];
   const mults = [1, 2, 4];
   // Pick pad slots on a coarse grid so they never overlap.
   const slots = [0, 1, 2, 3, 4]
@@ -99,18 +103,19 @@ export class LunarSim {
   }
 
   get gravity(): number {
-    return Math.min(150, 70 + this.level * 7);
+    return Math.min(175, 75 + this.level * 12);
   }
 
   /** A sideways drift that grows with the level. */
   get wind(): number {
-    return this.level < 3 ? 0 : Math.sin(this.level * 1.7) * Math.min(40, this.level * 4);
+    return this.level < 2 ? 0 : Math.sin(this.level * 1.7) * Math.min(75, 12 + this.level * 7);
   }
 
   private reset(): void {
     this.x = 120 + this.rng() * 480;
     this.y = SKY_TOP + 40;
-    this.vx = (this.rng() - 0.5) * 60;
+    // Later levels start with more sideways drift to cancel.
+    this.vx = (this.rng() - 0.5) * (60 + this.level * 20);
     this.vy = 0;
     this.state = 'flying';
   }
@@ -162,7 +167,8 @@ export class LunarSim {
   next(): void {
     if (this.state !== 'landed') return;
     this.level++;
-    this.fuel = Math.min(100, this.fuel + 45);
+    // Smaller refills as the levels go by: fuel saved earlier matters.
+    this.fuel = Math.min(100, this.fuel + Math.max(15, 48 - this.level * 4));
     this.terrain = makeTerrain(this.level, this.rng);
     this.reset();
   }

@@ -11,6 +11,8 @@ const BOARD_ALIAS: Readonly<Record<string, string>> = {
   // Both got much faster difficulty curves: the old scores came from far easier runs.
   misseis: 'misseis2',
   ligapontos: 'ligapontos2',
+  // Pouso Lunar: gravity, wind and pad sizes now ramp up much faster.
+  lunar: 'lunar2',
 };
 
 export const boardId = (gameId: string): string => BOARD_ALIAS[gameId] ?? gameId;

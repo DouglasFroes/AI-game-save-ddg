@@ -302,6 +302,33 @@ describe('pouso lunar', () => {
     expect(sim.score).toBeGreaterThan(0);
   });
 
+  it('stays winnable as gravity, wind and pad sizes ramp up', () => {
+    const sim = new LunarSim(seeded(44));
+    // A simple bot gets through five levels; around the sixth the shrinking refills run its tank dry.
+    for (let level = 1; level <= 5; level++) {
+      // Aim for the widest pad, as a careful player would.
+      const pad = [...sim.terrain.pads].sort((a, b) => b.x1 - b.x0 - (a.x1 - a.x0))[0]!;
+      const target = (pad.x0 + pad.x1) / 2;
+      for (let i = 0; i < 60 * 60 && sim.state === 'flying'; i++) {
+        const dx = target - sim.x;
+        const wantVx = Math.max(-60, Math.min(60, dx * 1.2));
+        // Fall while sliding over, then brake: hovering would burn the tank.
+        const height = pad.y - sim.y - 40;
+        const wantVy =
+          Math.abs(dx) > 40 && height < 200 ? 0 : Math.max(25, Math.min(160, height * 0.45));
+        const up = sim.vy > wantVy;
+        sim.left = up || sim.vx < wantVx - 4;
+        sim.right = up || sim.vx > wantVx + 4;
+        sim.step(1 / 60);
+      }
+      expect(sim.state, `level ${level}`).toBe('landed');
+      sim.next();
+    }
+    expect(sim.gravity).toBeGreaterThan(140);
+    expect(sim.wind).not.toBe(0);
+    expect(boardId('lunar')).toBe('lunar2');
+  });
+
   it('free fall crashes', () => {
     const sim = new LunarSim(seeded(43));
     let ev: ReturnType<LunarSim['step']> = [];
