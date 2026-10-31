@@ -51,6 +51,12 @@ web/src/   (the game; the server is in ../api)
                        same MiniScene + emoji-icon recipe; cores unit-tested in tests/arcade10.test.ts, with bots
                        proving each is playable (puzzles are generated solvable: BFS for the parking lot, a
                        Hamiltonian path for Liga Pontos, a reverse-removal deal for Mahjong).
+    luzes/ deslizante/ senha/ cacapalavras/ anagrama/ binario/ somadez/ tesouro/ labirinto/   (tests/arcade11)
+    ritmo/ paraquedas/ letras/ cubo/ colinas/ canhao/ equilibrio/ desarme/ trafego/          (tests/arcade12)
+    aeroporto/ lanchonete/ defesa/ mina/ poquer/ dardos/ botao/ saltoesqui/ cem/              (tests/arcade13)
+                       same recipe; every core ships with a bot, solver or look-ahead player in its test
+                       proving the game can be played (e.g. Binário puzzles are checked for a unique
+                       solution, the Cubo bot simulates both "jump"/"wait" before each step).
 tests/               Vitest for every core + the platform
 (the server lives outside web/: see docs/patterns/backend-architecture.md)
 ```

@@ -208,6 +208,15 @@ export const GAMES_CATALOG: readonly GameMeta[] = [
   { id: 'equilibrio', title: 'Equilíbrio', emoji: '🤹‍♂️', color: '#10b981', category: 'reflexo' },
   { id: 'desarme', title: 'Desarme a Bomba', emoji: '🧨', color: '#dc2626', category: 'puzzle' },
   { id: 'trafego', title: 'Controle de Tráfego', emoji: '🚦', color: '#16a34a', category: 'acao' },
+  { id: 'aeroporto', title: 'Torre de Controle', emoji: '🛬', color: '#16a34a', category: 'acao' },
+  { id: 'lanchonete', title: 'Lanchonete', emoji: '🍔', color: '#ea580c', category: 'reflexo' },
+  { id: 'defesa', title: 'Defesa da Torre', emoji: '🏰', color: '#15803d', category: 'acao' },
+  { id: 'mina', title: 'Mina de Ouro', emoji: '⛏️', color: '#ca8a04', category: 'mesa' },
+  { id: 'poquer', title: 'Pôquer', emoji: '🂮', color: '#15803d', category: 'mesa' },
+  { id: 'dardos', title: 'Dardos', emoji: '🎯', color: '#dc2626', category: 'esporte' },
+  { id: 'botao', title: 'Futebol de Botão', emoji: '⚽', color: '#2563eb', category: 'esporte' },
+  { id: 'saltoesqui', title: 'Salto de Esqui', emoji: '⛷️', color: '#0ea5e9', category: 'esporte' },
+  { id: 'cem', title: 'Corrida de 100 m', emoji: '🏃', color: '#ea580c', category: 'esporte' },
 ];
 
 const BY_ID = new Map<string, GameMeta>(GAMES_CATALOG.map((g) => [g.id, g]));

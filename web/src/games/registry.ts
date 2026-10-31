@@ -133,7 +133,16 @@ export type GameId =
   | 'canhao'
   | 'equilibrio'
   | 'desarme'
-  | 'trafego';
+  | 'trafego'
+  | 'aeroporto'
+  | 'lanchonete'
+  | 'defesa'
+  | 'mina'
+  | 'poquer'
+  | 'dardos'
+  | 'botao'
+  | 'saltoesqui'
+  | 'cem';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -2151,6 +2160,153 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'cars', label: 'Carros', x: 600 },
     ],
     personalBest: storedBest('trafego'),
+  },
+  {
+    id: 'aeroporto',
+    title: 'Torre de Controle',
+    tagline: 'Desenhe a rota até a pista',
+    icon: 'aeroporto-icon',
+    emoji: '🛬',
+    color: 0x16a34a,
+    shade: 0x14532d,
+    entryScene: SceneKeys.Aeroporto,
+    load: () => import('./aeroporto/AeroportoScene').then((m) => [m.AeroportoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'landed', label: 'Pousos', x: 600 },
+    ],
+    personalBest: storedBest('aeroporto'),
+  },
+  {
+    id: 'lanchonete',
+    title: 'Lanchonete',
+    tagline: 'Monte os lanches do pedido',
+    icon: 'lanchonete-icon',
+    emoji: '🍔',
+    color: 0xea580c,
+    shade: 0x431407,
+    entryScene: SceneKeys.Lanchonete,
+    load: () => import('./lanchonete/LanchoneteScene').then((m) => [m.LanchoneteScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'served', label: 'Lanches', x: 600 },
+    ],
+    personalBest: storedBest('lanchonete'),
+  },
+  {
+    id: 'defesa',
+    title: 'Defesa da Torre',
+    tagline: 'Torres contra ondas de inimigos',
+    icon: 'defesa-icon',
+    emoji: '🏰',
+    color: 0x15803d,
+    shade: 0x052e16,
+    entryScene: SceneKeys.Defesa,
+    load: () => import('./defesa/DefesaScene').then((m) => [m.DefesaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wave', label: 'Onda', x: 565 },
+      { key: 'kills', label: 'Abates', x: 655 },
+    ],
+    personalBest: storedBest('defesa'),
+  },
+  {
+    id: 'mina',
+    title: 'Mina de Ouro',
+    tagline: 'Minere e invista em 90 s',
+    icon: 'mina-icon',
+    emoji: '⛏️',
+    color: 0xca8a04,
+    shade: 0x422006,
+    entryScene: SceneKeys.Mina,
+    load: () => import('./mina/MinaScene').then((m) => [m.MinaScene]),
+    columns: [
+      { key: 'score', label: 'Ouro', x: 450, format: formatNumber },
+      { key: 'taps', label: 'Toques', x: 600 },
+    ],
+    personalBest: storedBest('mina'),
+  },
+  {
+    id: 'poquer',
+    title: 'Pôquer',
+    tagline: 'Segure as cartas certas',
+    icon: 'poquer-icon',
+    emoji: '🂮',
+    color: 0x15803d,
+    shade: 0x052e16,
+    entryScene: SceneKeys.Poquer,
+    load: () => import('./poquer/PoquerScene').then((m) => [m.PoquerScene]),
+    columns: [
+      { key: 'score', label: 'Fichas', x: 450, format: formatNumber },
+      { key: 'best', label: 'Melhor mão', x: 620 },
+    ],
+    personalBest: storedBest('poquer'),
+  },
+  {
+    id: 'dardos',
+    title: 'Dardos',
+    tagline: 'Prenda a respiração e acerte',
+    icon: 'dardos-icon',
+    emoji: '🎯',
+    color: 0xdc2626,
+    shade: 0x1c1917,
+    entryScene: SceneKeys.Dardos,
+    load: () => import('./dardos/DardosScene').then((m) => [m.DardosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'triples', label: 'Triplos', x: 565 },
+      { key: 'bulls', label: 'Moscas', x: 655 },
+    ],
+    personalBest: storedBest('dardos'),
+  },
+  {
+    id: 'botao',
+    title: 'Futebol de Botão',
+    tagline: 'Peteleco no botão e gol',
+    icon: 'botao-icon',
+    emoji: '⚽',
+    color: 0x2563eb,
+    shade: 0x14532d,
+    entryScene: SceneKeys.Botao,
+    load: () => import('./botao/BotaoScene').then((m) => [m.BotaoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'goals', label: 'Gols', x: 655 },
+    ],
+    personalBest: storedBest('botao'),
+  },
+  {
+    id: 'saltoesqui',
+    title: 'Salto de Esqui',
+    tagline: 'Impulso, equilíbrio e pouso',
+    icon: 'saltoesqui-icon',
+    emoji: '⛷️',
+    color: 0x0ea5e9,
+    shade: 0x0c4a6e,
+    entryScene: SceneKeys.SaltoEsqui,
+    load: () => import('./saltoesqui/SaltoEsquiScene').then((m) => [m.SaltoEsquiScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'best', label: 'Melhor (m)', x: 620 },
+    ],
+    personalBest: storedBest('saltoesqui'),
+  },
+  {
+    id: 'cem',
+    title: 'Corrida de 100 m',
+    tagline: 'Toque alternado até a vitória',
+    icon: 'cem-icon',
+    emoji: '🏃',
+    color: 0xea580c,
+    shade: 0x7c2d12,
+    entryScene: SceneKeys.Cem,
+    load: () => import('./cem/CemScene').then((m) => [m.CemScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 600 },
+    ],
+    personalBest: storedBest('cem'),
   },
 ];
 

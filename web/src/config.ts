@@ -180,6 +180,15 @@ export const SceneKeys = {
   Equilibrio: 'Equilibrio',
   Desarme: 'Desarme',
   Trafego: 'Trafego',
+  Aeroporto: 'Aeroporto',
+  Lanchonete: 'Lanchonete',
+  Defesa: 'Defesa',
+  Mina: 'Mina',
+  Poquer: 'Poquer',
+  Dardos: 'Dardos',
+  Botao: 'Botao',
+  SaltoEsqui: 'SaltoEsqui',
+  Cem: 'Cem',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

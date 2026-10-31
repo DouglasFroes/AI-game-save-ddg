@@ -6,7 +6,11 @@ Toque Rápido, Acerta o Alvo, Pula Pula, Atravessa, Hexa Pilhas, Quebra-Tijolos,
 Memória da Turma, Pula Cor, Jogo do Milhão, Memória: Aventura, Bolha Gulosa, Paciência, Última Carta, Território,
 Torre Helix, Zigue-Zague, Ponte Certa, Cor Certa, Conta Rápida, Cesto Maluco, Sequência, Relâmpago, Trio de Peças, Inverte, Balão, Toupeira, Corta Frutas, Gelo, Velha Infinita, Ligue 4, Campo Minado, Atira Bolhas, Blocos, Come-Come, Nave, Líquidos Mágicos, Ricochete Infinito, Sobrevivente da Horda, Gancho Elástico, Órbita, Reação em Cadeia, Escorrega, Chuva de Bolas, Mistura, Espelhos, Masmorra de Cartas, Pinball Neon, Dados Loucos, Seleção dos Sonhos, Time dos Sonhos BR, Brasileirão dos Sonhos, Disputa de Pênaltis, Mini Golfe, Tênis, Arremesso, Boliche, Curling, Skate na Rampa, Boxe, Ciclismo, Slalom, Arqueiro Infinito, Galeria de Tiro, Tiro de Precisão, Damas, Batalha Naval, Dominó, Hóquei de Mesa, Reversi, Nonograma, Mestre dos Canos, Caça Submarina,
 Asteroides Neon, Estoura Cofre, Malabares, Vôlei de Praia, Vinte e Um, Hexágono, Palavra Secreta, Estacionamento,
-Liga Pontos, Pescaria, Pouso Lunar, Defesa Antimísseis, Moto de Luz, Sinuca, Maior ou Menor, Biscoito Dalgona, Mahjong), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
+Liga Pontos, Pescaria, Pouso Lunar, Defesa Antimísseis, Moto de Luz, Sinuca, Maior ou Menor, Biscoito Dalgona, Mahjong,
+Apaga Luzes, Quebra-Cabeça Deslizante, Senha das Cores, Caça-Palavras, Anagrama, Binário, Soma Dez, Caça ao
+Tesouro, Labirinto no Escuro, Círculos do Ritmo, Paraquedas, Chuva de Letras, Cubo Saltitante, Pássaro das
+Colinas, Canhão, Equilíbrio, Desarme a Bomba, Controle de Tráfego, Torre de Controle, Lanchonete, Defesa da
+Torre, Mina de Ouro, Pôquer, Dardos, Futebol de Botão, Salto de Esqui, Corrida de 100 m), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
 (+ Three.js, only in Grau 3D). Backend: Rust (Axum + SQLx) + PostgreSQL, served from one Docker image
 (Dokploy). Node 22.13+.
 
