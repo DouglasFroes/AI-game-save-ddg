@@ -121,6 +121,15 @@ export const GAME_CATEGORY: Readonly<Record<GameId, CategoryId>> = {
   sinuca: 'esporte',
   maiormenor: 'mesa',
   dalgona: 'reflexo',
+  luzes: 'puzzle',
+  deslizante: 'puzzle',
+  senha: 'puzzle',
+  cacapalavras: 'puzzle',
+  anagrama: 'puzzle',
+  binario: 'puzzle',
+  somadez: 'puzzle',
+  tesouro: 'puzzle',
+  labirinto: 'acao',
   mahjong: 'mesa',
 };
 

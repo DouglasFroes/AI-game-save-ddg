@@ -115,7 +115,16 @@ export type GameId =
   | 'sinuca'
   | 'maiormenor'
   | 'dalgona'
-  | 'mahjong';
+  | 'mahjong'
+  | 'luzes'
+  | 'deslizante'
+  | 'senha'
+  | 'cacapalavras'
+  | 'anagrama'
+  | 'binario'
+  | 'somadez'
+  | 'tesouro'
+  | 'labirinto';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -1835,6 +1844,156 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'boards', label: 'Tabuleiros', x: 655 },
     ],
     personalBest: storedBest('mahjong'),
+  },
+  {
+    id: 'luzes',
+    title: 'Apaga Luzes',
+    tagline: 'Apague todas as luzes',
+    icon: 'luzes-icon',
+    emoji: '💡',
+    color: 0xfacc15,
+    shade: 0x422006,
+    entryScene: SceneKeys.Luzes,
+    load: () => import('./luzes/LuzesScene').then((m) => [m.LuzesScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'boards', label: 'Tabuleiros', x: 565 },
+      { key: 'perfect', label: 'No par', x: 655 },
+    ],
+    personalBest: storedBest('luzes'),
+  },
+  {
+    id: 'deslizante',
+    title: 'Quebra-Cabeça Deslizante',
+    tagline: 'Deslize as peças até a ordem',
+    icon: 'deslizante-icon',
+    emoji: '🧩',
+    color: 0x6366f1,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Deslizante,
+    load: () => import('./deslizante/DeslizanteScene').then((m) => [m.DeslizanteScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'boards', label: 'Resolvidos', x: 565 },
+      { key: 'size', label: 'Tamanho', x: 655 },
+    ],
+    personalBest: storedBest('deslizante'),
+  },
+  {
+    id: 'senha',
+    title: 'Senha das Cores',
+    tagline: 'Descubra a senha secreta',
+    icon: 'senha-icon',
+    emoji: '🔴',
+    color: 0xa855f7,
+    shade: 0x2e1065,
+    entryScene: SceneKeys.Senha,
+    load: () => import('./senha/SenhaScene').then((m) => [m.SenhaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'codes', label: 'Senhas', x: 600 },
+    ],
+    personalBest: storedBest('senha'),
+  },
+  {
+    id: 'cacapalavras',
+    title: 'Caça-Palavras',
+    tagline: 'Ache as palavras escondidas',
+    icon: 'cacapalavras-icon',
+    emoji: '🔎',
+    color: 0x22c55e,
+    shade: 0x14532d,
+    entryScene: SceneKeys.CacaPalavras,
+    load: () => import('./cacapalavras/CacaPalavrasScene').then((m) => [m.CacaPalavrasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'words', label: 'Palavras', x: 565 },
+      { key: 'boards', label: 'Quadros', x: 655 },
+    ],
+    personalBest: storedBest('cacapalavras'),
+  },
+  {
+    id: 'anagrama',
+    title: 'Anagrama',
+    tagline: 'Desembaralhe as letras rápido',
+    icon: 'anagrama-icon',
+    emoji: '🔠',
+    color: 0xf97316,
+    shade: 0x431407,
+    entryScene: SceneKeys.Anagrama,
+    load: () => import('./anagrama/AnagramaScene').then((m) => [m.AnagramaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'words', label: 'Palavras', x: 565 },
+      { key: 'streak', label: 'Sequência', x: 655 },
+    ],
+    personalBest: storedBest('anagrama'),
+  },
+  {
+    id: 'binario',
+    title: 'Binário',
+    tagline: 'Zeros e uns em equilíbrio',
+    icon: 'binario-icon',
+    emoji: '0️⃣',
+    color: 0x0ea5e9,
+    shade: 0x0c4a6e,
+    entryScene: SceneKeys.Binario,
+    load: () => import('./binario/BinarioScene').then((m) => [m.BinarioScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'boards', label: 'Tabuleiros', x: 600 },
+    ],
+    personalBest: storedBest('binario'),
+  },
+  {
+    id: 'somadez',
+    title: 'Soma Dez',
+    tagline: 'Some 10 e limpe o quadro',
+    icon: 'somadez-icon',
+    emoji: '🔟',
+    color: 0x14b8a6,
+    shade: 0x134e4a,
+    entryScene: SceneKeys.SomaDez,
+    load: () => import('./somadez/SomaDezScene').then((m) => [m.SomaDezScene]),
+    columns: [
+      { key: 'score', label: 'Números', x: 450, format: formatNumber },
+      { key: 'clears', label: 'Somas', x: 600 },
+    ],
+    personalBest: storedBest('somadez'),
+  },
+  {
+    id: 'tesouro',
+    title: 'Caça ao Tesouro',
+    tagline: 'Cave seguindo as pistas',
+    icon: 'tesouro-icon',
+    emoji: '💰',
+    color: 0xf59e0b,
+    shade: 0x0c4a6e,
+    entryScene: SceneKeys.Tesouro,
+    load: () => import('./tesouro/TesouroScene').then((m) => [m.TesouroScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'islands', label: 'Ilhas', x: 565 },
+      { key: 'treasures', label: 'Tesouros', x: 655 },
+    ],
+    personalBest: storedBest('tesouro'),
+  },
+  {
+    id: 'labirinto',
+    title: 'Labirinto no Escuro',
+    tagline: 'Ache a saída sem luz',
+    icon: 'labirinto-icon',
+    emoji: '🌀',
+    color: 0x7c3aed,
+    shade: 0x020617,
+    entryScene: SceneKeys.Labirinto,
+    load: () => import('./labirinto/LabirintoScene').then((m) => [m.LabirintoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'mazes', label: 'Labirintos', x: 565 },
+      { key: 'coins', label: 'Moedas', x: 655 },
+    ],
+    personalBest: storedBest('labirinto'),
   },
 ];
 

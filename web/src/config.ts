@@ -162,6 +162,15 @@ export const SceneKeys = {
   MaiorMenor: 'MaiorMenor',
   Dalgona: 'Dalgona',
   Mahjong: 'Mahjong',
+  Luzes: 'Luzes',
+  Deslizante: 'Deslizante',
+  Senha: 'Senha',
+  CacaPalavras: 'CacaPalavras',
+  Anagrama: 'Anagrama',
+  Binario: 'Binario',
+  SomaDez: 'SomaDez',
+  Tesouro: 'Tesouro',
+  Labirinto: 'Labirinto',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];
