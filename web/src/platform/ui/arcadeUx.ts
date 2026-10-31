@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH } from '@/config';
+import { GAME_WIDTH } from '@/config';
 import { HUB_FONT } from '@/platform/fonts';
 import { getServices } from '@/services';
 import { avatarColorFor, hashString, prefersReducedMotion } from './arcadeFormat';
@@ -131,7 +131,7 @@ export function buildAuroraSceneBackdrop(
   scene.cameras.main.setBackgroundColor(UI.bg);
 
   scene.add
-    .image(0, 0, auroraBackground(scene, GAME_WIDTH, GAME_HEIGHT))
+    .image(0, 0, auroraBackground(scene, GAME_WIDTH, scene.scale.height))
     .setOrigin(0)
     .setDepth(-10);
 

@@ -5,6 +5,20 @@ export const GAME_WIDTH = 720;
 export const GAME_HEIGHT = 1280;
 
 /**
+ * Height that fills this phone's screen at GAME_WIDTH wide (taller phones than 9:16 get more,
+ * up to ~9:20). Only the hub lays itself out with it; games keep their 720×1280 world.
+ */
+export const SCREEN_HEIGHT = ((): number => {
+  if (typeof document === 'undefined') return GAME_HEIGHT;
+  // #game already excludes the notch and the home indicator (see index.html).
+  const box = document.getElementById('game');
+  const w = box?.clientWidth || window.innerWidth;
+  const h = box?.clientHeight || window.innerHeight;
+  if (!w || !h) return GAME_HEIGHT;
+  return Math.max(GAME_HEIGHT, Math.min(1600, Math.round((GAME_WIDTH * h) / w)));
+})();
+
+/**
  * Matter.js setup, enabled only by the scenes that need physics (Doguinho, Fruit Merge) so the
  * other scenes don't pay for an idle physics world. Both step it manually with a fixed timestep.
  */
