@@ -62,9 +62,11 @@ export function generate(size: number, colors: number, rng: () => number = Math.
 
 /** Board size and colour count for a level. */
 export function levelSpec(level: number): { size: number; colors: number; time: number } {
-  const size = Math.min(8, 5 + Math.floor((level - 1) / 3));
+  const size = Math.min(9, 5 + Math.floor((level - 1) / 2));
   const colors = Math.min(size + 2, size - 1 + ((level - 1) % 3));
-  return { size, colors, time: 25 + size * 5 };
+  // About 0.6 s per cell, a second less every level, never under 20 s.
+  const time = Math.max(20, Math.round(12 + size * size * 0.6 - level));
+  return { size, colors, time };
 }
 
 /** The player's drawing on a puzzle. */

@@ -18,7 +18,14 @@ import {
   SIDES,
   WALL_T,
 } from '@/games/hexagono/core';
-import { adjacent, FlowBoard, generate as genFlow, hamiltonian } from '@/games/ligapontos/core';
+import {
+  adjacent,
+  FlowBoard,
+  generate as genFlow,
+  hamiltonian,
+  levelSpec,
+} from '@/games/ligapontos/core';
+import { boardId } from '@/platform/boards';
 import { groundAt, LunarSim, makeTerrain } from '@/games/lunar/core';
 import { FACES, isFree, layout, MahjongGame } from '@/games/mahjong/core';
 import { HiLoGame } from '@/games/maiormenor/core';
@@ -196,6 +203,15 @@ describe('liga pontos', () => {
     expect(board.fill).toBe(1);
   });
 
+  it('gets hard quickly: bigger boards early and a tighter clock', () => {
+    expect(levelSpec(1)).toMatchObject({ size: 5 });
+    expect(levelSpec(5).size).toBe(7);
+    expect(levelSpec(9).size).toBe(9);
+    expect(levelSpec(30).time).toBeLessThan(levelSpec(9).time);
+    expect(levelSpec(60).time).toBe(20);
+    expect(boardId('ligapontos')).toBe('ligapontos2');
+  });
+
   it('drawing over another colour cuts it', () => {
     const board = new FlowBoard({
       size: 3,
@@ -322,6 +338,22 @@ describe('defesa antimísseis', () => {
     const ev = sim.step(1 / 60);
     expect(ev.some((e) => e.type === 'kill')).toBe(true);
     expect(sim.kills).toBe(1);
+  });
+
+  it('later waves are bigger and faster, on a fresh ranking', () => {
+    const count = (wave: number) => {
+      const sim = new MissileSim(seeded(54));
+      sim.wave = wave;
+      let launched = 0;
+      for (let i = 0; i < 60 * 4; i++) {
+        const before = sim.missiles.length;
+        sim.step(1 / 60);
+        launched += Math.max(0, sim.missiles.length - before);
+      }
+      return launched;
+    };
+    expect(count(6)).toBeGreaterThan(count(1));
+    expect(boardId('misseis')).toBe('misseis2');
   });
 
   it('cities fall when nobody defends them', () => {

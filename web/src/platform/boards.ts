@@ -8,6 +8,9 @@ const BOARD_ALIAS: Readonly<Record<string, string>> = {
   sudoku: 'sudoku2',
   // Jogo do Milhão: harder, much bigger question bank and a fresh start for everyone.
   milhao: 'milhao2',
+  // Both got much faster difficulty curves: the old scores came from far easier runs.
+  misseis: 'misseis2',
+  ligapontos: 'ligapontos2',
 };
 
 export const boardId = (gameId: string): string => BOARD_ALIAS[gameId] ?? gameId;

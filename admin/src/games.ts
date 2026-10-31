@@ -169,6 +169,14 @@ export const GAMES_CATALOG: readonly GameMeta[] = [
   { id: 'mahjong', title: 'Mahjong', emoji: '🀄', color: '#dc2626', category: 'mesa' },
   { id: 'sudoku2', title: 'Sudoku II', emoji: '🔢', color: '#4da3ff', category: 'puzzle' },
   { id: 'milhao2', title: 'Jogo do Milhão II', emoji: '💰', color: '#1d3fa8', category: 'mesa' },
+  {
+    id: 'misseis2',
+    title: 'Defesa Antimísseis II',
+    emoji: '💥',
+    color: '#f97316',
+    category: 'acao',
+  },
+  { id: 'ligapontos2', title: 'Liga Pontos II', emoji: '🔗', color: '#06b6d4', category: 'puzzle' },
 ];
 
 const BY_ID = new Map<string, GameMeta>(GAMES_CATALOG.map((g) => [g.id, g]));

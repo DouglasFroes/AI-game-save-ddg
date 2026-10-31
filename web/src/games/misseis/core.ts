@@ -7,7 +7,7 @@ export const GROUND_Y = 1150;
 export const TOP_Y = 240;
 export const BATTERIES = [110, 360, 610];
 export const CITIES = [190, 255, 315, 405, 465, 530];
-const AMMO = 10;
+const AMMO = 8;
 const INTERCEPT_SPEED = 1100;
 const BLAST_R = 72;
 const BLAST_T = 1.1;
@@ -79,14 +79,14 @@ export class MissileSim {
   }
 
   private startWave(): void {
-    this.toSpawn = 8 + this.wave * 3;
-    this.spawnIn = 1;
-    this.ammo = BATTERIES.map(() => AMMO + Math.min(5, Math.floor(this.wave / 2)));
+    this.toSpawn = 8 + this.wave * 4;
+    this.spawnIn = 0.8;
+    this.ammo = BATTERIES.map(() => AMMO + Math.min(4, Math.floor(this.wave / 3)));
     this.chain = 0;
   }
 
   private get missileSpeed(): number {
-    return Math.min(260, 55 + this.wave * 16);
+    return Math.min(330, 80 + this.wave * 26);
   }
 
   private launch(sx: number, sy: number, split: boolean): void {
@@ -139,9 +139,13 @@ export class MissileSim {
 
     this.spawnIn -= dt;
     if (this.toSpawn > 0 && this.spawnIn <= 0) {
-      this.toSpawn--;
-      this.spawnIn = Math.max(0.35, 1.6 - this.wave * 0.1) * (0.5 + this.rng());
-      this.launch(40 + this.rng() * 640, TOP_Y, this.wave >= 3 && this.rng() < 0.25);
+      // Later waves come in salvos, and splitters show up from the second wave on.
+      const salvo = Math.min(this.toSpawn, 1 + Math.floor(this.wave / 3), 4);
+      this.toSpawn -= salvo;
+      this.spawnIn = Math.max(0.3, 1.2 - this.wave * 0.12) * (0.5 + this.rng());
+      const splitChance = this.wave >= 2 ? Math.min(0.45, 0.08 + this.wave * 0.06) : 0;
+      for (let k = 0; k < salvo; k++)
+        this.launch(40 + this.rng() * 640, TOP_Y, this.rng() < splitChance);
     }
 
     for (const s of this.shots) {
@@ -220,7 +224,7 @@ export class MissileSim {
         if (lost >= 0) this.cities[lost] = true;
       }
       ev.push({ type: 'wave', wave: this.wave, bonus });
-      this.pause = 2;
+      this.pause = 1.4;
     }
     return ev;
   }
