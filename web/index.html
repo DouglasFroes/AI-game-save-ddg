@@ -74,17 +74,26 @@
         position: fixed;
         left: 0;
         right: 0;
-        /* Exactly as tall as the 9:16 game and pinned to the bottom, leaving only a sliver for the
-           home indicator line (the full inset would leave a visible gap): on phones taller than
-           9:16 the spare height goes to the top, behind the status bar. */
-        bottom: calc(env(safe-area-inset-bottom) * 0.4);
-        height: min(calc(100vh - env(safe-area-inset-bottom) * 0.4), calc(100vw * 16 / 9));
-        height: min(calc(100dvh - env(safe-area-inset-bottom) * 0.4), calc(100vw * 16 / 9));
+        /* Games keep the 9:16 box, centred between the status bar and the home indicator: the spare
+           height of taller phones is split evenly above and below (tinted by pageTint.ts). */
+        top: env(safe-area-inset-top);
+        bottom: env(safe-area-inset-bottom);
+        margin: auto 0;
+        height: min(
+          calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+          calc(100vw * 16 / 9)
+        );
+        height: min(
+          calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
+          calc(100vw * 16 / 9)
+        );
         touch-action: none;
       }
-      /* The hub (see HubScene) fills everything below the status bar; games keep the 9:16 box. */
+      /* The hub (see HubScene) fills everything below the status bar, down to a sliver above the
+         home indicator. */
       html.hub #game {
-        top: env(safe-area-inset-top);
+        bottom: calc(env(safe-area-inset-bottom) * 0.4);
+        margin: 0;
         height: auto;
       }
       #game canvas {
