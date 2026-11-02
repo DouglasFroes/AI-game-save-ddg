@@ -72,7 +72,7 @@ const SEARCH_H = 84;
 const DOCK_W = 624;
 const DOCK_H = 104;
 // Close to the bottom edge, like a phone's tab bar (#game already keeps clear of the home bar).
-const DOCK_CY = SCREEN_HEIGHT - 14 - DOCK_H / 2;
+const DOCK_CY = SCREEN_HEIGHT - 6 - DOCK_H / 2;
 const DOCK_TOP = DOCK_CY - DOCK_H / 2;
 const HERO_Y = 238;
 const HERO_W = CONTENT_W;
