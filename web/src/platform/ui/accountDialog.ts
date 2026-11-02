@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH } from '@/config';
+import { GAME_WIDTH } from '@/config';
 import { HUB_FONT } from '@/platform/fonts';
 import { getServices } from '@/services';
 import { CTA, GLASS_PILL, glowBlob, pillArt, UI } from './hubTheme';
@@ -73,7 +73,7 @@ export async function openAccount(
 
     add(
       scene.add
-        .rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x03040a, 0.86)
+        .rectangle(0, 0, GAME_WIDTH, scene.scale.height, 0x03040a, 0.86)
         .setOrigin(0)
         .setInteractive(),
       base,

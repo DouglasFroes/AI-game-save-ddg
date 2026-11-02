@@ -58,6 +58,7 @@ Shared effects for new games (particles, shockwave, flash, banner, tutorial hint
 ## Conventions
 
 - Comments and code in English; player-facing text in Portuguese (pt-BR).
-- World coordinates are 720×1280 (`GAME_WIDTH`/`GAME_HEIGHT`).
+- World coordinates are 720×1280 (`GAME_WIDTH`/`GAME_HEIGHT`). Only the hub uses `SCREEN_HEIGHT` (the phone's real
+  height inside the safe area) and resets the canvas to 1280 when it closes; games keep 720×1280.
 - Global ranking and chat are enabled by `VITE_GOOGLE_CLIENT_ID` (see `web/.env.example`); without it the
   ranking stays on the device. Add a new game id to `api/src/domain/games.rs` too.

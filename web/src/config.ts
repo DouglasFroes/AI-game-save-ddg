@@ -5,6 +5,27 @@ export const GAME_WIDTH = 720;
 export const GAME_HEIGHT = 1280;
 
 /**
+ * Height that fills this phone's screen at GAME_WIDTH wide (taller phones than 9:16 get more,
+ * up to ~9:20). Only the hub lays itself out with it; games keep their 720×1280 world.
+ */
+export const SCREEN_HEIGHT = ((): number => {
+  if (typeof document === 'undefined') return GAME_HEIGHT;
+  // Same box as `html.hub #game` in index.html: below the status bar, just above the home bar.
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;visibility:hidden;pointer-events:none;' +
+    'padding-top:env(safe-area-inset-top);padding-bottom:calc(env(safe-area-inset-bottom) * 0.4)';
+  document.body.appendChild(probe);
+  const style = getComputedStyle(probe);
+  const insets = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+  probe.remove();
+  const w = window.innerWidth;
+  const h = window.innerHeight - insets;
+  if (!w || h <= 0) return GAME_HEIGHT;
+  return Math.max(GAME_HEIGHT, Math.min(1600, Math.round((GAME_WIDTH * h) / w)));
+})();
+
+/**
  * Matter.js setup, enabled only by the scenes that need physics (Doguinho, Fruit Merge) so the
  * other scenes don't pay for an idle physics world. Both step it manually with a fixed timestep.
  */

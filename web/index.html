@@ -82,6 +82,11 @@
         height: min(calc(100dvh - env(safe-area-inset-bottom) * 0.4), calc(100vw * 16 / 9));
         touch-action: none;
       }
+      /* The hub (see HubScene) fills everything below the status bar; games keep the 9:16 box. */
+      html.hub #game {
+        top: env(safe-area-inset-top);
+        height: auto;
+      }
       #game canvas {
         touch-action: none;
         display: block;
