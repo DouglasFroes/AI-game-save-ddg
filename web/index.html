@@ -74,11 +74,10 @@
         position: fixed;
         left: 0;
         right: 0;
-        /* Games keep the 9:16 box, centred between the status bar and the home indicator: the spare
-           height of taller phones is split evenly above and below (tinted by pageTint.ts). */
+        /* Games keep the 9:16 box right under the status bar; the spare height of taller phones is
+           an empty band below (tinted by pageTint.ts). */
         top: env(safe-area-inset-top);
-        bottom: env(safe-area-inset-bottom);
-        margin: auto 0;
+        bottom: auto;
         height: min(
           calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)),
           calc(100vw * 16 / 9)
@@ -93,7 +92,6 @@
          home indicator. */
       html.hub #game {
         bottom: calc(env(safe-area-inset-bottom) * 0.4);
-        margin: 0;
         height: auto;
       }
       #game canvas {

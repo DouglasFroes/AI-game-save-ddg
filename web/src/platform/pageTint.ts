@@ -11,6 +11,7 @@ const HUB_COLOR = '#06070f';
 const POLL_MS = 400;
 /** Let a scene finish its fade-in before its edges are sampled. */
 const SETTLE_MS = 450;
+const LATE_MS = 2000;
 
 const css = (c: Phaser.Display.Color): string => `rgb(${c.red}, ${c.green}, ${c.blue})`;
 
@@ -55,7 +56,7 @@ export function bindPageTint(game: Phaser.Game): void {
     if (!key || key === shown) return;
     shown = key;
     const mine = ++token;
-    window.setTimeout(() => {
+    const sample = () => {
       if (mine !== token) return;
       // The renderer keeps one pending snapshot at a time, so the two edges are read in turn.
       void (async () => {
@@ -65,6 +66,9 @@ export function bindPageTint(game: Phaser.Game): void {
           paint(top, bottom);
         }
       })();
-    }, SETTLE_MS);
+    };
+    // Read again later: a scene that fades or counts down in may not have drawn its edges yet.
+    window.setTimeout(sample, SETTLE_MS);
+    window.setTimeout(sample, LATE_MS);
   }, POLL_MS);
 }
