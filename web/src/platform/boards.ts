@@ -13,6 +13,8 @@ const BOARD_ALIAS: Readonly<Record<string, string>> = {
   ligapontos: 'ligapontos2',
   // Pouso Lunar: gravity, wind and pad sizes now ramp up much faster.
   lunar: 'lunar2',
+  // Pôquer became Poker Squares: the old scores were chips left in video poker.
+  poquer: 'poquer2',
 };
 
 export const boardId = (gameId: string): string => BOARD_ALIAS[gameId] ?? gameId;

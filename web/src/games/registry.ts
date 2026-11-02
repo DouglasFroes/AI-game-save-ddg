@@ -2229,7 +2229,7 @@ export const GAMES: readonly GameDefinition[] = [
   {
     id: 'poquer',
     title: 'Pôquer',
-    tagline: 'Segure as cartas certas',
+    tagline: 'Monte mãos na grade 5×5',
     icon: 'poquer-icon',
     emoji: '🂮',
     color: 0x15803d,
@@ -2237,8 +2237,8 @@ export const GAMES: readonly GameDefinition[] = [
     entryScene: SceneKeys.Poquer,
     load: () => import('./poquer/PoquerScene').then((m) => [m.PoquerScene]),
     columns: [
-      { key: 'score', label: 'Fichas', x: 450, format: formatNumber },
-      { key: 'best', label: 'Melhor mão', x: 620 },
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'best', label: 'Melhor linha', x: 620 },
     ],
     personalBest: storedBest('poquer'),
   },

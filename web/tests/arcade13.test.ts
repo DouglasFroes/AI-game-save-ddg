@@ -6,7 +6,7 @@ import { BOARD, DartsGame, scoreAt } from '@/games/dardos/core';
 import { COLS, ROAD, ROWS, TowerDefense } from '@/games/defesa/core';
 import { Diner } from '@/games/lanchonete/core';
 import { MineRun, UPGRADES } from '@/games/mina/core';
-import { evaluate, PokerSession, type Card } from '@/games/poquer/core';
+import { CELLS, evaluate, partial, PokerSquares, SIZE, type Card } from '@/games/poquer/core';
 import { SkiJump } from '@/games/saltoesqui/core';
 
 function seeded(seed: number): () => number {
@@ -181,30 +181,75 @@ describe('pôquer', () => {
       rank: '23456789TJQKA'.indexOf(t[0]!) + 2,
       suit: ({ s: '♠', h: '♥', d: '♦', c: '♣' } as const)[t[1] as 's' | 'h' | 'd' | 'c'],
     }));
-  it('ranks hands like Jacks or Better', () => {
+
+  it('ranks five-card hands', () => {
     expect(evaluate(hand('Ts Js Qs Ks As'))).toBe('royal');
     expect(evaluate(hand('9h Th Jh Qh Kh'))).toBe('straightFlush');
     expect(evaluate(hand('As 2d 3c 4h 5s'))).toBe('straight');
     expect(evaluate(hand('Kc Kd Ks 2h 2s'))).toBe('fullHouse');
-    expect(evaluate(hand('Jc Jd 4s 7h 9s'))).toBe('jacks');
-    expect(evaluate(hand('Tc Td 4s 7h 9s'))).toBe('nothing');
+    expect(evaluate(hand('2c 2d 4s 7h 9s'))).toBe('pair');
     expect(evaluate(hand('Tc Td 4s 4h 9s'))).toBe('twoPair');
+    expect(evaluate(hand('2c 5d 4s 7h 9s'))).toBe('nothing');
   });
 
-  it('a session lasts 25 hands unless chips run out', () => {
-    const s = new PokerSession(seeded(7));
-    let hands = 0;
-    while (!s.over && hands < 40) {
-      s.deal();
-      // Hold pairs and high cards: a simple strategy.
-      s.hand.forEach((c, i) => {
-        if (c.rank >= 11 || s.hand.filter((d) => d.rank === c.rank).length > 1) s.toggle(i);
-      });
-      s.draw();
-      hands++;
+  it('shows what an unfinished line already holds', () => {
+    expect(partial(hand('Kc Kd 4s'))).toBe('pair');
+    expect(partial(hand('Kc Kd Ks'))).toBe('three');
+    expect(partial(hand('Kc 2d 4s'))).toBe('nothing');
+  });
+
+  it('a line pays only once it is full, and the grid fills in 25 placements', () => {
+    const t = new PokerSquares(seeded(3));
+    for (let i = 0; i < SIZE - 1; i++) expect(t.place(i)).toEqual([]);
+    expect(t.score).toBe(0);
+    const closed = t.place(SIZE - 1)!;
+    expect(closed).toHaveLength(1);
+    expect(closed[0]!.line).toMatchObject({ kind: 'row', index: 0 });
+    // A taken square refuses a second card.
+    expect(t.place(0)).toBeNull();
+    for (let i = SIZE; i < CELLS; i++) t.place(i);
+    expect(t.over).toBe(true);
+    expect(t.current).toBeNull();
+    expect(t.states()).toHaveLength(10);
+    expect(t.score).toBe(t.states().reduce((sum, s) => sum + s.points, 0));
+  });
+
+  it('placing cards with some thought beats dropping them anywhere', () => {
+    // Greedy: stack matching ranks together; random: first free square in shuffled order.
+    const play = (seed: number, smart: boolean): number => {
+      const t = new PokerSquares(seeded(seed));
+      const pick = seeded(seed + 1000);
+      while (!t.over) {
+        const card = t.current!;
+        const free = [...Array(CELLS).keys()].filter((c) => !t.grid[c]);
+        let cell = free[Math.floor(pick() * free.length)]!;
+        if (smart) {
+          let bestFit = -1;
+          for (const c of free) {
+            const r = Math.floor(c / SIZE);
+            const col = c % SIZE;
+            let fit = 0;
+            for (let k = 0; k < SIZE; k++) {
+              if (t.grid[r * SIZE + k]?.rank === card.rank) fit += 2;
+              if (t.grid[k * SIZE + col]?.rank === card.rank) fit += 2;
+            }
+            if (fit > bestFit) {
+              bestFit = fit;
+              cell = c;
+            }
+          }
+        }
+        t.place(cell);
+      }
+      return t.score;
+    };
+    let smart = 0;
+    let random = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      smart += play(seed, true);
+      random += play(seed, false);
     }
-    expect(hands).toBeLessThanOrEqual(25);
-    expect(s.over).toBe(true);
+    expect(smart).toBeGreaterThan(random * 1.3);
   });
 });
 

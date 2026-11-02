@@ -197,6 +197,7 @@ export const GAMES_CATALOG: readonly GameMeta[] = [
     color: '#f97316',
     category: 'acao',
   },
+  { id: 'poquer2', title: 'Pôquer II', emoji: '🂮', color: '#15803d', category: 'mesa' },
   { id: 'ligapontos2', title: 'Liga Pontos II', emoji: '🔗', color: '#06b6d4', category: 'puzzle' },
   { id: 'lunar2', title: 'Pouso Lunar II', emoji: '🚀', color: '#64748b', category: 'acao' },
   { id: 'ritmo', title: 'Círculos do Ritmo', emoji: '🎵', color: '#e879f9', category: 'reflexo' },
