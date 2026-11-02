@@ -3,6 +3,7 @@ import { GAME_HEIGHT, GAME_WIDTH, SceneKeys } from '@/config';
 import { GAMES, type GameDefinition, type GameId } from '@/games/registry';
 import { trendingGames } from '@/platform/trending';
 import { HUB_FONT } from '@/platform/fonts';
+import { FrameMeter, isLite, rememberSlowDevice } from '@/platform/perf';
 import {
   canFullscreen,
   exitFullscreen,
@@ -79,6 +80,8 @@ const HERO_H = 510;
 const STAGE = { x: 468, y: 196 };
 const POSTER_W = 204;
 const POSTER_H = 306;
+/** Posters this far outside the screen (px) are hidden, so they cost nothing to draw. */
+const CULL_MARGIN = 80;
 const POSTER_GAP = 16;
 const ROW_H = 410;
 const TOP10_NUMBER_W = 112;
@@ -233,6 +236,13 @@ export class HubScene extends Phaser.Scene {
   /** Looping decorations of whatever the list currently shows; stopped when it is rebuilt. */
   private fx: Phaser.Tweens.Tween[] = [];
   private slideFx: Phaser.Tweens.Tween[] = [];
+  /** Every poster of the current list, to hide the ones off screen. */
+  private posters: Phaser.GameObjects.Container[] = [];
+  /** The scroll the list was last laid out for (NaN forces a redraw). */
+  private drawnScroll = Number.NaN;
+  /** Checks the frame rate once; a slow phone switches to the lite look (see platform/perf). */
+  private meter: FrameMeter | null = null;
+  private goLite = false;
 
   create(): void {
     performance.mark('hub-start');
@@ -246,6 +256,10 @@ export class HubScene extends Phaser.Scene {
     this.chips = [];
     this.fx = [];
     this.slideFx = [];
+    this.posters = [];
+    this.drawnScroll = Number.NaN;
+    this.meter = isLite() ? null : new FrameMeter();
+    this.goLite = false;
     this.tabItems = new Map();
     this.greetName = null;
     this.slideBox = null;
@@ -397,6 +411,8 @@ export class HubScene extends Phaser.Scene {
       .image(0, 0, auroraBackground(this, GAME_WIDTH, GAME_HEIGHT))
       .setOrigin(0)
       .setDepth(-10);
+    // The big add-blended glows and twinkling stars are the costliest part of the backdrop.
+    if (isLite()) return;
     const still = reducedMotion();
     const drift = (x: number, y: number, tint: number, scale: number, dx: number, dy: number) => {
       const b = this.add
@@ -563,7 +579,7 @@ export class HubScene extends Phaser.Scene {
 
   /** A looping decoration owned by the list (stopped when the list is rebuilt). */
   private loop(config: Phaser.Types.Tweens.TweenBuilderConfig, slide = false): void {
-    if (reducedMotion()) return;
+    if (reducedMotion() || isLite()) return;
     (slide ? this.slideFx : this.fx).push(this.tweens.add({ repeat: -1, ...config }));
   }
 
@@ -597,7 +613,8 @@ export class HubScene extends Phaser.Scene {
       .setTint(color)
       .setScale(scale)
       .setAlpha(alpha)
-      .setBlendMode(Phaser.BlendModes.ADD);
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setVisible(!isLite());
   }
 
   // ── Header and dock ─────────────────────────────────────────────────────
@@ -1004,6 +1021,7 @@ export class HubScene extends Phaser.Scene {
     for (const child of this.list.list) this.tweens.killTweensOf(child);
     this.slideBox?.list.forEach((child) => this.tweens.killTweensOf(child));
     this.list.removeAll(true);
+    this.posters = [];
     this.shelves = [];
     this.slideBox = null;
     this.progress = null;
@@ -1495,7 +1513,7 @@ export class HubScene extends Phaser.Scene {
     const c = this.add.container(x, y);
     const iconY = -POSTER_H / 2 + 120;
     c.add(this.add.image(0, 0, posterArt(this, game, POSTER_W, POSTER_H, ALL(24))));
-    c.add(this.halo(0, iconY, game.color, 1.3, 0.42));
+    if (!isLite()) c.add(this.halo(0, iconY, game.color, 1.3, 0.42));
     c.add(this.groundShadow(0, iconY + 72, 96));
     const icon = this.add.image(0, iconY, game.icon);
     icon.setScale(Math.min(122 / icon.width, 122 / icon.height));
@@ -1549,6 +1567,7 @@ export class HubScene extends Phaser.Scene {
     }
 
     this.press(c, POSTER_W, POSTER_H, () => this.openSheet(game), { inList: true, down: 0.95 });
+    this.posters.push(c);
     return c;
   }
 
@@ -1925,22 +1944,61 @@ export class HubScene extends Phaser.Scene {
     return [pos, vel];
   }
 
-  override update(_t: number, deltaMs: number): void {
+  override update(time: number, deltaMs: number): void {
     if (!this.list) return;
+    this.watchFrameRate(time);
     const dt = deltaMs / 1000;
     const g = this.gesture;
     if (!g || g.axis !== 'y') {
       [this.scroll, this.velocity] = this.glide(this.scroll, this.velocity, this.maxScroll, dt);
     }
+    let shelfMoved = false;
     for (const s of this.shelves) {
       if (!s.box) continue;
       if (!(g && g.shelf === s && g.axis === 'x')) {
         [s.scroll, s.velocity] = this.glide(s.scroll, s.velocity, s.max, dt);
       }
-      s.box.x = -s.scroll;
+      if (s.box.x !== -s.scroll) {
+        s.box.x = -s.scroll;
+        shelfMoved = true;
+      }
     }
-    this.applyScroll();
+    // Nothing to redraw while the list rests; only the changes cost anything.
+    if (this.scroll !== this.drawnScroll) this.applyScroll();
+    else if (shelfMoved) this.cullPosters();
     this.tickSlides(deltaMs);
+  }
+
+  /** Measures the frame rate once; on a slow phone the hub rebuilds itself in the lite look. */
+  private watchFrameRate(time: number): void {
+    if (this.meter?.push(time) === 'slow') {
+      this.meter = null;
+      rememberSlowDevice();
+      this.goLite = true;
+    }
+    // Rebuilding resets the scene, so wait until the player isn't touching anything.
+    if (this.goLite && !this.gesture && !this.sheet && !this.opening && !this.searching) {
+      this.goLite = false;
+      this.scene.restart();
+    }
+  }
+
+  /** Hides the posters outside the screen: the engine skips hidden objects entirely. */
+  private cullPosters(): void {
+    const top = this.scroll - CULL_MARGIN;
+    const bottom = this.scroll + GAME_HEIGHT + CULL_MARGIN;
+    for (const p of this.posters) {
+      const parent = p.parentContainer;
+      if (!parent) continue;
+      // A shelf's posters sit in a box that slides sideways; the grid's sit in the list itself.
+      const x = p.x + (parent === this.list ? 0 : parent.x);
+      const visible =
+        x + POSTER_W / 2 > -CULL_MARGIN &&
+        x - POSTER_W / 2 < GAME_WIDTH + CULL_MARGIN &&
+        p.y + POSTER_H / 2 > top &&
+        p.y - POSTER_H / 2 < bottom;
+      if (p.visible !== visible) p.setVisible(visible);
+    }
   }
 
   /** The hero moves on by itself, unless the player is busy with something else. */
@@ -1954,7 +2012,9 @@ export class HubScene extends Phaser.Scene {
   }
 
   private applyScroll(): void {
+    this.drawnScroll = this.scroll;
     this.list.y = -this.scroll;
+    this.cullPosters();
     savedScroll[this.tab] = Phaser.Math.Clamp(this.scroll, 0, this.maxScroll);
     // On the home page the header is see-through until the page scrolls under it.
     this.headerSolid.setAlpha(

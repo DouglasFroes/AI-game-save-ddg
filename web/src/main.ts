@@ -11,6 +11,7 @@ import { publishNotice } from '@/platform/notices';
 import { installPrompt } from '@/platform/pwa/installPrompt';
 import { registerServiceWorker } from '@/platform/pwa/register';
 import { bindBrowserLifecycle } from '@/platform/sessionTracker';
+import { isLite } from '@/platform/perf';
 import { bindConnectivitySync } from '@/platform/sync';
 import { createServices, provideServices } from '@/services';
 
@@ -32,7 +33,8 @@ const game = new Phaser.Game({
   },
   dom: { createContainer: true },
   disableContextMenu: true,
-  render: { antialias: true },
+  // Texture smoothing stays on; only the canvas MSAA (costly on weak GPUs) goes in lite mode.
+  render: { antialias: true, antialiasGL: !isLite() },
   // Each game's scenes are added on demand by platform/gameLoader.ts.
   scene: [BootScene, HubScene, LeaderboardScene, GameOverScene, HallScene],
 });
