@@ -12,6 +12,7 @@ import { installPrompt } from '@/platform/pwa/installPrompt';
 import { registerServiceWorker } from '@/platform/pwa/register';
 import { bindBrowserLifecycle } from '@/platform/sessionTracker';
 import { isLite } from '@/platform/perf';
+import { bindPageTint } from '@/platform/pageTint';
 import { bindConnectivitySync } from '@/platform/sync';
 import { createServices, provideServices } from '@/services';
 
@@ -40,6 +41,7 @@ const game = new Phaser.Game({
 });
 
 provideServices(game, services);
+bindPageTint(game);
 bindBrowserLifecycle(services.sessionTracker);
 // Runs played offline are already saved on the device; send them once the connection is back.
 bindConnectivitySync(services, window, document, (scores) =>
