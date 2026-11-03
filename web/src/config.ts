@@ -219,6 +219,15 @@ export const SceneKeys = {
   Suprema: 'Suprema',
   Captura: 'Captura',
   Muralha: 'Muralha',
+  Facas: 'Facas',
+  Buraco: 'Buraco',
+  Estilingue: 'Estilingue',
+  Pendulo: 'Pendulo',
+  Ninja: 'Ninja',
+  Sumo: 'Sumo',
+  Esquiva: 'Esquiva',
+  Escudo: 'Escudo',
+  Corda: 'Corda',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

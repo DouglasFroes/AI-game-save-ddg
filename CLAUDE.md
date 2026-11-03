@@ -10,7 +10,7 @@ Liga Pontos, Pescaria, Pouso Lunar, Defesa Antimísseis, Moto de Luz, Sinuca, Ma
 Apaga Luzes, Quebra-Cabeça Deslizante, Senha das Cores, Caça-Palavras, Anagrama, Binário, Soma Dez, Caça ao
 Tesouro, Labirinto no Escuro, Círculos do Ritmo, Paraquedas, Chuva de Letras, Cubo Saltitante, Pássaro das
 Colinas, Canhão, Equilíbrio, Desarme a Bomba, Controle de Tráfego, Torre de Controle, Lanchonete, Defesa da
-Torre, Mina de Ouro, Pôquer, Dardos, Futebol de Botão, Salto de Esqui, Corrida de 100 m, Mancala, Hex, Trilha, Pontinhos, Resta Um, Raposa e Gansos, Velha Suprema, Captura, Muralha), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
+Torre, Mina de Ouro, Pôquer, Dardos, Futebol de Botão, Salto de Esqui, Corrida de 100 m, Mancala, Hex, Trilha, Pontinhos, Resta Um, Raposa e Gansos, Velha Suprema, Captura, Muralha, Lança Facas, Buraco Negro, Estilingue, Pêndulo, Ninja, Sumô, Esquiva, Escudo, Pular Corda), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
 (+ Three.js, only in Grau 3D). Backend: Rust (Axum + SQLx) + PostgreSQL, served from one Docker image
 (Dokploy). Node 22.13+.
 
@@ -69,3 +69,10 @@ Mancala, Hex, Trilha, Pontinhos, Raposa e Gansos, Velha Suprema, Captura and Mur
 (`web/src/platform/ui/boardGame.ts`): a series against the CPU where each win raises its level and the first
 loss ends the run. Each has a pure `core.ts` with a `cpuMove(state, level, rng)`; `web/tests/tabuleiro.test.ts`
 proves a stronger bot beats a weaker one. Resta Um is a solo puzzle (`MiniScene`) with a DFS solver in its core.
+
+## Action arcade batch
+
+Lança Facas, Buraco Negro, Estilingue, Pêndulo, Ninja, Sumô, Esquiva, Escudo and Pular Corda are solo
+`MiniScene` games over a pure `core.ts` simulation (`step(dt)` + input methods). Each core ships a `botAct`/
+`botTarget`/`bestPull` helper that `web/tests/acao9.test.ts` uses to prove the game is playable (a bot
+survives, an idle player doesn't).

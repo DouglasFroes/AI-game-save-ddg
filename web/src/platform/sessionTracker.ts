@@ -150,6 +150,15 @@ export const SCENE_TO_GAME: Readonly<Record<string, GameId>> = {
   [SceneKeys.Suprema]: 'suprema',
   [SceneKeys.Captura]: 'captura',
   [SceneKeys.Muralha]: 'muralha',
+  [SceneKeys.Facas]: 'facas',
+  [SceneKeys.Buraco]: 'buraco',
+  [SceneKeys.Estilingue]: 'estilingue',
+  [SceneKeys.Pendulo]: 'pendulo',
+  [SceneKeys.Ninja]: 'ninja',
+  [SceneKeys.Sumo]: 'sumo',
+  [SceneKeys.Esquiva]: 'esquiva',
+  [SceneKeys.Escudo]: 'escudo',
+  [SceneKeys.Corda]: 'corda',
 };
 
 interface ActiveRun {

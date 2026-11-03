@@ -151,7 +151,16 @@ export type GameId =
   | 'raposa'
   | 'suprema'
   | 'captura'
-  | 'muralha';
+  | 'muralha'
+  | 'facas'
+  | 'buraco'
+  | 'estilingue'
+  | 'pendulo'
+  | 'ninja'
+  | 'sumo'
+  | 'esquiva'
+  | 'escudo'
+  | 'corda';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -2466,6 +2475,148 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'walls', label: 'Muros', x: 655 },
     ],
     personalBest: storedBest('muralha'),
+  },
+  {
+    id: 'facas',
+    title: 'Lança Facas',
+    tagline: 'Fixe as facas sem bater nas outras',
+    icon: 'facas-icon',
+    emoji: '🔪',
+    color: 0xea580c,
+    shade: 0x7c2d12,
+    entryScene: SceneKeys.Facas,
+    load: () => import('./facas/FacasScene').then((m) => [m.FacasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'stage', label: 'Fase', x: 620 },
+    ],
+    personalBest: storedBest('facas'),
+  },
+  {
+    id: 'buraco',
+    title: 'Buraco Negro',
+    tagline: 'Engula tudo e cresça em 60 s',
+    icon: 'buraco-icon',
+    emoji: '🕳️',
+    color: 0x7c3aed,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Buraco,
+    load: () => import('./buraco/BuracoScene').then((m) => [m.BuracoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'eaten', label: 'Engolidos', x: 560 },
+      { key: 'size', label: 'Tamanho', x: 665 },
+    ],
+    personalBest: storedBest('buraco'),
+  },
+  {
+    id: 'estilingue',
+    title: 'Estilingue',
+    tagline: 'Derrube as torres e estoure os porcos',
+    icon: 'estilingue-icon',
+    emoji: '🐷',
+    color: 0x16a34a,
+    shade: 0x14532d,
+    entryScene: SceneKeys.Estilingue,
+    load: () => import('./estilingue/EstilingueScene').then((m) => [m.EstilingueScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'stage', label: 'Fase', x: 620 },
+    ],
+    personalBest: storedBest('estilingue'),
+  },
+  {
+    id: 'pendulo',
+    title: 'Pêndulo',
+    tagline: 'Balance de gancho em gancho sobre a lava',
+    icon: 'pendulo-icon',
+    emoji: '🕸️',
+    color: 0xea580c,
+    shade: 0x44403c,
+    entryScene: SceneKeys.Pendulo,
+    load: () => import('./pendulo/PenduloScene').then((m) => [m.PenduloScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'meters', label: 'Metros', x: 620 },
+    ],
+    personalBest: storedBest('pendulo'),
+  },
+  {
+    id: 'ninja',
+    title: 'Ninja',
+    tagline: 'Pule entre as paredes desviando de tudo',
+    icon: 'ninja-icon',
+    emoji: '🥷',
+    color: 0x475569,
+    shade: 0x0f172a,
+    entryScene: SceneKeys.Ninja,
+    load: () => import('./ninja/NinjaScene').then((m) => [m.NinjaScene]),
+    columns: [{ key: 'score', label: 'Pontos', x: 450, format: formatNumber }],
+    personalBest: storedBest('ninja'),
+  },
+  {
+    id: 'sumo',
+    title: 'Sumô',
+    tagline: 'Empurre os rivais para fora do ringue',
+    icon: 'sumo-icon',
+    emoji: '🤼',
+    color: 0xdb2777,
+    shade: 0x4a044e,
+    entryScene: SceneKeys.Sumo,
+    load: () => import('./sumo/SumoScene').then((m) => [m.SumoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wave', label: 'Onda', x: 565 },
+      { key: 'knocked', label: 'Fora', x: 665 },
+    ],
+    personalBest: storedBest('sumo'),
+  },
+  {
+    id: 'esquiva',
+    title: 'Esquiva',
+    tagline: 'Desvie de uma chuva de balas',
+    icon: 'esquiva-icon',
+    emoji: '🚀',
+    color: 0x0284c7,
+    shade: 0x082f49,
+    entryScene: SceneKeys.Esquiva,
+    load: () => import('./esquiva/EsquivaScene').then((m) => [m.EsquivaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'seconds', label: 'Segundos', x: 565 },
+      { key: 'stars', label: 'Estrelas', x: 665 },
+    ],
+    personalBest: storedBest('esquiva'),
+  },
+  {
+    id: 'escudo',
+    title: 'Escudo',
+    tagline: 'Gire o escudo e bloqueie os tiros',
+    icon: 'escudo-icon',
+    emoji: '🛡️',
+    color: 0x8b5cf6,
+    shade: 0x2e1065,
+    entryScene: SceneKeys.Escudo,
+    load: () => import('./escudo/EscudoScene').then((m) => [m.EscudoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'blocked', label: 'Bloqueios', x: 565 },
+      { key: 'combo', label: 'Combo', x: 665 },
+    ],
+    personalBest: storedBest('escudo'),
+  },
+  {
+    id: 'corda',
+    title: 'Pular Corda',
+    tagline: 'Pule no tempo certo, a corda acelera',
+    icon: 'corda-icon',
+    emoji: '🪢',
+    color: 0x14b8a6,
+    shade: 0x134e4a,
+    entryScene: SceneKeys.Corda,
+    load: () => import('./corda/CordaScene').then((m) => [m.CordaScene]),
+    columns: [{ key: 'score', label: 'Pontos', x: 450, format: formatNumber }],
+    personalBest: storedBest('corda'),
   },
 ];
 
