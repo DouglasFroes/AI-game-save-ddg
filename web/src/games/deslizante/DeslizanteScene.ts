@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import { banner, flash, hint, shockwave } from '@/platform/ui/juice';
 import { MiniScene } from '@/platform/ui/miniGame';
-import { addText } from '@/platform/ui/widgets';
+import { addText, TimeBar } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { boardPoints, generate, timeBonus, type SlideBoard } from './core';
 
@@ -17,6 +17,7 @@ export class DeslizanteScene extends MiniScene {
   private board!: SlideBoard;
   private level = 1;
   private score = 0;
+  private timeBar!: TimeBar;
   private timeLeft = START_TIME;
   private g!: Phaser.GameObjects.Graphics;
   private labels: Phaser.GameObjects.Text[] = [];
@@ -39,6 +40,7 @@ export class DeslizanteScene extends MiniScene {
       stroke: '#1e1b4b',
       strokeThickness: 6,
     }).setDepth(50);
+    this.timeBar = new TimeBar(this, 214);
     this.loadLevel();
     this.hintBox = hint(
       this,
@@ -106,9 +108,8 @@ export class DeslizanteScene extends MiniScene {
       );
     }
     const b = this.board;
-    this.statusText.setText(
-      `Nível ${this.level} · ${b.n}×${b.n} · ⏱ ${Math.ceil(this.timeLeft)}s · Movimentos ${b.moves}`,
-    );
+    this.timeBar.set(this.timeLeft);
+    this.statusText.setText(`Nível ${this.level} · ${b.n}×${b.n} · Movimentos ${b.moves}`);
     this.draw();
   }
 

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import { banner, flash, hint, shockwave } from '@/platform/ui/juice';
 import { MiniScene } from '@/platform/ui/miniGame';
-import { addText } from '@/platform/ui/widgets';
+import { addText, TimeBar } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { BinaryBoard, boardPoints, generate, timeFor } from './core';
 
@@ -17,6 +17,7 @@ export class BinarioScene extends MiniScene {
   private board!: BinaryBoard;
   private level = 1;
   private score = 0;
+  private timeBar!: TimeBar;
   private timeLeft = 0;
   private g!: Phaser.GameObjects.Graphics;
   private digits: Phaser.GameObjects.Text[] = [];
@@ -38,6 +39,7 @@ export class BinarioScene extends MiniScene {
       stroke: '#0c4a6e',
       strokeThickness: 6,
     }).setDepth(50);
+    this.timeBar = new TimeBar(this, 214);
     addText(
       this,
       GAME_WIDTH / 2,
@@ -60,6 +62,7 @@ export class BinarioScene extends MiniScene {
   private newBoard(): void {
     this.board = new BinaryBoard(generate(this.level));
     this.timeLeft = timeFor(this.board.puzzle.n);
+    this.timeBar?.reset(this.timeLeft);
     for (const t of this.digits) t.destroy();
     const n = this.board.puzzle.n;
     const cs = BOARD / n;
@@ -121,9 +124,8 @@ export class BinarioScene extends MiniScene {
     }
     const b = this.board;
     const n = b.puzzle.n;
-    this.statusText.setText(
-      `Nível ${this.level} · ${n}×${n} · ⏱ ${Math.ceil(this.timeLeft)}s · ${b.filled}/${n * n}`,
-    );
+    this.timeBar.set(this.timeLeft);
+    this.statusText.setText(`Nível ${this.level} · ${n}×${n} · ${b.filled}/${n * n}`);
     this.draw();
   }
 

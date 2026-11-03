@@ -1,7 +1,7 @@
 import { GAME_WIDTH } from '@/config';
 import { banner } from '@/platform/ui/juice';
 import { heartsLabel, MiniScene } from '@/platform/ui/miniGame';
-import { addText, Button, iconButton } from '@/platform/ui/widgets';
+import { addText, Button, iconButton, TimeBar } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 
 /** Seconds on the clock at the start of a run, the most it can hold, and what a solved level adds. */
@@ -37,6 +37,7 @@ export abstract class PuzzleScene extends MiniScene {
 
   private ruleObjects: Phaser.GameObjects.GameObject[] = [];
   private helpOpen = false;
+  private timeBar!: TimeBar;
 
   protected abstract startLevel(): void;
 
@@ -65,6 +66,7 @@ export abstract class PuzzleScene extends MiniScene {
       stroke,
       strokeThickness: 6,
     }).setDepth(50);
+    this.timeBar = new TimeBar(this, 214, MAX_TIME);
     this.startLevel();
     this.refreshStatus();
     const card = this.rules();
@@ -130,8 +132,9 @@ export abstract class PuzzleScene extends MiniScene {
 
   protected refreshStatus(): void {
     const extra = this.hud();
+    this.timeBar.set(this.timeLeft);
     this.statusText.setText(
-      `Fase ${this.level} · ⏱ ${Math.max(0, Math.ceil(this.timeLeft))}s · ${heartsLabel(this.lives, START_LIVES)}${extra ? ` · ${extra}` : ''}`,
+      `Fase ${this.level} · ${heartsLabel(this.lives, START_LIVES)}${extra ? ` · ${extra}` : ''}`,
     );
   }
 

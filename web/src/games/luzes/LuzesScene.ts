@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import { banner, burst, flash, hint, shockwave } from '@/platform/ui/juice';
 import { MiniScene } from '@/platform/ui/miniGame';
-import { addText } from '@/platform/ui/widgets';
+import { addText, TimeBar } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { boardPoints, generate, levelSpec, timeBonus, type LightsBoard } from './core';
 
@@ -17,6 +17,7 @@ export class LuzesScene extends MiniScene {
   private level = 1;
   private score = 0;
   private perfect = 0;
+  private timeBar!: TimeBar;
   private timeLeft = START_TIME;
   private g!: Phaser.GameObjects.Graphics;
   private statusText!: Phaser.GameObjects.Text;
@@ -38,6 +39,7 @@ export class LuzesScene extends MiniScene {
       stroke: '#0f172a',
       strokeThickness: 6,
     }).setDepth(50);
+    this.timeBar = new TimeBar(this, 214);
     this.board = generate(levelSpec(1));
     this.hintBox = hint(
       this,
@@ -93,9 +95,8 @@ export class LuzesScene extends MiniScene {
       );
     }
     const b = this.board;
-    this.statusText.setText(
-      `Nível ${this.level} · ⏱ ${Math.ceil(this.timeLeft)}s · Toques ${b.moves}/${b.par} · Acesas ${b.lit}`,
-    );
+    this.timeBar.set(this.timeLeft);
+    this.statusText.setText(`Nível ${this.level} · Toques ${b.moves}/${b.par} · Acesas ${b.lit}`);
     this.draw();
   }
 

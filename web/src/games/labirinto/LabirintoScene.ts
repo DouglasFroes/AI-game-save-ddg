@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import { banner, burst, flash, hint, shockwave } from '@/platform/ui/juice';
 import { MiniScene } from '@/platform/ui/miniGame';
-import { addText } from '@/platform/ui/widgets';
+import { addText, TimeBar } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { Maze, sizeFor, timeFor, WALL, type Dir } from './core';
 
@@ -16,6 +16,7 @@ export class LabirintoScene extends MiniScene {
   private level = 1;
   private score = 0;
   private coins = 0;
+  private timeBar!: TimeBar;
   private timeLeft = 0;
   private trail: number[] = [];
   private shown = { x: 0, y: 0 };
@@ -39,6 +40,7 @@ export class LabirintoScene extends MiniScene {
       stroke: '#020617',
       strokeThickness: 6,
     }).setDepth(50);
+    this.timeBar = new TimeBar(this, 214);
     this.newMaze();
     this.hintBox = hint(
       this,
@@ -74,6 +76,7 @@ export class LabirintoScene extends MiniScene {
   private newMaze(): void {
     this.maze = new Maze(sizeFor(this.level));
     this.timeLeft = timeFor(this.maze.size);
+    this.timeBar?.reset(this.timeLeft);
     this.trail = [0];
     const p = this.center(0);
     this.shown = { x: p[0], y: p[1] };
@@ -135,9 +138,8 @@ export class LabirintoScene extends MiniScene {
         600,
       );
     }
-    this.statusText.setText(
-      `Labirinto ${this.level} · ${this.maze.size}×${this.maze.size} · ⏱ ${Math.ceil(this.timeLeft)}s`,
-    );
+    this.timeBar.set(this.timeLeft);
+    this.statusText.setText(`Labirinto ${this.level} · ${this.maze.size}×${this.maze.size} · `);
     // The marker glides along the corridor it just ran.
     const [tx, ty] = this.center(this.maze.pos);
     const k = Math.min(1, (deltaMs / 1000) * 14);

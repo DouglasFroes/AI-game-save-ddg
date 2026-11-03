@@ -171,3 +171,41 @@ export function addBackground(scene: Phaser.Scene): void {
     });
   }
 }
+
+/**
+ * A rounded countdown bar (full = all the time of the round, purple, red when nearly out) drawn
+ * under the status line. `reset(cap)` sets what "full" means; without a cap it grows to the most
+ * time seen, so bonuses never overflow it.
+ */
+export class TimeBar {
+  private readonly g: Phaser.GameObjects.Graphics;
+  private cap = 1;
+
+  constructor(
+    scene: Phaser.Scene,
+    private readonly y = 214,
+    private readonly fixedCap?: number,
+  ) {
+    this.g = scene.add.graphics().setDepth(50);
+    if (fixedCap) this.cap = fixedCap;
+  }
+
+  /** A new round: `cap` seconds is a full bar. */
+  reset(cap: number): void {
+    this.cap = Math.max(1, cap);
+  }
+
+  set(timeLeft: number): void {
+    if (!this.fixedCap) this.cap = Math.max(this.cap, timeLeft);
+    const k = Math.max(0, Math.min(1, timeLeft / this.cap));
+    const g = this.g.clear();
+    g.fillStyle(0xffffff, 0.95).fillRoundedRect(60, this.y - 13, GAME_WIDTH - 120, 26, 13);
+    g.fillStyle(k > 0.25 ? 0x7209b7 : 0xff3b3b, 1).fillRoundedRect(
+      64,
+      this.y - 9,
+      Math.max(18, (GAME_WIDTH - 128) * k),
+      18,
+      9,
+    );
+  }
+}

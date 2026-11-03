@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import { banner, burst, flash, hint, shockwave } from '@/platform/ui/juice';
 import { MiniScene } from '@/platform/ui/miniGame';
-import { addText } from '@/platform/ui/widgets';
+import { addText, TimeBar } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { boardTime, findWord, generate, lineCells, SIZE, type WordGrid } from './core';
 
@@ -18,6 +18,7 @@ export class CacaPalavrasScene extends MiniScene {
   private score = 0;
   private wordsFound = 0;
   private found = new Set<number>();
+  private timeBar!: TimeBar;
   private timeLeft = 0;
   private dragFrom: number | null = null;
   private dragTo: number | null = null;
@@ -44,6 +45,7 @@ export class CacaPalavrasScene extends MiniScene {
       stroke: '#14532d',
       strokeThickness: 6,
     }).setDepth(50);
+    this.timeBar = new TimeBar(this, 214);
     for (let i = 0; i < SIZE * SIZE; i++)
       this.letters.push(
         addText(
@@ -84,6 +86,7 @@ export class CacaPalavrasScene extends MiniScene {
     this.grid = generate(this.board);
     this.found = new Set();
     this.timeLeft = boardTime(this.board);
+    this.timeBar?.reset(this.timeLeft);
     this.grid.letters.forEach((ch, i) => this.letters[i]!.setText(ch));
     for (const t of this.wordTexts) t.destroy();
     this.wordTexts = this.grid.words.map((w, i) =>
@@ -152,8 +155,9 @@ export class CacaPalavrasScene extends MiniScene {
         600,
       );
     }
+    this.timeBar.set(this.timeLeft);
     this.statusText.setText(
-      `Quadro ${this.board} · ⏱ ${Math.ceil(this.timeLeft)}s · ${this.found.size}/${this.grid.words.length} palavras`,
+      `Quadro ${this.board} · ${this.found.size}/${this.grid.words.length} palavras`,
     );
     this.draw();
   }
