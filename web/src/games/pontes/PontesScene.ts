@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { degree, generate, isSolved, toggle, type Puzzle } from './core';
@@ -22,6 +22,17 @@ export class PontesScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Pontes, 'pontes', [0x0f766e, 0x042f2e]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Ligar todas as ilhas com pontes.',
+      steps: [
+        'Toque numa ilha e depois em outra na mesma linha ou coluna para fazer uma ponte; toque de novo para ponte dupla.',
+        'O número da ilha é quantas pontes ela precisa ter.',
+        'Pontes não se cruzam e todas as ilhas ficam conectadas.',
+      ],
+    };
   }
 
   create(): void {

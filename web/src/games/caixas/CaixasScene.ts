@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { generate, isSolved, move, start, type Level, type State } from './core';
@@ -23,6 +23,18 @@ export class CaixasScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Caixas, 'caixas', [0x92400e, 0x1c1917]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Colocar todas as caixas em cima dos alvos.',
+      steps: [
+        'Deslize o dedo no tabuleiro (ou use as setas) para mover o personagem; ao andar contra uma caixa, você a empurra.',
+        'Você só empurra, nunca puxa: cuidado para não encostar uma caixa num canto.',
+        'Errou? Use Desfazer ou Reiniciar.',
+        'Termina quando todas as caixas estiverem nos alvos.',
+      ],
+    };
   }
 
   create(): void {

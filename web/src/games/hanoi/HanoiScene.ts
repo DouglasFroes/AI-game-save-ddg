@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { discsFor, isSolved, move, newGame, par, type Pegs } from './core';
@@ -22,6 +22,17 @@ export class HanoiScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Hanoi, 'hanoi', [0x0e7490, 0x082f49]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Levar todos os discos para a torre da direita.',
+      steps: [
+        'Toque numa torre para escolher o disco de cima e toque na torre de destino para movê-lo.',
+        'Só se move 1 disco por vez.',
+        'Nunca ponha um disco grande em cima de um menor.',
+      ],
+    };
   }
 
   create(): void {

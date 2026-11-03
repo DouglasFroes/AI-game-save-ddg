@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import {
@@ -32,6 +32,17 @@ export class FluxoScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Fluxo, 'fluxo', [0x1d4ed8, 0x0f172a]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Ligar os pares de pontos da mesma cor, preenchendo todo o tabuleiro.',
+      steps: [
+        'Arraste o dedo de um ponto até o outro da mesma cor, desenhando um cano.',
+        'Os canos não podem se cruzar.',
+        'No fim, nenhum quadrado pode ficar vazio.',
+      ],
+    };
   }
 
   create(): void {

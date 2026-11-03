@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { cycle, generate, isSolved, newSides, total, type Puzzle, type Side } from './core';
@@ -22,6 +22,17 @@ export class BalancaScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Balanca, 'balanca', [0xb45309, 0x451a03]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Deixar os dois pratos da balança com o mesmo peso.',
+      steps: [
+        'Toque num peso para levá-lo ao prato da esquerda; toque de novo para o da direita; de novo para voltar à mesa.',
+        'Todos os pesos precisam estar nos pratos.',
+        'Vence quando os dois lados pesam igual.',
+      ],
+    };
   }
 
   create(): void {

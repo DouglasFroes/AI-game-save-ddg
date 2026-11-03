@@ -28,7 +28,12 @@ export class GravidadeScene extends MiniScene {
       stroke: '#0f0720',
       strokeThickness: 6,
     }).setDepth(50);
-    this.hintBox = hint(this, ['Toque para inverter a gravidade', 'Fuja dos espinhos!'], 1190, 4500);
+    this.hintBox = hint(
+      this,
+      ['Toque para inverter a gravidade', 'Fuja dos espinhos!'],
+      1190,
+      4500,
+    );
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
       if (!this.ended && p.y > 140) this.flipNow();
     });
@@ -69,7 +74,9 @@ export class GravidadeScene extends MiniScene {
   private draw(): void {
     const g = this.g.clear();
     g.fillStyle(0x1e1b4b, 1).fillRect(0, CEIL, GAME_WIDTH, FLOOR - CEIL);
-    g.fillStyle(0x6d28d9, 1).fillRect(0, CEIL - 24, GAME_WIDTH, 24).fillRect(0, FLOOR, GAME_WIDTH, 24);
+    g.fillStyle(0x6d28d9, 1)
+      .fillRect(0, CEIL - 24, GAME_WIDTH, 24)
+      .fillRect(0, FLOOR, GAME_WIDTH, 24);
     // Speed lines.
     const off = (this.sim.t * this.sim.speed() * 0.5) % 240;
     g.lineStyle(4, 0x4c1d95, 0.7);
@@ -83,8 +90,16 @@ export class GravidadeScene extends MiniScene {
       for (let i = 0; i < teeth; i++) {
         const x0 = s.x - SPIKE_W / 2 + i * w;
         if (s.side === 1)
-          g.fillStyle(0xf43f5e, 1).fillTriangle(x0, FLOOR, x0 + w, FLOOR, x0 + w / 2, FLOOR - SPIKE_H);
-        else g.fillStyle(0xf43f5e, 1).fillTriangle(x0, CEIL, x0 + w, CEIL, x0 + w / 2, CEIL + SPIKE_H);
+          g.fillStyle(0xf43f5e, 1).fillTriangle(
+            x0,
+            FLOOR,
+            x0 + w,
+            FLOOR,
+            x0 + w / 2,
+            FLOOR - SPIKE_H,
+          );
+        else
+          g.fillStyle(0xf43f5e, 1).fillTriangle(x0, CEIL, x0 + w, CEIL, x0 + w / 2, CEIL + SPIKE_H);
       }
     }
   }

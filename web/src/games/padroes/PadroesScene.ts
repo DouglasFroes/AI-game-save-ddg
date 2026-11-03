@@ -1,5 +1,5 @@
 import { GAME_WIDTH, SceneKeys } from '@/config';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { generate, type Question } from './core';
 
@@ -13,6 +13,17 @@ export class PadroesScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Padroes, 'padroes', [0x4f46e5, 0x1e1b4b]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Descobrir o número que continua a sequência.',
+      steps: [
+        'Observe como os números mudam: somam, multiplicam, alternam…',
+        'Toque na alternativa que ocupa o lugar do ?.',
+        'Errar custa uma vida e bloqueia aquela alternativa.',
+      ],
+    };
   }
 
   create(): void {

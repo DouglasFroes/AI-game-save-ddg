@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import {
@@ -37,6 +37,17 @@ export class EncaixeScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Encaixe, 'encaixe', [0x0f766e, 0x042f2e]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Preencher o tabuleiro inteiro com as peças.',
+      steps: [
+        'Escolha uma peça embaixo e use Girar para rodá-la.',
+        'Toque no tabuleiro para encaixar a peça; toque numa peça já colocada para pegá-la de volta.',
+        'Não pode sobrar espaço nem sobrepor peças. Use Limpar para recomeçar.',
+      ],
+    };
   }
 
   create(): void {

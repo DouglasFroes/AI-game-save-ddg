@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { cross, isSolved, levelFor, solve, start, type Level, type State } from './core';
@@ -22,6 +22,17 @@ export class RioScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Rio, 'rio', [0x0369a1, 0x082f49]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Levar todo mundo para o outro lado do rio.',
+      steps: [
+        'Toque nas pessoas da margem para embarcar no barco, até o limite dele.',
+        'Toque em Atravessar; o barco precisa de pelo menos 1 pessoa.',
+        'Em qualquer margem (e no barco), canibais nunca podem ser mais que exploradores, senão eles são comidos.',
+      ],
+    };
   }
 
   create(): void {

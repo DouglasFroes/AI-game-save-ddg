@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { generate, roll, START_DIE, step, type Die, type Puzzle } from './core';
@@ -25,6 +25,17 @@ export class RolanteScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Rolante, 'rolante', [0x7c3aed, 0x1e1b4b]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Levar o dado até a bandeira com o número pedido virado para cima.',
+      steps: [
+        'Use as setas (ou deslize o dedo) para rolar o dado uma casa.',
+        'Cada rolada muda as faces: faces opostas somam 7.',
+        'Chegue à bandeira com o número pedido em cima.',
+      ],
+    };
   }
 
   create(): void {
