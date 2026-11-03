@@ -10,7 +10,7 @@ Liga Pontos, Pescaria, Pouso Lunar, Defesa Antimísseis, Moto de Luz, Sinuca, Ma
 Apaga Luzes, Quebra-Cabeça Deslizante, Senha das Cores, Caça-Palavras, Anagrama, Binário, Soma Dez, Caça ao
 Tesouro, Labirinto no Escuro, Círculos do Ritmo, Paraquedas, Chuva de Letras, Cubo Saltitante, Pássaro das
 Colinas, Canhão, Equilíbrio, Desarme a Bomba, Controle de Tráfego, Torre de Controle, Lanchonete, Defesa da
-Torre, Mina de Ouro, Pôquer, Dardos, Futebol de Botão, Salto de Esqui, Corrida de 100 m, Mancala, Hex, Trilha, Pontinhos, Resta Um, Raposa e Gansos, Velha Suprema, Captura, Muralha, Lança Facas, Buraco Negro, Estilingue, Pêndulo, Ninja, Sumô, Esquiva, Escudo, Pular Corda, Fábrica de Biscoitos, Fazendinha, Bolsa, Reino, Cidade, Aquário, Poções, Usina, Bichinho, Empurra Caixas, Torre de Hanói, Fluxo, Pontes, Rainhas, Sapos, Balança, Travessia do Rio, Passeio do Cavalo), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
+Torre, Mina de Ouro, Pôquer, Dardos, Futebol de Botão, Salto de Esqui, Corrida de 100 m, Mancala, Hex, Trilha, Pontinhos, Resta Um, Raposa e Gansos, Velha Suprema, Captura, Muralha, Lança Facas, Buraco Negro, Estilingue, Pêndulo, Ninja, Sumô, Esquiva, Escudo, Pular Corda, Fábrica de Biscoitos, Fazendinha, Bolsa, Reino, Cidade, Aquário, Poções, Usina, Bichinho, Empurra Caixas, Torre de Hanói, Fluxo, Pontes, Rainhas, Sapos, Balança, Travessia do Rio, Passeio do Cavalo, Torres, Quem Mente?, Moeda Falsa, Panquecas, Circuito, Encaixe, Dado Rolante, Jarros, Padrões), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
 (+ Three.js, only in Grau 3D). Backend: Rust (Axum + SQLx) + PostgreSQL, served from one Docker image
 (Dokploy). Node 22.13+.
 
@@ -90,3 +90,10 @@ Empurra Caixas, Torre de Hanói, Fluxo, Pontes, Rainhas, Sapos, Balança, Traves
 extend `PuzzleScene` (`web/src/platform/ui/puzzleGame.ts`): an endless series of levels against one shared
 clock, where each solved level scores and adds time. Each has a pure `core.ts` with a level `generate(level, rng)`
 that builds solvable levels by construction; `web/tests/puzzle9.test.ts` solves them to prove it.
+
+## Reasoning batch
+
+Torres, Quem Mente?, Moeda Falsa, Panquecas, Circuito, Encaixe, Dado Rolante, Jarros and Padrões are also
+`PuzzleScene` games, each built on a different mechanic (visibility clues, knights and knaves, weighing,
+prefix flips, logic gates, polyomino tiling, rolling die, water jugs, number series). Their pure cores
+(`web/tests/raciocinio9.test.ts`) prove every generated level can be solved.

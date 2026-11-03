@@ -246,6 +246,15 @@ export const SceneKeys = {
   Balanca: 'Balanca',
   Rio: 'Rio',
   Cavalo: 'Cavalo',
+  Torres: 'Torres',
+  Mentira: 'Mentira',
+  Moeda: 'Moeda',
+  Panquecas: 'Panquecas',
+  Circuito: 'Circuito',
+  Encaixe: 'Encaixe',
+  Rolante: 'Rolante',
+  Jarros: 'Jarros',
+  Padroes: 'Padroes',
 } as const;
 
 export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];

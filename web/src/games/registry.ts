@@ -178,7 +178,16 @@ export type GameId =
   | 'sapos'
   | 'balanca'
   | 'rio'
-  | 'cavalo';
+  | 'cavalo'
+  | 'torres'
+  | 'mentira'
+  | 'moeda'
+  | 'panquecas'
+  | 'circuito'
+  | 'encaixe'
+  | 'rolante'
+  | 'jarros'
+  | 'padroes';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -2918,6 +2927,150 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'levels', label: 'Fases', x: 620 },
     ],
     personalBest: storedBest('cavalo'),
+  },
+  {
+    id: 'torres',
+    title: 'Torres',
+    tagline: 'Preencha as alturas e conte as torres visíveis',
+    icon: 'torres-icon',
+    emoji: '🏙️',
+    color: 0x475569,
+    shade: 0x0f172a,
+    entryScene: SceneKeys.Torres,
+    load: () => import('./torres/TorresScene').then((m) => [m.TorresScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('torres'),
+  },
+  {
+    id: 'mentira',
+    title: 'Quem Mente?',
+    tagline: 'Descubra quem diz a verdade',
+    icon: 'mentira-icon',
+    emoji: '🕵️',
+    color: 0xe11d48,
+    shade: 0x2a0a14,
+    entryScene: SceneKeys.Mentira,
+    load: () => import('./mentira/MentiraScene').then((m) => [m.MentiraScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('mentira'),
+  },
+  {
+    id: 'moeda',
+    title: 'Moeda Falsa',
+    tagline: 'Ache a moeda pesada em poucas pesagens',
+    icon: 'moeda-icon',
+    emoji: '🪙',
+    color: 0xca8a04,
+    shade: 0x2a1a05,
+    entryScene: SceneKeys.Moeda,
+    load: () => import('./moeda/MoedaScene').then((m) => [m.MoedaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('moeda'),
+  },
+  {
+    id: 'panquecas',
+    title: 'Panquecas',
+    tagline: 'Vire e ordene a pilha de panquecas',
+    icon: 'panquecas-icon',
+    emoji: '🥞',
+    color: 0xd97706,
+    shade: 0x431407,
+    entryScene: SceneKeys.Panquecas,
+    load: () => import('./panquecas/PanquecasScene').then((m) => [m.PanquecasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('panquecas'),
+  },
+  {
+    id: 'circuito',
+    title: 'Circuito',
+    tagline: 'Acenda a lâmpada com lógica de portas',
+    icon: 'circuito-icon',
+    emoji: '💡',
+    color: 0x2563eb,
+    shade: 0x020617,
+    entryScene: SceneKeys.Circuito,
+    load: () => import('./circuito/CircuitoScene').then((m) => [m.CircuitoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('circuito'),
+  },
+  {
+    id: 'encaixe',
+    title: 'Encaixe',
+    tagline: 'Preencha o tabuleiro com as peças',
+    icon: 'encaixe-icon',
+    emoji: '🧩',
+    color: 0x0d9488,
+    shade: 0x042f2e,
+    entryScene: SceneKeys.Encaixe,
+    load: () => import('./encaixe/EncaixeScene').then((m) => [m.EncaixeScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('encaixe'),
+  },
+  {
+    id: 'rolante',
+    title: 'Dado Rolante',
+    tagline: 'Role o dado até o número certo',
+    icon: 'rolante-icon',
+    emoji: '🎲',
+    color: 0x7c3aed,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Rolante,
+    load: () => import('./rolante/RolanteScene').then((m) => [m.RolanteScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('rolante'),
+  },
+  {
+    id: 'jarros',
+    title: 'Jarros',
+    tagline: 'Meça a água com jarros sem marcas',
+    icon: 'jarros-icon',
+    emoji: '🫗',
+    color: 0x0891b2,
+    shade: 0x082f49,
+    entryScene: SceneKeys.Jarros,
+    load: () => import('./jarros/JarrosScene').then((m) => [m.JarrosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('jarros'),
+  },
+  {
+    id: 'padroes',
+    title: 'Padrões',
+    tagline: 'Qual número continua a série?',
+    icon: 'padroes-icon',
+    emoji: '🔢',
+    color: 0x6366f1,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Padroes,
+    load: () => import('./padroes/PadroesScene').then((m) => [m.PadroesScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('padroes'),
   },
 ];
 
