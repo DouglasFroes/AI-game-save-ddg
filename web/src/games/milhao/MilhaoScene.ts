@@ -1,20 +1,12 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import type { GameOverData } from '@/platform/scenes/GameOverScene';
-import { addText, Button, iconButton } from '@/platform/ui/widgets';
+import { addText, iconButton } from '@/platform/ui/widgets';
 import { BrowserStore, readJson, writeJson } from '@/platform/storage';
 import { getServices } from '@/services';
 import { formatTime } from '@/platform/ranking';
 import { formatPrize } from './art';
-import {
-  LADDER,
-  LEVEL_ORDER,
-  LEVELS,
-  MilhaoGame,
-  QUESTION_COUNT,
-  type EndReason,
-  type Level,
-} from './core';
+import { LADDER, MilhaoGame, QUESTION_COUNT, timeFor, type EndReason } from './core';
 
 const CX = GAME_WIDTH / 2;
 const RECENT_KEY = 'arcade.milhao.recent';
@@ -23,10 +15,6 @@ const LETTERS = ['A', 'B', 'C', 'D'];
 const ANSWER_Y = 560;
 const ANSWER_GAP = 112;
 const GOLD = 0xffd23f;
-
-export interface MilhaoData {
-  level?: Level;
-}
 
 interface AnswerView {
   box: Phaser.GameObjects.Graphics;
@@ -38,8 +26,6 @@ interface AnswerView {
 /** "Jogo do Milhão": a TV-style quiz up to R$ 1 milhão. */
 export class MilhaoScene extends Phaser.Scene {
   private game_ = new MilhaoGame();
-  /** Null until the player picks a level. */
-  private level: Level | null = null;
   private answers: AnswerView[] = [];
   private questionText!: Phaser.GameObjects.Text;
   private header!: Phaser.GameObjects.Text;
@@ -59,12 +45,10 @@ export class MilhaoScene extends Phaser.Scene {
     super(SceneKeys.Milhao);
   }
 
-  init(data: MilhaoData = {}): void {
-    this.level = data.level ?? null;
+  init(): void {
     this.game_ = new MilhaoGame(
       Math.random,
       undefined,
-      this.level ?? 'normal',
       readJson<string[]>(new BrowserStore(), RECENT_KEY) ?? [],
     );
     this.answers = [];
@@ -148,55 +132,16 @@ export class MilhaoScene extends Phaser.Scene {
     this.message = addText(this, CX, 960, '', 26, { color: '#ffd23f', wrapWidth: 640 });
 
     this.showQuestion();
-    if (!this.level) this.showLevelPicker();
     if (import.meta.env.DEV) (window as unknown as { __milhao?: MilhaoScene }).__milhao = this;
   }
 
   /** Saves what was asked, so the next runs start with questions the player has not seen lately. */
   private rememberQuestions(): void {
-    if (!this.level) return; // still on the level picker: this game is thrown away
     const store = new BrowserStore();
     const before = (readJson<string[]>(store, RECENT_KEY) ?? []).filter(
       (t) => !this.game_.asked.includes(t),
     );
     writeJson(store, RECENT_KEY, [...before, ...this.game_.asked].slice(-RECENT_MAX));
-  }
-
-  private showLevelPicker(): void {
-    this.busy = true;
-    const shade = this.add
-      .rectangle(CX, 640, GAME_WIDTH, 1280, 0x02061a, 0.94)
-      .setDepth(40)
-      .setInteractive();
-    const title = addText(this, CX, 330, 'Escolha o nível', 52, { color: '#ffd23f' }).setDepth(41);
-    const hint = addText(
-      this,
-      CX,
-      410,
-      'Muda a dificuldade das perguntas e o tempo.\nEmpate no ranking: menos ajudas, depois menos tempo.',
-      24,
-      { color: '#ffffffcc', weight: 'normal', wrapWidth: 620 },
-    ).setDepth(41);
-    const colors = [
-      [0x2b9348, 0x1b6b30],
-      [0x2a52be, 0x1a3a8c],
-      [0xc1121f, 0x8c0d17],
-    ] as const;
-    const buttons = LEVEL_ORDER.map((level, i) => {
-      const def = LEVELS[level];
-      const [color, shade2] = colors[i]!;
-      return new Button(
-        this,
-        CX,
-        560 + i * 130,
-        `${def.label} · ${def.time}s`,
-        () => this.scene.restart({ level } satisfies MilhaoData),
-        { width: 480, height: 104, color, shade: shade2, fontSize: 40 },
-      ).setDepth(41);
-    });
-    this.events.once('shutdown', () =>
-      [shade, title, hint, ...buttons].forEach((o) => o.destroy()),
-    );
   }
 
   /** The rules object (for tests in the browser). */
@@ -217,7 +162,7 @@ export class MilhaoScene extends Phaser.Scene {
     this.rememberQuestions();
     const q = g.question;
     this.header.setText(
-      `Pergunta ${g.step + 1} de ${QUESTION_COUNT} · ${formatPrize(LADDER[g.step]!)}`,
+      `${g.lap > 0 ? `Volta ${g.lap + 1} · ` : ''}Pergunta ${g.step + 1} de ${QUESTION_COUNT} · ${formatPrize(LADDER[g.step]!)}`,
     );
     this.questionText.setText(q.text).setFontSize(q.text.length > 80 ? 30 : 34);
     g.order.forEach((opt, i) => {
@@ -235,7 +180,11 @@ export class MilhaoScene extends Phaser.Scene {
     this.prizeTexts.stop.setText(formatPrize(p.stop));
     this.prizeTexts.right.setText(formatPrize(p.right));
     this.message.setText(
-      g.step === QUESTION_COUNT - 1 ? 'Pergunta do MILHÃO! Se errar, perde tudo.' : '',
+      g.step === QUESTION_COUNT - 1
+        ? 'Pergunta do MILHÃO! Se errar, perde o que ganhou nesta volta.'
+        : g.lapped
+          ? `UM MILHÃO NO BOLSO! Volta ${g.lap + 1}: mais difícil e ${timeFor(g.lap)}s por resposta.`
+          : '',
     );
     const skip = this.helpButtons.get('pular');
     (skip?.list[1] as Phaser.GameObjects.Text | undefined)?.setText(`⏭\nPular (${g.skipsLeft})`);
@@ -269,7 +218,7 @@ export class MilhaoScene extends Phaser.Scene {
       this.drawAnswer(rightPos, 0x2b9348, 0xffffff);
       if (right) {
         sfx.play('win');
-        this.message.setText(g.over ? 'VOCÊ GANHOU 1 MILHÃO!' : 'Certa resposta!');
+        this.message.setText(g.lapped ? 'VOCÊ GANHOU 1 MILHÃO!' : 'Certa resposta!');
         this.tweens.add({
           targets: this.answers[i]!.text,
           scale: 1.12,
@@ -277,7 +226,7 @@ export class MilhaoScene extends Phaser.Scene {
           yoyo: true,
           repeat: 2,
         });
-        this.time.delayedCall(g.over ? 1800 : 1200, () => {
+        this.time.delayedCall(g.lapped ? 2200 : 1200, () => {
           this.busy = false;
           if (g.over) this.finish();
           else this.showQuestion();
@@ -339,10 +288,9 @@ export class MilhaoScene extends Phaser.Scene {
 
   private finish(): void {
     const g = this.game_;
-    const hits = g.end === 'won' ? QUESTION_COUNT : g.step;
+    const hits = g.lap * QUESTION_COUNT + g.step;
     const time = Math.round(g.elapsed);
     const titles: Record<EndReason, string> = {
-      won: 'VOCÊ É MILIONÁRIO!',
       stopped: 'Parou na hora certa!',
       wrong: 'Resposta errada!',
       timeout: 'Acabou o tempo!',
@@ -351,15 +299,15 @@ export class MilhaoScene extends Phaser.Scene {
       gameId: 'milhao',
       title: titles[g.end ?? 'stopped'],
       lines: [
-        `${LEVELS[g.level].label} · Prêmio: ${formatPrize(g.prize)} · Acertos: ${hits}`,
+        `Prêmio: ${formatPrize(g.prize)} · Acertos: ${hits}${g.lap > 0 ? ` · Voltas: ${g.lap}` : ''}`,
         `Ajudas: ${g.helps} · Tempo: ${formatTime(time)}`,
       ],
       record: {
         score: g.prize,
-        details: { hits, helps: g.helps, time, level: LEVEL_ORDER.indexOf(g.level) },
+        details: { hits, helps: g.helps, time, laps: g.lap },
       },
       parent: SceneKeys.Milhao,
-      retry: { scene: SceneKeys.Milhao, data: { level: g.level } satisfies MilhaoData },
+      retry: { scene: SceneKeys.Milhao },
     };
     this.scene.launch(SceneKeys.GameOver, data);
   }
@@ -372,7 +320,7 @@ export class MilhaoScene extends Phaser.Scene {
       this.busy = true;
       this.time.delayedCall(1500, () => this.finish());
     }
-    const k = g.time / LEVELS[g.level].time;
+    const k = g.time / timeFor(g.lap);
     const c = this.clock.clear();
     c.fillStyle(0xffffff, 0.15).fillRoundedRect(110, 140, GAME_WIDTH - 250, 20, 10);
     c.fillStyle(k > 0.25 ? GOLD : 0xff3b3b).fillRoundedRect(

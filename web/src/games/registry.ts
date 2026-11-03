@@ -569,7 +569,7 @@ export const GAMES: readonly GameDefinition[] = [
   {
     id: 'milhao',
     title: 'Jogo do Milhão',
-    tagline: 'Rumo ao milhão!',
+    tagline: 'Rumo ao milhão... e além!',
     icon: 'milhao-icon',
     color: 0x1d3fa8,
     shade: 0x0b1a4a,

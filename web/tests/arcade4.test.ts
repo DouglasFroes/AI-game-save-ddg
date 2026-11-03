@@ -25,13 +25,7 @@ import {
   starsFor,
   summary,
 } from '@/games/memofases/core';
-import {
-  LADDER,
-  LEVELS as MILHAO_LEVELS,
-  MilhaoGame,
-  QUESTION_COUNT,
-  tierOf,
-} from '@/games/milhao/core';
+import { LADDER, MilhaoGame, QUESTION_COUNT, tierOf, timeFor } from '@/games/milhao/core';
 import { QUESTIONS } from '@/games/milhao/questions';
 import { LocalLeaderboard, ResilientLeaderboard } from '@/platform/leaderboard';
 import { MemoryStore } from '@/platform/storage';
@@ -64,9 +58,10 @@ describe('jogo do milhão', () => {
       seen.add(g.question.text);
       expect(g.answer(g.rightPosition)).toBe(true);
     }
-    expect(g.over).toBe(true);
-    expect(g.end).toBe('won');
-    expect(g.prize).toBe(1_000_000);
+    // The million is banked and the game goes on with a new lap.
+    expect(g.over).toBe(false);
+    expect(g.lap).toBe(1);
+    expect(g.prizes.stop).toBe(1_000_000);
   });
 
   it('stopping keeps the money, a wrong answer leaves half, the final one loses all', () => {
@@ -125,7 +120,7 @@ describe('jogo do milhão: banco e repetição', () => {
   it('a new run starts with questions the player has not seen lately', () => {
     const first = new MilhaoGame(seeded(1));
     for (let i = 0; i < QUESTION_COUNT; i++) first.answer(first.rightPosition);
-    const second = new MilhaoGame(seeded(1), QUESTIONS, 'normal', first.asked);
+    const second = new MilhaoGame(seeded(1), QUESTIONS, first.asked);
     const again = new Set(first.asked);
     const asked: string[] = [];
     for (let i = 0; i < QUESTION_COUNT; i++) {
@@ -142,12 +137,27 @@ describe('jogo do milhão: banco e repetição', () => {
 });
 
 describe('jogo do milhão: níveis e desempate', () => {
-  it('level shifts question tier and answer time', () => {
-    expect([0, 5, 10, 15].map((i) => tierOf(i, 'easy'))).toEqual([1, 1, 2, 3]);
-    expect([0, 5, 10, 15].map((i) => tierOf(i, 'hard'))).toEqual([2, 3, 4, 4]);
-    const hard = new MilhaoGame(seeded(1), QUESTIONS, 'hard');
-    expect(hard.question.tier).toBe(2);
-    expect(hard.time).toBe(MILHAO_LEVELS.hard.time);
+  it('reaching the million banks it and starts a harder lap', () => {
+    const g = new MilhaoGame(seeded(1));
+    for (let i = 0; i < QUESTION_COUNT; i++) g.answer(g.rightPosition);
+    expect(g.over).toBe(false);
+    expect(g.lapped).toBe(true);
+    expect(g.lap).toBe(1);
+    expect(g.step).toBe(0);
+    expect(g.question.tier).toBe(2);
+    expect(g.time).toBe(timeFor(1));
+    expect(timeFor(1)).toBeLessThan(timeFor(0));
+    expect(g.prizes.stop).toBe(1_000_000);
+    expect(g.prizes.right).toBe(1_001_000);
+    // A wrong answer on the next lap keeps the banked million.
+    g.answer((g.rightPosition + 1) % 4);
+    expect(g.over).toBe(true);
+    expect(g.prize).toBe(1_000_000);
+  });
+
+  it('laps get harder and faster, down to a floor', () => {
+    expect([0, 1, 2, 3].map((l) => tierOf(0, l))).toEqual([1, 2, 3, 3]);
+    expect([0, 1, 2, 9].map(timeFor)).toEqual([40, 34, 28, 12]);
   });
 
   it('counts helps (skips included) and total answering time', () => {

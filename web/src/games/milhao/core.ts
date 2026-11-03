@@ -1,11 +1,12 @@
 /**
  * "Jogo do Milhão" — pure rules of a TV-style quiz. 16 questions climb a prize ladder up to
  * R$ 1 milhão. Before answering the player may stop (keeps what they have); a wrong answer
- * leaves them with half of it, and missing the final question loses everything.
- * Helps, once each: Cartas (removes 1–3 wrong answers), Universitários (three hints),
- * Placas (audience votes) and three skips. The level (fácil, normal, difícil) shifts how hard the
- * questions are and how long each one lasts. Ranking ties go to who used fewer helps (a skip
- * counts as one), then to who took less total time.
+ * leaves them with half of it, and missing the final question loses everything of that lap.
+ * There are no levels: reaching the million banks it and sends the player back to question 1 for
+ * another lap, harder each time (tougher questions, less time per answer). Banked millions are
+ * never lost. Helps, once each for the whole run: Cartas (removes 1–3 wrong answers),
+ * Universitários (three hints), Placas (audience votes) and three skips. Ranking ties go to who
+ * used fewer helps (a skip counts as one), then to who took less total time.
  */
 import { QUESTIONS, type Question } from './questions';
 
@@ -20,28 +21,27 @@ export const QUESTION_COUNT = LADDER.length;
 export const SKIPS = 3;
 export const ANSWER_TIME = 40;
 
-export type Level = 'easy' | 'normal' | 'hard';
-export const LEVELS: Readonly<Record<Level, { label: string; tierShift: number; time: number }>> = {
-  easy: { label: 'Fácil', tierShift: -1, time: 60 },
-  normal: { label: 'Normal', tierShift: 0, time: ANSWER_TIME },
-  hard: { label: 'Difícil', tierShift: 1, time: 25 },
-};
-export const LEVEL_ORDER: readonly Level[] = ['easy', 'normal', 'hard'];
+export const MILLION = 1_000_000;
+export const MIN_TIME = 12;
+
+/** Seconds per answer on a lap (0 = the first): 40, 34, 28, … down to 12. */
+export const timeFor = (lap: number): number => Math.max(MIN_TIME, ANSWER_TIME - 6 * lap);
 
 /**
  * Difficulty of each step: easy for the first four (up to R$ 4 mil), medium up to R$ 40 mil, hard up
  * to R$ 300 mil, then the last three (R$ 400 mil, R$ 500 mil and the million).
  */
-export const tierOf = (step: number, level: Level = 'normal'): Question['tier'] => {
+export const tierOf = (step: number, lap = 0): Question['tier'] => {
   const base = step < 4 ? 1 : step < 9 ? 2 : step < 13 ? 3 : 4;
-  return Math.min(4, Math.max(1, base + LEVELS[level].tierShift)) as Question['tier'];
+  return Math.min(4, base + Math.min(2, lap)) as Question['tier'];
 };
 
 export type Help = 'cartas' | 'universitarios' | 'placas';
-export type EndReason = 'won' | 'stopped' | 'wrong' | 'timeout';
+export type EndReason = 'stopped' | 'wrong' | 'timeout';
 
 export interface Prizes {
-  /** If the current question is answered right. */
+  /** All prizes include the millions already banked on earlier laps.
+   * If the current question is answered right. */
   readonly right: number;
   /** If the player stops now. */
   readonly stop: number;
@@ -51,6 +51,10 @@ export interface Prizes {
 
 export class MilhaoGame {
   step = 0;
+  /** Completed laps (each one banked R$ 1 milhão). */
+  lap = 0;
+  /** True right after the answer that completed a lap. */
+  lapped = false;
   question!: Question;
   /** Answer order on screen (indexes into question.options); the right one is question.answer. */
   order: number[] = [];
@@ -71,19 +75,23 @@ export class MilhaoGame {
   constructor(
     private readonly rng: Rng = Math.random,
     private readonly bank: readonly Question[] = QUESTIONS,
-    readonly level: Level = 'normal',
     /** Question texts asked in earlier runs, oldest first: the least recently seen come first. */
     private readonly recent: readonly string[] = [],
   ) {
-    this.time = LEVELS[level].time;
+    this.time = timeFor(0);
     this.next();
   }
 
   /** What is at stake on the current question. */
   get prizes(): Prizes {
+    const banked = this.lap * MILLION;
     const stop = this.step === 0 ? 0 : LADDER[this.step - 1]!;
     const final = this.step === QUESTION_COUNT - 1;
-    return { right: LADDER[this.step]!, stop, wrong: final ? 0 : Math.floor(stop / 2) };
+    return {
+      right: banked + LADDER[this.step]!,
+      stop: banked + stop,
+      wrong: banked + (final ? 0 : Math.floor(stop / 2)),
+    };
   }
 
   /** Helps used so far (the ranking's first tiebreak): each help and each skip counts one. */
@@ -97,7 +105,7 @@ export class MilhaoGame {
   }
 
   private next(): void {
-    const tier = tierOf(this.step, this.level);
+    const tier = tierOf(this.step, this.lap);
     let pool = this.bank.filter((q) => q.tier === tier && !this.seen.has(q.text));
     if (pool.length === 0) pool = this.bank.filter((q) => q.tier === tier);
     // Prefer what the player has not seen lately (never seen = -1), so runs rarely repeat.
@@ -109,7 +117,7 @@ export class MilhaoGame {
     this.asked.push(this.question.text);
     this.order = [0, 1, 2, 3].sort(() => this.rng() - 0.5);
     this.removed = new Set();
-    this.time = LEVELS[this.level].time;
+    this.time = timeFor(this.lap);
   }
 
   private finish(end: EndReason, prize: number): void {
@@ -121,16 +129,18 @@ export class MilhaoGame {
   /** Answers with the option at screen position `pos`. Returns whether it was right. */
   answer(pos: number): boolean {
     if (this.over || this.removed.has(pos)) return false;
+    this.lapped = false;
     const right = pos === this.rightPosition;
     if (!right) {
       this.finish('wrong', this.prizes.wrong);
       return false;
     }
-    if (this.step === QUESTION_COUNT - 1) this.finish('won', LADDER[this.step]!);
-    else {
-      this.step++;
-      this.next();
-    }
+    if (this.step === QUESTION_COUNT - 1) {
+      this.lap++;
+      this.lapped = true;
+      this.step = 0;
+    } else this.step++;
+    this.next();
     return true;
   }
 
