@@ -69,7 +69,7 @@ export abstract class PuzzleScene extends MiniScene {
     this.refreshStatus();
     const card = this.rules();
     if (card) {
-      iconButton(this, 170, 60, '?', () => this.showRules()).setDepth(50);
+      iconButton(this, 170, 60, '💡', () => this.showRules()).setDepth(50);
       if (!seenRules.has(this.gameId)) this.showRules();
     }
   }
