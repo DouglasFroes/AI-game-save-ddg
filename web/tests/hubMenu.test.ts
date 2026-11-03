@@ -4,6 +4,7 @@ import { GAMES } from '@/games/registry';
 import {
   CATEGORY_LABELS,
   filterGames,
+  categoriesOf,
   GAME_CATEGORY,
   gameOfTheDay,
   greeting,
@@ -41,15 +42,39 @@ describe('recents', () => {
 });
 
 describe('hub categories', () => {
-  it('puts every game in exactly one known category', () => {
+  it('gives every game a known main category', () => {
     const known = Object.keys(CATEGORY_LABELS);
     for (const game of GAMES) {
       expect(known, game.id).toContain(GAME_CATEGORY[game.id]);
     }
   });
 
+  it('lets a game sit in several categories, the main one first and no repeats', () => {
+    let multi = 0;
+    for (const game of GAMES) {
+      const cats = categoriesOf(game.id);
+      expect(cats[0], game.id).toBe(GAME_CATEGORY[game.id]);
+      expect(new Set(cats).size, game.id).toBe(cats.length);
+      if (cats.length > 1) multi++;
+    }
+    expect(multi).toBeGreaterThan(40);
+    // A game shows under every category it belongs to.
+    const damas = GAMES.filter((g) => g.id === 'damas');
+    expect(filterGames(damas, 'estrategia', [])).toHaveLength(1);
+    expect(filterGames(damas, GAME_CATEGORY.damas, [])).toHaveLength(1);
+  });
+
   it('has no empty category chip', () => {
-    const categories: CategoryId[] = ['acao', 'puzzle', 'mesa', 'reflexo', 'esporte'];
+    const categories: CategoryId[] = [
+      'acao',
+      'puzzle',
+      'mesa',
+      'reflexo',
+      'esporte',
+      'estrategia',
+      'simulacao',
+      'quiz',
+    ];
     for (const c of categories) {
       expect(filterGames(GAMES, c, []).length, c).toBeGreaterThan(3);
     }
@@ -61,7 +86,8 @@ describe('hub categories', () => {
     expect(filterGames(games, 'favoritos', [])).toEqual([]);
     const picked = games.slice(1, 3).map((g) => g.id);
     expect(filterGames(games, 'favoritos', picked).map((g) => g.id)).toEqual(picked);
-    for (const g of filterGames(GAMES, 'puzzle', [])) expect(GAME_CATEGORY[g.id]).toBe('puzzle');
+    for (const g of filterGames(GAMES, 'puzzle', []))
+      expect(categoriesOf(g.id)).toContain('puzzle');
   });
 
   it('greets by the hour of the day', () => {

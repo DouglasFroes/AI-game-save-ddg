@@ -1,6 +1,7 @@
 import type { GameId } from '@/games/registry';
 
-export type CategoryId = 'acao' | 'puzzle' | 'mesa' | 'reflexo' | 'esporte';
+export type CategoryId =
+  'acao' | 'puzzle' | 'mesa' | 'reflexo' | 'esporte' | 'estrategia' | 'simulacao' | 'quiz';
 
 /** Hub filters: "all" and "favorites" are views over every game, the rest group games by feel. */
 export type HubFilter = 'todos' | 'favoritos' | CategoryId;
@@ -13,9 +14,12 @@ export const CATEGORY_LABELS: Readonly<Record<HubFilter, string>> = {
   mesa: 'Mesa',
   reflexo: 'Reflexo',
   esporte: 'Esportes',
+  estrategia: 'Estratégia',
+  simulacao: 'Simulação',
+  quiz: 'Quiz e palavras',
 };
 
-/** Every game sits in exactly one category (the type forces new games to pick one). */
+/** The main category of every game (the type forces new games to pick one). */
 export const GAME_CATEGORY: Readonly<Record<GameId, CategoryId>> = {
   doguinho: 'puzzle',
   blockblast: 'puzzle',
@@ -196,6 +200,141 @@ export const GAME_CATEGORY: Readonly<Record<GameId, CategoryId>> = {
   mahjong: 'mesa',
 };
 
+/** Other categories a game also belongs to (never repeats the main one). */
+const EXTRA: Readonly<Record<CategoryId, readonly string[]>> = {
+  estrategia: [
+    'damas',
+    'naval',
+    'domino',
+    'reversi',
+    'hex',
+    'trilha',
+    'raposa',
+    'suprema',
+    'captura',
+    'muralha',
+    'mancala',
+    'pontinhos',
+    'restaum',
+    'territorio',
+    'ligue4',
+    'velha',
+    'mahjong',
+    'poquer',
+    'poquer2',
+    'blackjack',
+    'paciencia',
+    'masmorra',
+    'reino',
+    'cidade',
+    'bolsa',
+    'defesa',
+    'sudoku',
+    'nonograma',
+    'senha',
+    'minas',
+    'rainhas',
+    'torres',
+    'mentira',
+    'moeda',
+    'hanoi',
+    'caixas',
+    'pontes',
+    'fluxo',
+    'sapos',
+    'balanca',
+    'rio',
+    'cavalo',
+    'circuito',
+    'encaixe',
+    'rolante',
+    'jarros',
+    'panquecas',
+    'binario',
+    'somadez',
+    'luzes',
+    'deslizante',
+    'trafego',
+    'aeroporto',
+  ],
+  simulacao: [
+    'fabrica',
+    'fazendinha',
+    'bolsa',
+    'reino',
+    'cidade',
+    'aquario',
+    'pocoes',
+    'usina',
+    'bichinho',
+    'lanchonete',
+    'trafego',
+    'aeroporto',
+    'mina',
+    'estaciona',
+    'pescaria',
+  ],
+  quiz: [
+    'milhao',
+    'termo',
+    'anagrama',
+    'cacapalavras',
+    'conta',
+    'senha',
+    'padroes',
+    'mentira',
+    'maiormenor',
+    'somadez',
+    'memofases',
+    'sequencia',
+  ],
+  puzzle: [
+    'memoria',
+    'memofases',
+    'paciencia',
+    'velha',
+    'ligue4',
+    'stack',
+    'tinta',
+    'tesouro',
+    'labirinto',
+  ],
+  reflexo: [
+    'snake',
+    'roadfighter',
+    'tijolos',
+    'conta',
+    'sequencia',
+    'ritmo',
+    'cubo',
+    'colinas',
+    'esquiva',
+    'ninja',
+  ],
+  acao: [
+    'flappybee',
+    'pula',
+    'helix',
+    'lenha',
+    'nave',
+    'horda',
+    'asteroides',
+    'galeria',
+    'misseis',
+  ],
+  mesa: ['sinuca', 'hoquei', 'boliche', 'dardos', 'botao', 'dalgona', 'dados', 'milhao', 'poquer'],
+  esporte: ['sinuca', 'dardos', 'botao', 'hoquei', 'skate', 'ciclismo', 'esqui'],
+};
+
+/** All categories of a game, the main one first. */
+export function categoriesOf(id: GameId): CategoryId[] {
+  const out: CategoryId[] = [GAME_CATEGORY[id]];
+  for (const [cat, ids] of Object.entries(EXTRA) as Array<[CategoryId, readonly string[]]>) {
+    if (cat !== out[0] && ids.includes(id)) out.push(cat);
+  }
+  return out;
+}
+
 /** Games shown under a filter. `favorites` is the starred ids (the order given is kept). */
 export function filterGames<T extends { readonly id: GameId }>(
   games: readonly T[],
@@ -204,7 +343,7 @@ export function filterGames<T extends { readonly id: GameId }>(
 ): T[] {
   if (filter === 'todos') return [...games];
   if (filter === 'favoritos') return games.filter((g) => favorites.includes(g.id));
-  return games.filter((g) => GAME_CATEGORY[g.id] === filter);
+  return games.filter((g) => categoriesOf(g.id).includes(filter));
 }
 
 const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();

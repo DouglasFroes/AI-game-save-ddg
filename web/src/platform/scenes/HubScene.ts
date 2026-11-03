@@ -19,7 +19,7 @@ import {
   CATEGORY_LABELS,
   filterGames,
   searchGames,
-  GAME_CATEGORY,
+  categoriesOf,
   gameOfTheDay,
   greeting,
   type CategoryId,
@@ -69,7 +69,7 @@ const CONTENT_W = GAME_WIDTH - MARGIN * 2;
 const HEADER_H = 124;
 const CHIPS_H = 96;
 const SEARCH_H = 84;
-const DOCK_W = 624;
+const DOCK_W = 672;
 const DOCK_H = 104;
 // Close to the bottom edge, like a phone's tab bar (#game already keeps clear of the home bar).
 const DOCK_CY = SCREEN_HEIGHT - 6 - DOCK_H / 2;
@@ -93,18 +93,30 @@ const SWIPE_MIN = 60;
 const SLIDE_MS = 6500;
 const SHEET_H = 840;
 
-type Tab = 'inicio' | 'jogos' | 'lista';
+type Tab = 'inicio' | 'jogos' | 'descobrir' | 'lista';
 const TAB_LABELS: Readonly<Record<Tab, string>> = {
   inicio: 'Início',
   jogos: 'Jogos',
-  lista: 'Minha lista',
+  descobrir: 'Descobrir',
+  lista: 'Lista',
 };
 const TAB_ICONS: Readonly<Record<Tab, IconKind>> = {
   inicio: 'home',
   jogos: 'grid',
+  descobrir: 'sparkle',
   lista: 'bookmark',
 };
-const TABS: readonly Tab[] = ['inicio', 'jogos', 'lista'];
+const TABS: readonly Tab[] = ['inicio', 'jogos', 'descobrir', 'lista'];
+const DISCOVER_CATEGORIES: readonly CategoryId[] = [
+  'estrategia',
+  'simulacao',
+  'quiz',
+  'puzzle',
+  'acao',
+  'reflexo',
+  'mesa',
+  'esporte',
+];
 const ROW_CATEGORIES: readonly CategoryId[] = ['acao', 'puzzle', 'mesa', 'reflexo', 'esporte'];
 const FILTERS: readonly HubFilter[] = ['todos', 'acao', 'puzzle', 'mesa', 'reflexo', 'esporte'];
 const AVATAR_COLORS = [0x38e1ff, 0x8b5cf6, 0xff5fb8, 0x34d399, 0xfbbf24, 0xfb7185] as const;
@@ -119,7 +131,12 @@ const TREND_REFRESH_MS = 120_000;
 let savedTab: Tab = 'inicio';
 let savedFilter: HubFilter = 'todos';
 let savedQuery = '';
-const savedScroll: Record<Tab, number> = { inicio: 0, jogos: 0, lista: 0 };
+const savedScroll: Record<Tab, number> = {
+  inicio: 0,
+  jogos: 0,
+  descobrir: 0,
+  lista: 0,
+};
 /**
  * Game asked for by a link (`?jogo=id`, or `&jogar=1` from an app shortcut to start it right
  * away); handled once, after the player has a name.
@@ -452,7 +469,12 @@ export class HubScene extends Phaser.Scene {
     for (let i = 0; i < 16; i++) {
       const seed = hashOf(`star${i}`);
       const star = this.add
-        .circle((seed % 700) + 10, ((seed >>> 8) % (SCREEN_HEIGHT - 20)) + 10, 1.6 + (seed % 3) * 0.5, 0xffffff)
+        .circle(
+          (seed % 700) + 10,
+          ((seed >>> 8) % (SCREEN_HEIGHT - 20)) + 10,
+          1.6 + (seed % 3) * 0.5,
+          0xffffff,
+        )
         .setAlpha(0.1)
         .setDepth(-8);
       this.tweens.add({
@@ -937,7 +959,7 @@ export class HubScene extends Phaser.Scene {
     TABS.forEach((t, i) => {
       const cx = left + slotW * (i + 0.5);
       const icon = drawIcon(this, TAB_ICONS[t], cx, DOCK_CY, 36, 0x8d93bd);
-      const label = txt(this, cx, DOCK_CY, TAB_LABELS[t], 22, { color: '#ffffff' });
+      const label = txt(this, cx, DOCK_CY, TAB_LABELS[t], 19, { color: '#ffffff' });
       this.tabItems.set(t, { icon, label });
       const zone = this.add
         .zone(cx, DOCK_CY, slotW, DOCK_H)
@@ -957,7 +979,7 @@ export class HubScene extends Phaser.Scene {
   private paintDock(animate: boolean): void {
     const slotW = DOCK_W / TABS.length;
     const left = (GAME_WIDTH - DOCK_W) / 2;
-    const iconSize = 36;
+    const iconSize = 32;
     TABS.forEach((t, i) => {
       const item = this.tabItems.get(t);
       if (!item) return;
@@ -965,9 +987,9 @@ export class HubScene extends Phaser.Scene {
       const cx = left + slotW * (i + 0.5);
       let iconX = cx;
       if (on) {
-        const total = iconSize + 10 + item.label.width;
+        const total = iconSize + 8 + item.label.width;
         iconX = cx - total / 2 + iconSize / 2;
-        item.label.setPosition(cx - total / 2 + iconSize + 10 + item.label.width / 2, DOCK_CY);
+        item.label.setPosition(cx - total / 2 + iconSize + 8 + item.label.width / 2, DOCK_CY);
       }
       this.tweens.killTweensOf(item.label);
       if (on && animate && !reducedMotion()) {
@@ -1051,6 +1073,8 @@ export class HubScene extends Phaser.Scene {
         ? searchGames(GAMES, this.query)
         : filterGames(GAMES, this.filter, []);
       end = this.buildGrid(shown, false);
+    } else if (this.tab === 'descobrir') {
+      end = this.buildDiscover();
     } else {
       end = this.buildGrid(
         filterGames(GAMES, 'favoritos', getServices(this).favorites.list()),
@@ -1380,12 +1404,21 @@ export class HubScene extends Phaser.Scene {
     title.setShadow(0, 4, 'rgba(0,0,0,0.55)', 12, false, true);
     c.add(title);
     c.add(
-      txt(this, 38, 368, `${CATEGORY_LABELS[GAME_CATEGORY[game.id]]}  ·  ${game.tagline}`, 21, {
-        color: UI.soft,
-        weight: 'normal',
-        wrapWidth: HERO_W - 76,
-        align: 'left',
-      }).setOrigin(0, 0.5),
+      txt(
+        this,
+        38,
+        368,
+        `${categoriesOf(game.id)
+          .map((c) => CATEGORY_LABELS[c])
+          .join(' · ')}  ·  ${game.tagline}`,
+        21,
+        {
+          color: UI.soft,
+          weight: 'normal',
+          wrapWidth: HERO_W - 76,
+          align: 'left',
+        },
+      ).setOrigin(0, 0.5),
     );
 
     // Actions.
@@ -1580,6 +1613,57 @@ export class HubScene extends Phaser.Scene {
     this.press(c, POSTER_W, POSTER_H, () => this.openSheet(game), { inList: true, down: 0.95 });
     this.posters.push(c);
     return c;
+  }
+
+  // ── Discover: surprise button, what is new, never played, every category ──
+
+  private buildDiscover(): number {
+    const services = getServices(this);
+    const day = Math.floor(Date.now() / 86_400_000);
+    const top = this.tapTop + 24;
+    this.list.add(
+      txt(this, MARGIN, top + 26, 'Descobrir', 44, { color: UI.white }).setOrigin(0, 0.5),
+    );
+    this.list.add(
+      txt(this, MARGIN + 2, top + 72, `${GAMES.length} jogos esperando por você`, 20, {
+        color: UI.mute,
+        weight: 'normal',
+      }).setOrigin(0, 0.5),
+    );
+    const cta = this.ctaButton(
+      GAME_WIDTH / 2,
+      top + 170,
+      CONTENT_W,
+      110,
+      'Surpreenda-me',
+      36,
+      () => {
+        const fresh = GAMES.filter((g) => !g.personalBest(services));
+        const pool = fresh.length > 0 ? fresh : GAMES;
+        this.open(pool[Math.floor(Math.random() * pool.length)]!);
+      },
+      { inList: true },
+    );
+    this.list.add(cta.view);
+    let y = top + 260;
+    let n = 0;
+    const newest = [...GAMES].reverse().slice(0, 12);
+    y = this.row('Novidades', newest, y, { accent: n++ });
+    const fresh = GAMES.filter((g) => !g.personalBest(services))
+      .sort((a, b) => hashOf(b.id + day) - hashOf(a.id + day))
+      .slice(0, 12);
+    if (fresh.length >= 3) y = this.row('Você ainda não jogou', fresh, y, { accent: n++ });
+    for (const cat of DISCOVER_CATEGORIES) {
+      const games = filterGames(GAMES, cat, [])
+        .sort((a, b) => hashOf(a.id + cat + day) - hashOf(b.id + cat + day))
+        .slice(0, 14);
+      if (games.length < 3) continue;
+      y = this.row(CATEGORY_LABELS[cat], games, y, {
+        category: FILTERS.includes(cat) ? cat : undefined,
+        accent: n++,
+      });
+    }
+    return y + 30;
   }
 
   // ── Games grid (all games / my list) ────────────────────────────────────
@@ -2155,7 +2239,9 @@ export class HubScene extends Phaser.Scene {
         this,
         MARGIN + 2,
         top + 396,
-        `${CATEGORY_LABELS[GAME_CATEGORY[game.id]]}  ·  ${game.tagline}`,
+        `${categoriesOf(game.id)
+          .map((c) => CATEGORY_LABELS[c])
+          .join(' · ')}  ·  ${game.tagline}`,
         22,
         { color: UI.soft, weight: 'normal', wrapWidth: CONTENT_W, align: 'left' },
       ).setOrigin(0, 0.5),
