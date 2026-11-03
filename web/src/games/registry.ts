@@ -142,7 +142,16 @@ export type GameId =
   | 'dardos'
   | 'botao'
   | 'saltoesqui'
-  | 'cem';
+  | 'cem'
+  | 'mancala'
+  | 'hex'
+  | 'trilha'
+  | 'pontinhos'
+  | 'restaum'
+  | 'raposa'
+  | 'suprema'
+  | 'captura'
+  | 'muralha';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -2307,6 +2316,156 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'wins', label: 'Vitórias', x: 600 },
     ],
     personalBest: storedBest('cem'),
+  },
+  {
+    id: 'mancala',
+    title: 'Mancala',
+    tagline: 'Semeie, capture e jogue de novo',
+    icon: 'mancala-icon',
+    emoji: '🌰',
+    color: 0xd97706,
+    shade: 0x78350f,
+    entryScene: SceneKeys.Mancala,
+    load: () => import('./mancala/MancalaScene').then((m) => [m.MancalaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'seeds', label: 'Sementes', x: 655 },
+    ],
+    personalBest: storedBest('mancala'),
+  },
+  {
+    id: 'hex',
+    title: 'Hex',
+    tagline: 'Ligue os dois lados do tabuleiro',
+    icon: 'hex-icon',
+    emoji: '🔷',
+    color: 0x06b6d4,
+    shade: 0x0e4a63,
+    entryScene: SceneKeys.Hex,
+    load: () => import('./hex/HexScene').then((m) => [m.HexScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 600 },
+    ],
+    personalBest: storedBest('hex'),
+  },
+  {
+    id: 'trilha',
+    title: 'Trilha',
+    tagline: 'Forme moinhos e roube peças',
+    icon: 'trilha-icon',
+    emoji: '⚫',
+    color: 0x78716c,
+    shade: 0x292524,
+    entryScene: SceneKeys.Trilha,
+    load: () => import('./trilha/TrilhaScene').then((m) => [m.TrilhaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'men', label: 'Peças', x: 655 },
+    ],
+    personalBest: storedBest('trilha'),
+  },
+  {
+    id: 'pontinhos',
+    title: 'Pontinhos',
+    tagline: 'Feche quadrados e jogue de novo',
+    icon: 'pontinhos-icon',
+    emoji: '✏️',
+    color: 0x8b5cf6,
+    shade: 0x3b0764,
+    entryScene: SceneKeys.Pontinhos,
+    load: () => import('./pontinhos/PontinhosScene').then((m) => [m.PontinhosScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'boxes', label: 'Quadrados', x: 655 },
+    ],
+    personalBest: storedBest('pontinhos'),
+  },
+  {
+    id: 'restaum',
+    title: 'Resta Um',
+    tagline: 'Pule os pinos até sobrar um',
+    icon: 'restaum-icon',
+    emoji: '🔵',
+    color: 0x65a30d,
+    shade: 0x1a2e05,
+    entryScene: SceneKeys.RestaUm,
+    load: () => import('./restaum/RestaUmScene').then((m) => [m.RestaUmScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'left', label: 'Sobraram', x: 620 },
+    ],
+    personalBest: storedBest('restaum'),
+  },
+  {
+    id: 'raposa',
+    title: 'Raposa e Gansos',
+    tagline: 'Pule os gansos antes de ser cercada',
+    icon: 'raposa-icon',
+    emoji: '🦊',
+    color: 0xea580c,
+    shade: 0x431407,
+    entryScene: SceneKeys.Raposa,
+    load: () => import('./raposa/RaposaScene').then((m) => [m.RaposaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'caught', label: 'Gansos', x: 655 },
+    ],
+    personalBest: storedBest('raposa'),
+  },
+  {
+    id: 'suprema',
+    title: 'Velha Suprema',
+    tagline: 'Nove velhas em um só tabuleiro',
+    icon: 'suprema-icon',
+    emoji: '❌',
+    color: 0x6366f1,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Suprema,
+    load: () => import('./suprema/SupremaScene').then((m) => [m.SupremaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 600 },
+    ],
+    personalBest: storedBest('suprema'),
+  },
+  {
+    id: 'captura',
+    title: 'Captura',
+    tagline: 'Cerque as pedras do robô',
+    icon: 'captura-icon',
+    emoji: '🔴',
+    color: 0x6b7280,
+    shade: 0x111827,
+    entryScene: SceneKeys.Captura,
+    load: () => import('./captura/CapturaScene').then((m) => [m.CapturaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'caps', label: 'Capturas', x: 655 },
+    ],
+    personalBest: storedBest('captura'),
+  },
+  {
+    id: 'muralha',
+    title: 'Muralha',
+    tagline: 'Corra e levante muros no caminho',
+    icon: 'muralha-icon',
+    emoji: '🧱',
+    color: 0x14b8a6,
+    shade: 0x042f2e,
+    entryScene: SceneKeys.Muralha,
+    load: () => import('./muralha/MuralhaScene').then((m) => [m.MuralhaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'wins', label: 'Vitórias', x: 565 },
+      { key: 'walls', label: 'Muros', x: 655 },
+    ],
+    personalBest: storedBest('muralha'),
   },
 ];
 

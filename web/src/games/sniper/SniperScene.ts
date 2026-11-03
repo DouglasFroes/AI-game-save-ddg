@@ -4,7 +4,15 @@ import { banner, burst, flash, hint } from '@/platform/ui/juice';
 import { MiniScene } from '@/platform/ui/miniGame';
 import { addText } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
-import { dropAt, driftPerWind, SHOTS, SniperSim, STEADY, targetRadius, type SniperEvent } from './core';
+import {
+  dropAt,
+  driftPerWind,
+  SHOTS,
+  SniperSim,
+  STEADY,
+  targetRadius,
+  type SniperEvent,
+} from './core';
 
 const CX = GAME_WIDTH / 2;
 const CY = 650;
@@ -50,8 +58,14 @@ export class SniperScene extends MiniScene {
     this.hud = this.add.graphics().setDepth(4);
     this.info = addText(this, CX, 196, '', 32, { color: '#ffffff' }).setDepth(5);
     this.ballistics = addText(this, CX, 250, '', 26, { color: '#86efac' }).setDepth(5);
-    this.fireText = addText(this, FIRE.x, FIRE.y, 'SEGURE\nE SOLTE', 26, { color: '#ffffff', stroke: '#450a0a', align: 'center' }).setDepth(5);
-    this.cards = Array.from({ length: SHOTS }, (_, i) => addText(this, 72 + i * 64, 1232, '', 24, { color: '#ffffff' }).setDepth(5));
+    this.fireText = addText(this, FIRE.x, FIRE.y, 'SEGURE\nE SOLTE', 26, {
+      color: '#ffffff',
+      stroke: '#450a0a',
+      align: 'center',
+    }).setDepth(5);
+    this.cards = Array.from({ length: SHOTS }, (_, i) =>
+      addText(this, 72 + i * 64, 1232, '', 24, { color: '#ffffff' }).setDepth(5),
+    );
     this.breathText = addText(this, 230, 1080, '', 24, { color: '#cbd5e1' }).setDepth(5);
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
       if (p.y < 130 || this.ended) return;
@@ -75,7 +89,11 @@ export class SniperScene extends MiniScene {
     });
     this.tutorial = hint(
       this,
-      ['Arraste para mirar', 'Segure o botão: prende a respiração', 'Solte para atirar · mire acima (a bala cai)'],
+      [
+        'Arraste para mirar',
+        'Segure o botão: prende a respiração',
+        'Solte para atirar · mire acima (a bala cai)',
+      ],
       1000,
       7000,
     );
@@ -91,7 +109,9 @@ export class SniperScene extends MiniScene {
     g.lineStyle(3, 0x000000, 0.9);
     g.lineBetween(CX - SCOPE_R, CY, CX - 24, CY).lineBetween(CX + 24, CY, CX + SCOPE_R, CY);
     g.lineBetween(CX, CY - SCOPE_R, CX, CY - 24).lineBetween(CX, CY + 24, CX, CY + SCOPE_R);
-    g.lineStyle(1.5, 0x000000, 0.9).lineBetween(CX - 24, CY, CX + 24, CY).lineBetween(CX, CY - 24, CX, CY + 24);
+    g.lineStyle(1.5, 0x000000, 0.9)
+      .lineBetween(CX - 24, CY, CX + 24, CY)
+      .lineBetween(CX, CY - 24, CX, CY + 24);
     // Mil marks, every half mil, longer every mil.
     for (let m = -6; m <= 6; m += 0.5) {
       if (m === 0) continue;
@@ -100,8 +120,13 @@ export class SniperScene extends MiniScene {
       g.lineBetween(CX - len, CY + m * PX, CX + len, CY + m * PX);
     }
     for (let m = 2; m <= 6; m += 2) {
-      addText(this, CX + 16, CY + m * PX, `${m}`, 18, { color: '#000000', stroke: '#ffffff' }).setDepth(3).setOrigin(0, 0.5);
-      addText(this, CX + m * PX, CY - 22, `${m}`, 18, { color: '#000000', stroke: '#ffffff' }).setDepth(3);
+      addText(this, CX + 16, CY + m * PX, `${m}`, 18, { color: '#000000', stroke: '#ffffff' })
+        .setDepth(3)
+        .setOrigin(0, 0.5);
+      addText(this, CX + m * PX, CY - 22, `${m}`, 18, {
+        color: '#000000',
+        stroke: '#ffffff',
+      }).setDepth(3);
     }
     // Scope tube.
     g.lineStyle(26, 0x020617).strokeCircle(CX, CY, SCOPE_R + 12);
@@ -131,10 +156,19 @@ export class SniperScene extends MiniScene {
     g.fillStyle(0x7dd3fc).fillRect(0, 0, GAME_WIDTH, 1280);
     g.fillStyle(0xbae6fd).fillRect(0, Y(-9), GAME_WIDTH, PX * 6);
     g.fillStyle(0x4d7c0f);
-    for (let m = -16; m < 16; m += 2) g.fillTriangle(X(m - 3), Y(ground - 1), X(m), Y(ground - 3.5 - Math.abs(Math.sin(m)) * 2), X(m + 3), Y(ground - 1));
+    for (let m = -16; m < 16; m += 2)
+      g.fillTriangle(
+        X(m - 3),
+        Y(ground - 1),
+        X(m),
+        Y(ground - 3.5 - Math.abs(Math.sin(m)) * 2),
+        X(m + 3),
+        Y(ground - 1),
+      );
     g.fillStyle(0x65a30d).fillRect(0, Y(ground - 1), GAME_WIDTH, 2000);
     g.fillStyle(0x84cc16).fillRect(0, Y(ground), GAME_WIDTH, 2000);
-    for (let m = -14; m < 14; m += 1.3) g.fillStyle(0x3f6212).fillEllipse(X(m), Y(ground + 0.1 + (Math.abs(m * 7) % 3) * 0.6), 18, 6);
+    for (let m = -14; m < 14; m += 1.3)
+      g.fillStyle(0x3f6212).fillEllipse(X(m), Y(ground + 0.1 + (Math.abs(m * 7) % 3) * 0.6), 18, 6);
     // Wind flags.
     const wind = s.wind;
     for (const fx of [-6, 5.5]) {
@@ -144,13 +178,22 @@ export class SniperScene extends MiniScene {
       const len = 14 + Math.min(1, Math.abs(wind) / 8) * 40;
       const droop = (1 - Math.min(1, Math.abs(wind) / 8)) * 30;
       const flap = Math.sin(this.time.now / 90 + fx) * 4;
-      g.fillStyle(0xf97316).fillTriangle(bx, top, bx, top + 22, bx + Math.sign(wind || 1) * len, top + 11 + droop + flap);
+      g.fillStyle(0xf97316).fillTriangle(
+        bx,
+        top,
+        bx,
+        top + 22,
+        bx + Math.sign(wind || 1) * len,
+        top + 11 + droop + flap,
+      );
     }
     // Target board on its stand.
     const tx = X(tg.x);
     const ty = Y(0);
     const rp = r * PX;
-    g.lineStyle(Math.max(3, rp * 0.1), 0x78350f).lineBetween(tx - rp * 0.6, ty, tx - rp * 0.8, Y(ground)).lineBetween(tx + rp * 0.6, ty, tx + rp * 0.8, Y(ground));
+    g.lineStyle(Math.max(3, rp * 0.1), 0x78350f)
+      .lineBetween(tx - rp * 0.6, ty, tx - rp * 0.8, Y(ground))
+      .lineBetween(tx + rp * 0.6, ty, tx + rp * 0.8, Y(ground));
     g.fillStyle(0xd6d3d1).fillRect(tx - rp * 1.15, ty - rp * 1.15, rp * 2.3, rp * 2.3);
     for (let ring = 1; ring <= 10; ring++) {
       const rr = rp * (1 - (ring - 1) / 10);
@@ -164,7 +207,12 @@ export class SniperScene extends MiniScene {
     if (lastHit && lastHit.ring > 0) {
       g.fillStyle(0xfde047).fillCircle(X(tg.x + lastHit.dx), Y(lastHit.dy), 9);
       g.fillStyle(0x000000).fillCircle(X(tg.x + lastHit.dx), Y(lastHit.dy), 5);
-    } else if (lastHit) g.fillStyle(0x713f12, 0.8).fillCircle(X(tg.x + lastHit.dx), Y(Math.max(lastHit.dy, ground)), 10);
+    } else if (lastHit)
+      g.fillStyle(0x713f12, 0.8).fillCircle(
+        X(tg.x + lastHit.dx),
+        Y(Math.max(lastHit.dy, ground)),
+        10,
+      );
     // Training aid on the first two shots: where to hold.
     if (s.shot < 2 && s.ready) {
       const hx = X(tg.x - s.target.wind * driftPerWind(tg.distance));
@@ -182,7 +230,8 @@ export class SniperScene extends MiniScene {
       this.tracer.t += Math.min(this.game.loop.delta, 50) / 1000;
     }
     // Vignette ring inside the lens.
-    for (let i = 0; i < 12; i++) g.lineStyle(5, 0x000000, 0.045 * (i + 1)).strokeCircle(CX, CY, SCOPE_R - 54 + i * 5);
+    for (let i = 0; i < 12; i++)
+      g.lineStyle(5, 0x000000, 0.045 * (i + 1)).strokeCircle(CX, CY, SCOPE_R - 54 + i * 5);
   }
 
   private drawHud(): void {
@@ -190,7 +239,9 @@ export class SniperScene extends MiniScene {
     const tg = s.target;
     const g = this.hud.clear();
     const wind = s.wind;
-    this.info.setText(`Tiro ${tg.n + 1}/${SHOTS} · ${tg.distance} m${tg.speed ? ' · ALVO ANDANDO' : ''}`);
+    this.info.setText(
+      `Tiro ${tg.n + 1}/${SHOTS} · ${tg.distance} m${tg.speed ? ' · ALVO ANDANDO' : ''}`,
+    );
     this.ballistics.setText(
       `Queda ↓${fmt(dropAt(tg.distance))} mil · Vento ${wind >= 0 ? '→' : '←'} ${fmt(Math.abs(wind))} m/s (${fmt(driftPerWind(tg.distance), 2)} mil cada)`,
     );
@@ -198,26 +249,61 @@ export class SniperScene extends MiniScene {
     const ready = s.ready;
     const pressed = this.onButton && s.holding;
     g.fillStyle(0x000000, 0.4).fillCircle(FIRE.x + 6, FIRE.y + 8, FIRE.r);
-    g.fillStyle(!ready ? 0x44403c : pressed ? 0x991b1b : 0xdc2626).fillCircle(FIRE.x, FIRE.y, FIRE.r * (pressed ? 0.94 : 1));
-    g.lineStyle(6, 0xfca5a5, ready ? 0.8 : 0.2).strokeCircle(FIRE.x, FIRE.y, FIRE.r * (pressed ? 0.94 : 1));
+    g.fillStyle(!ready ? 0x44403c : pressed ? 0x991b1b : 0xdc2626).fillCircle(
+      FIRE.x,
+      FIRE.y,
+      FIRE.r * (pressed ? 0.94 : 1),
+    );
+    g.lineStyle(6, 0xfca5a5, ready ? 0.8 : 0.2).strokeCircle(
+      FIRE.x,
+      FIRE.y,
+      FIRE.r * (pressed ? 0.94 : 1),
+    );
     this.fireText.setText(!ready ? '...' : pressed ? 'SOLTE\nP/ ATIRAR' : 'SEGURE\nE SOLTE');
     // Breath meter: steady window in green, then shaking.
     const x0 = 50;
     const w = 360;
     const max = STEADY + 1.5;
     g.fillStyle(0x000000, 0.5).fillRoundedRect(x0, 1110, w, 30, 12);
-    g.fillStyle(0x16a34a, 0.35).fillRect(x0 + (0.5 / max) * w, 1110, ((STEADY - 0.5) / max) * w, 30);
+    g.fillStyle(0x16a34a, 0.35).fillRect(
+      x0 + (0.5 / max) * w,
+      1110,
+      ((STEADY - 0.5) / max) * w,
+      30,
+    );
     const frac = Math.min(1, s.breath / max);
-    const color = !s.holding ? 0x64748b : s.breath < 0.5 ? 0xfacc15 : s.breath < STEADY ? 0x22c55e : 0xef4444;
+    const color = !s.holding
+      ? 0x64748b
+      : s.breath < 0.5
+        ? 0xfacc15
+        : s.breath < STEADY
+          ? 0x22c55e
+          : 0xef4444;
     g.fillStyle(color).fillRoundedRect(x0, 1110, Math.max(24, w * frac), 30, 12);
     this.breathText.setText(
-      !s.holding ? 'Respiração' : s.breath < 0.5 ? 'Prendendo…' : s.breath < STEADY ? 'Firme!' : 'Tremendo! Solte',
+      !s.holding
+        ? 'Respiração'
+        : s.breath < 0.5
+          ? 'Prendendo…'
+          : s.breath < STEADY
+            ? 'Firme!'
+            : 'Tremendo! Solte',
     );
     // Scorecard of previous shots.
     for (let i = 0; i < SHOTS; i++) {
       const cx = 72 + i * 64;
       const imp = s.impacts[i];
-      g.fillStyle(imp ? (imp.ring >= 9 ? 0xfacc15 : imp.ring >= 6 ? 0x22c55e : imp.ring ? 0x64748b : 0x7f1d1d) : 0x1f2937).fillCircle(cx, 1232, 24);
+      g.fillStyle(
+        imp
+          ? imp.ring >= 9
+            ? 0xfacc15
+            : imp.ring >= 6
+              ? 0x22c55e
+              : imp.ring
+                ? 0x64748b
+                : 0x7f1d1d
+          : 0x1f2937,
+      ).fillCircle(cx, 1232, 24);
       if (i === s.shot && !s.over) g.lineStyle(3, 0xffffff).strokeCircle(cx, 1232, 26);
     }
     this.cards.forEach((t, i) => {
@@ -245,14 +331,21 @@ export class SniperScene extends MiniScene {
         } else {
           sfx.play(imp.ring >= 9 ? 'win' : 'coin', imp.ring - 1);
           const label = imp.x ? 'X! NO CENTRO' : imp.ring === 10 ? 'DEZ!' : `${imp.ring}`;
-          this.pop(CX, CY - 200, `${label} +${imp.points}`, imp.ring >= 9 ? '#fde047' : '#ffffff', imp.ring >= 9 ? 56 : 46);
+          this.pop(
+            CX,
+            CY - 200,
+            `${label} +${imp.points}`,
+            imp.ring >= 9 ? '#fde047' : '#ffffff',
+            imp.ring >= 9 ? 56 : 46,
+          );
           if (imp.ring >= 9) burst(this, CX, CY - 200, 0xfde047, 20);
         }
         this.setScore(this.sim.score);
       } else if (e.type === 'next') {
         this.holeVisible = false;
         sfx.play('click');
-        if (e.target.speed && e.target.n === 5) banner(this, 'Alvos andando! Antecipe', '#fde047', 420);
+        if (e.target.speed && e.target.n === 5)
+          banner(this, 'Alvos andando! Antecipe', '#fde047', 420);
       } else if (e.type === 'over') {
         const s = this.sim;
         this.finish(

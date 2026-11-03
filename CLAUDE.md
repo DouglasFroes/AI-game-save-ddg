@@ -10,7 +10,7 @@ Liga Pontos, Pescaria, Pouso Lunar, Defesa Antimísseis, Moto de Luz, Sinuca, Ma
 Apaga Luzes, Quebra-Cabeça Deslizante, Senha das Cores, Caça-Palavras, Anagrama, Binário, Soma Dez, Caça ao
 Tesouro, Labirinto no Escuro, Círculos do Ritmo, Paraquedas, Chuva de Letras, Cubo Saltitante, Pássaro das
 Colinas, Canhão, Equilíbrio, Desarme a Bomba, Controle de Tráfego, Torre de Controle, Lanchonete, Defesa da
-Torre, Mina de Ouro, Pôquer, Dardos, Futebol de Botão, Salto de Esqui, Corrida de 100 m), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
+Torre, Mina de Ouro, Pôquer, Dardos, Futebol de Botão, Salto de Esqui, Corrida de 100 m, Mancala, Hex, Trilha, Pontinhos, Resta Um, Raposa e Gansos, Velha Suprema, Captura, Muralha), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
 (+ Three.js, only in Grau 3D). Backend: Rust (Axum + SQLx) + PostgreSQL, served from one Docker image
 (Dokploy). Node 22.13+.
 
@@ -62,3 +62,10 @@ Shared effects for new games (particles, shockwave, flash, banner, tutorial hint
   height inside the safe area) and resets the canvas to 1280 when it closes; games keep 720×1280.
 - Global ranking and chat are enabled by `VITE_GOOGLE_CLIENT_ID` (see `web/.env.example`); without it the
   ranking stays on the device. Add a new game id to `api/src/domain/games.rs` too.
+
+## Board games vs CPU
+
+Mancala, Hex, Trilha, Pontinhos, Raposa e Gansos, Velha Suprema, Captura and Muralha extend `BoardScene`
+(`web/src/platform/ui/boardGame.ts`): a series against the CPU where each win raises its level and the first
+loss ends the run. Each has a pure `core.ts` with a `cpuMove(state, level, rng)`; `web/tests/tabuleiro.test.ts`
+proves a stronger bot beats a weaker one. Resta Um is a solo puzzle (`MiniScene`) with a DFS solver in its core.

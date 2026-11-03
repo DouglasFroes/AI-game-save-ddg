@@ -31,23 +31,39 @@ export class GaleriaScene extends MiniScene {
     this.drawBooth();
     this.waves = this.add.graphics().setDepth(3);
     this.hud = this.add.graphics().setDepth(8);
-    this.clockText = addText(this, GAME_WIDTH - 50, 290, '', 30, { color: '#ffffff', stroke: '#1e1b4b' }).setDepth(9);
-    this.multText = addText(this, CX, 330, '', 30, { color: '#fde047', stroke: '#1e1b4b' }).setDepth(9);
-    this.crateText = addText(this, CRATE.x, CRATE.y, 'RECARREGAR', 24, { color: '#ffffff', stroke: '#422006' }).setDepth(9);
+    this.clockText = addText(this, GAME_WIDTH - 50, 290, '', 30, {
+      color: '#ffffff',
+      stroke: '#1e1b4b',
+    }).setDepth(9);
+    this.multText = addText(this, CX, 330, '', 30, {
+      color: '#fde047',
+      stroke: '#1e1b4b',
+    }).setDepth(9);
+    this.crateText = addText(this, CRATE.x, CRATE.y, 'RECARREGAR', 24, {
+      color: '#ffffff',
+      stroke: '#422006',
+    }).setDepth(9);
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
       if (p.y < 130 || this.ended) return;
       this.tutorial?.dismiss();
-      if (Math.abs(p.x - CRATE.x) < CRATE.w / 2 && Math.abs(p.y - CRATE.y) < CRATE.h / 2) this.reload();
+      if (Math.abs(p.x - CRATE.x) < CRATE.w / 2 && Math.abs(p.y - CRATE.y) < CRATE.h / 2)
+        this.reload();
       else this.shoot(p.x, p.y);
     });
     this.input.keyboard?.on('keydown-R', () => this.reload());
-    this.tutorial = hint(this, ['Toque nos patos e alvos', 'NÃO acerte os coelhos 🐰', 'Recarregue na caixa'], 620, 5500);
+    this.tutorial = hint(
+      this,
+      ['Toque nos patos e alvos', 'NÃO acerte os coelhos 🐰', 'Recarregue na caixa'],
+      620,
+      5500,
+    );
   }
 
   private drawBooth(): void {
     const g = this.add.graphics().setDepth(-5);
     // Curtain and awning.
-    for (let x = 0; x < GAME_WIDTH; x += 40) g.fillStyle(x % 80 ? 0x581c87 : 0x6b21a8).fillRect(x, 140, 40, 1000);
+    for (let x = 0; x < GAME_WIDTH; x += 40)
+      g.fillStyle(x % 80 ? 0x581c87 : 0x6b21a8).fillRect(x, 140, 40, 1000);
     for (let i = 0; i < 9; i++) {
       g.fillStyle(i % 2 ? 0xffffff : 0xdc2626).fillRect(i * 80, 140, 80, 110);
       g.fillStyle(i % 2 ? 0xffffff : 0xdc2626).fillCircle(i * 80 + 40, 250, 40);
@@ -65,10 +81,33 @@ export class GaleriaScene extends MiniScene {
     g.fillStyle(0xb45309).fillRect(0, 1060, GAME_WIDTH, 26);
     for (let x = 0; x < GAME_WIDTH; x += 90) g.fillStyle(0x9a3412).fillRect(x, 1090, 6, 190);
     // Reload crate.
-    g.fillStyle(0x000000, 0.3).fillRoundedRect(CRATE.x - CRATE.w / 2 + 6, CRATE.y - CRATE.h / 2 + 8, CRATE.w, CRATE.h, 14);
-    g.fillStyle(0xa16207).fillRoundedRect(CRATE.x - CRATE.w / 2, CRATE.y - CRATE.h / 2, CRATE.w, CRATE.h, 14);
-    g.lineStyle(6, 0x713f12).strokeRoundedRect(CRATE.x - CRATE.w / 2, CRATE.y - CRATE.h / 2, CRATE.w, CRATE.h, 14);
-    g.lineBetween(CRATE.x - CRATE.w / 2, CRATE.y - CRATE.h / 2, CRATE.x + CRATE.w / 2, CRATE.y + CRATE.h / 2);
+    g.fillStyle(0x000000, 0.3).fillRoundedRect(
+      CRATE.x - CRATE.w / 2 + 6,
+      CRATE.y - CRATE.h / 2 + 8,
+      CRATE.w,
+      CRATE.h,
+      14,
+    );
+    g.fillStyle(0xa16207).fillRoundedRect(
+      CRATE.x - CRATE.w / 2,
+      CRATE.y - CRATE.h / 2,
+      CRATE.w,
+      CRATE.h,
+      14,
+    );
+    g.lineStyle(6, 0x713f12).strokeRoundedRect(
+      CRATE.x - CRATE.w / 2,
+      CRATE.y - CRATE.h / 2,
+      CRATE.w,
+      CRATE.h,
+      14,
+    );
+    g.lineBetween(
+      CRATE.x - CRATE.w / 2,
+      CRATE.y - CRATE.h / 2,
+      CRATE.x + CRATE.w / 2,
+      CRATE.y + CRATE.h / 2,
+    );
   }
 
   private reload(): void {
@@ -99,7 +138,13 @@ export class GaleriaScene extends MiniScene {
       alive.add(it.id);
       let v = this.views.get(it.id);
       if (!v) {
-        v = emojiText(this, it.x, it.y, KINDS[it.kind].emoji, it.kind === 'target' ? 72 : 88).setDepth(it.kind === 'clown' ? 6 : 2);
+        v = emojiText(
+          this,
+          it.x,
+          it.y,
+          KINDS[it.kind].emoji,
+          it.kind === 'target' ? 72 : 88,
+        ).setDepth(it.kind === 'clown' ? 6 : 2);
         if (it.vx > 0) v.setFlipX(true);
         if (it.kind === 'clown') {
           v.setY(1200);
@@ -114,7 +159,13 @@ export class GaleriaScene extends MiniScene {
       if (alive.has(id)) continue;
       this.views.delete(id);
       if (v.getData('shot')) continue;
-      this.tweens.add({ targets: v, alpha: 0, y: v.y + 40, duration: 150, onComplete: () => v.destroy() });
+      this.tweens.add({
+        targets: v,
+        alpha: 0,
+        y: v.y + 40,
+        duration: 150,
+        onComplete: () => v.destroy(),
+      });
     }
     // Water waves in front of the ducks.
     const w = this.waves.clear();
@@ -132,7 +183,13 @@ export class GaleriaScene extends MiniScene {
     const g = this.hud.clear();
     const frac = Math.min(1, s.clock / START_TIME);
     g.fillStyle(0x000000, 0.5).fillRoundedRect(40, 276, 560, 26, 12);
-    g.fillStyle(frac > 0.25 ? 0x22c55e : 0xef4444).fillRoundedRect(40, 276, Math.max(26, 560 * frac), 26, 12);
+    g.fillStyle(frac > 0.25 ? 0x22c55e : 0xef4444).fillRoundedRect(
+      40,
+      276,
+      Math.max(26, 560 * frac),
+      26,
+      12,
+    );
     this.clockText.setText(`${Math.ceil(s.clock)}s`);
     // Shells left.
     for (let i = 0; i < MAGAZINE; i++) {
@@ -146,8 +203,16 @@ export class GaleriaScene extends MiniScene {
       g.fillStyle(0xfde047).fillRoundedRect(40, 1206, 300 * (1 - s.reloading / 0.85), 14, 7);
     }
     this.crateText.setText(s.ammo === 0 && s.reloading === 0 ? 'RECARREGUE!' : 'RECARREGAR');
-    this.crateText.setScale(s.ammo === 0 && s.reloading === 0 ? 1 + Math.sin(this.time.now / 90) * 0.08 : 1);
-    this.multText.setText(s.multiplier > 1 ? `Combo ${s.combo} · x${s.multiplier}` : s.combo >= 2 ? `Combo ${s.combo}` : '');
+    this.crateText.setScale(
+      s.ammo === 0 && s.reloading === 0 ? 1 + Math.sin(this.time.now / 90) * 0.08 : 1,
+    );
+    this.multText.setText(
+      s.multiplier > 1
+        ? `Combo ${s.combo} · x${s.multiplier}`
+        : s.combo >= 2
+          ? `Combo ${s.combo}`
+          : '',
+    );
   }
 
   private handle(events: GalleryEvent[]): void {
@@ -157,17 +222,41 @@ export class GaleriaScene extends MiniScene {
         const v = this.views.get(e.item.id);
         if (v) {
           v.setData('shot', true);
-          this.tweens.add({ targets: v, scaleY: 0, angle: 30, duration: 180, onComplete: () => v.destroy() });
+          this.tweens.add({
+            targets: v,
+            scaleY: 0,
+            angle: 30,
+            duration: 180,
+            onComplete: () => v.destroy(),
+          });
         }
         sfx.play('coin', Math.min(7, e.combo));
-        burst(this, e.item.x, e.item.y, e.item.kind === 'gold' ? 0xfde047 : 0xffffff, e.item.kind === 'gold' ? 22 : 10);
-        this.pop(e.item.x, e.item.y - 60, `+${e.points}${e.item.kind === 'gold' ? ' +3s' : ''}`, e.item.kind === 'gold' ? '#fde047' : '#ffffff', 38);
+        burst(
+          this,
+          e.item.x,
+          e.item.y,
+          e.item.kind === 'gold' ? 0xfde047 : 0xffffff,
+          e.item.kind === 'gold' ? 22 : 10,
+        );
+        this.pop(
+          e.item.x,
+          e.item.y - 60,
+          `+${e.points}${e.item.kind === 'gold' ? ' +3s' : ''}`,
+          e.item.kind === 'gold' ? '#fde047' : '#ffffff',
+          38,
+        );
         this.setScore(this.sim.score);
       } else if (e.type === 'friend') {
         const v = this.views.get(e.item.id);
         if (v) {
           v.setData('shot', true);
-          this.tweens.add({ targets: v, y: v.y - 80, alpha: 0, duration: 400, onComplete: () => v.destroy() });
+          this.tweens.add({
+            targets: v,
+            y: v.y - 80,
+            alpha: 0,
+            duration: 400,
+            onComplete: () => v.destroy(),
+          });
         }
         sfx.play('hit');
         sfx.vibrate([80]);
@@ -183,7 +272,9 @@ export class GaleriaScene extends MiniScene {
         const s = this.sim;
         this.finish(
           s.accuracy >= 0.8 && s.hits >= 30 ? 'Mira de ouro! 🎯' : 'Fim do tempo!',
-          [`Acertos: ${s.hits} · Precisão: ${Math.round(s.accuracy * 100)}% · Combo: ${s.bestCombo}`],
+          [
+            `Acertos: ${s.hits} · Precisão: ${Math.round(s.accuracy * 100)}% · Combo: ${s.bestCombo}`,
+          ],
           { score: s.score, details: { hits: s.hits, accuracy: Math.round(s.accuracy * 100) } },
         );
       }

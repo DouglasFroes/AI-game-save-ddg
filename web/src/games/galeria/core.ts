@@ -138,14 +138,24 @@ export class GallerySim {
     }
     this.clownIn -= dt;
     if (this.clownIn <= 0) {
-      this.items.push({ id: ++this.ids, kind: 'clown', x: 100 + this.rnd() * 360, y: 1080, vx: 0, life: 1.3, hit: false });
+      this.items.push({
+        id: ++this.ids,
+        kind: 'clown',
+        x: 100 + this.rnd() * 360,
+        y: 1080,
+        vx: 0,
+        life: 1.3,
+        hit: false,
+      });
       this.clownIn = 4 + this.rnd() * 4;
     }
     for (const it of this.items) {
       it.x += it.vx * dt;
       if (it.kind === 'clown') it.life -= dt;
     }
-    this.items = this.items.filter((it) => !it.hit && it.x > -80 && it.x < FIELD_W + 80 && (it.kind !== 'clown' || it.life > 0));
+    this.items = this.items.filter(
+      (it) => !it.hit && it.x > -80 && it.x < FIELD_W + 80 && (it.kind !== 'clown' || it.life > 0),
+    );
     if (this.clock <= 0) {
       this.over = true;
       events.push({ type: 'over' });
@@ -158,6 +168,14 @@ export class GallerySim {
     const kind: Kind = r < 0.07 ? 'gold' : r < 0.25 ? 'bunny' : r < 0.47 ? 'target' : 'duck';
     const dir = lane === 1 ? -1 : 1;
     const speed = (110 + lane * 45) * this.pace * (kind === 'gold' ? 1.6 : 1);
-    this.items.push({ id: ++this.ids, kind, x: dir > 0 ? -60 : FIELD_W + 60, y: LANES[lane]!, vx: dir * speed, life: 0, hit: false });
+    this.items.push({
+      id: ++this.ids,
+      kind,
+      x: dir > 0 ? -60 : FIELD_W + 60,
+      y: LANES[lane]!,
+      vx: dir * speed,
+      life: 0,
+      hit: false,
+    });
   }
 }

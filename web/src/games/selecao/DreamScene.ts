@@ -90,7 +90,11 @@ const shortName = (name: string) =>
  * Where a slot sits on a pitch (goalkeeper on the left). The lines are spread over the pitch by
  * their rank, not by `depth`, so the defence stays near its goal and the attack out of the box.
  */
-function slotXY(s: Slot, p: { cx: number; cy: number; w: number; h: number }, slots: readonly Slot[]) {
+function slotXY(
+  s: Slot,
+  p: { cx: number; cy: number; w: number; h: number },
+  slots: readonly Slot[],
+) {
   const lines = [...new Set(slots.filter((o) => o.depth > 0).map((o) => o.depth))].sort(
     (x, y) => x - y,
   );
@@ -1173,7 +1177,9 @@ export abstract class DreamScene extends MiniScene {
     v.add(this.add.image(cx, cy, pitchTexture(this, w, h)));
     const rim = this.add.graphics();
     rim.lineStyle(5, 0x0b3d1c, 0.95).strokeRoundedRect(cx - w / 2, cy - h / 2, w, h, 22);
-    rim.lineStyle(2, 0xffffff, 0.2).strokeRoundedRect(cx - w / 2 + 3, cy - h / 2 + 3, w - 6, h - 6, 19);
+    rim
+      .lineStyle(2, 0xffffff, 0.2)
+      .strokeRoundedRect(cx - w / 2 + 3, cy - h / 2 + 3, w - 6, h - 6, 19);
     v.add(rim);
 
     // Tokens shrink on a crowded line so the name plates of neighbours never touch.
@@ -1199,10 +1205,17 @@ export abstract class DreamScene extends MiniScene {
         dot.lineStyle(1, 0xffffff, 0.25).strokeRoundedRect(x - pw / 2, y + r - 4, pw, 20, 10);
         v.add([
           dot,
-          addText(this, x, y - 1, showRatings ? String(p.rating) : p.name.charAt(0), Math.round(r * 0.9), {
-            color: '#052e16',
-            weight: 'bold',
-          }),
+          addText(
+            this,
+            x,
+            y - 1,
+            showRatings ? String(p.rating) : p.name.charAt(0),
+            Math.round(r * 0.9),
+            {
+              color: '#052e16',
+              weight: 'bold',
+            },
+          ),
           name,
         ]);
       } else {

@@ -4,7 +4,19 @@ import { banner, burst, flash, hint, shockwave } from '@/platform/ui/juice';
 import { MiniScene, heartsLabel } from '@/platform/ui/miniGame';
 import { addText } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
-import { ArcherySim, BOW, GRAVITY, GROUND_Y, launch, LIVES, MAX_PULL, RINGS, targetY, type ArrowEvent, type Target } from './core';
+import {
+  ArcherySim,
+  BOW,
+  GRAVITY,
+  GROUND_Y,
+  launch,
+  LIVES,
+  MAX_PULL,
+  RINGS,
+  targetY,
+  type ArrowEvent,
+  type Target,
+} from './core';
 
 const CX = GAME_WIDTH / 2;
 const RING_COLORS = [0xfacc15, 0xef4444, 0x3b82f6, 0xf8fafc];
@@ -25,7 +37,12 @@ export class ArqueiroScene extends MiniScene {
   /** Arrows stuck in the current board (offsets from its centre). */
   private stuck: Array<{ dy: number; ang: number }> = [];
   /** The old board sliding away after a hit. */
-  private leaving: { t: Target; time: number; k: number; stuck: Array<{ dy: number; ang: number }> } | null = null;
+  private leaving: {
+    t: Target;
+    time: number;
+    k: number;
+    stuck: Array<{ dy: number; ang: number }>;
+  } | null = null;
   private trail: Array<{ x: number; y: number }> = [];
   private tutorial?: { dismiss: () => void };
 
@@ -47,8 +64,18 @@ export class ArqueiroScene extends MiniScene {
     this.arrowG = this.add.graphics().setDepth(4);
     this.aim = this.add.graphics().setDepth(5);
     this.livesText = addText(this, 40, 176, '', 34, {}).setOrigin(0, 0.5).setDepth(6);
-    this.multText = addText(this, GAME_WIDTH - 40, 176, '', 30, { color: '#b45309', stroke: '#ffffff', strokeThickness: 6 }).setOrigin(1, 0.5).setDepth(6);
-    this.windText = addText(this, CX, 236, '', 26, { color: '#0f172a', stroke: '#ffffff', strokeThickness: 5 }).setDepth(6);
+    this.multText = addText(this, GAME_WIDTH - 40, 176, '', 30, {
+      color: '#b45309',
+      stroke: '#ffffff',
+      strokeThickness: 6,
+    })
+      .setOrigin(1, 0.5)
+      .setDepth(6);
+    this.windText = addText(this, CX, 236, '', 26, {
+      color: '#0f172a',
+      stroke: '#ffffff',
+      strokeThickness: 5,
+    }).setDepth(6);
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
       if (p.y < 130 || this.sim.arrow || this.ended) return;
       this.tutorial?.dismiss();
@@ -68,16 +95,31 @@ export class ArqueiroScene extends MiniScene {
       }
       this.pull = { x: 0, y: 0 };
     });
-    this.tutorial = hint(this, ['Puxe para TRÁS (para a esquerda) e solte', 'Atenção ao vento!', 'Errou 3 vezes, acabou'], 700, 5500);
+    this.tutorial = hint(
+      this,
+      ['Puxe para TRÁS (para a esquerda) e solte', 'Atenção ao vento!', 'Errou 3 vezes, acabou'],
+      700,
+      5500,
+    );
   }
 
   private drawScenery(): void {
     const g = this.add.graphics().setDepth(-5);
     g.fillStyle(0xfef9c3).fillCircle(600, 330, 54);
-    g.fillStyle(0x86efac).fillEllipse(180, GROUND_Y - 10, 700, 260).fillEllipse(620, GROUND_Y, 600, 300);
+    g.fillStyle(0x86efac)
+      .fillEllipse(180, GROUND_Y - 10, 700, 260)
+      .fillEllipse(620, GROUND_Y, 600, 300);
     g.fillStyle(0x4ade80).fillRect(0, GROUND_Y - 40, GAME_WIDTH, 400);
     g.fillStyle(0x16a34a).fillRect(0, GROUND_Y - 40, GAME_WIDTH, 10);
-    for (let i = 0; i < 40; i++) g.fillStyle(0x15803d).fillTriangle((i * 37) % 720, GROUND_Y - 30, (i * 37) % 720 + 6, GROUND_Y - 48, (i * 37) % 720 + 12, GROUND_Y - 30);
+    for (let i = 0; i < 40; i++)
+      g.fillStyle(0x15803d).fillTriangle(
+        (i * 37) % 720,
+        GROUND_Y - 30,
+        ((i * 37) % 720) + 6,
+        GROUND_Y - 48,
+        ((i * 37) % 720) + 12,
+        GROUND_Y - 30,
+      );
   }
 
   // ---------------------------------------------------------------- drawing
@@ -89,10 +131,19 @@ export class ArqueiroScene extends MiniScene {
     const draw = v ? Math.min(1, Math.hypot(this.pull.x, this.pull.y) / MAX_PULL) : 0;
     // Archer.
     const feet = { x: BOW.x - 34, y: GROUND_Y - 40 };
-    g.lineStyle(10, 0x1e293b).lineBetween(feet.x - 14, feet.y, feet.x, feet.y - 80).lineBetween(feet.x + 14, feet.y, feet.x, feet.y - 80);
+    g.lineStyle(10, 0x1e293b)
+      .lineBetween(feet.x - 14, feet.y, feet.x, feet.y - 80)
+      .lineBetween(feet.x + 14, feet.y, feet.x, feet.y - 80);
     g.lineStyle(16, 0x15803d).lineBetween(feet.x, feet.y - 80, BOW.x - 30, BOW.y - 20);
     g.fillStyle(0xf1c27d).fillCircle(BOW.x - 30, BOW.y - 50, 16);
-    g.fillStyle(0x166534).fillTriangle(BOW.x - 48, BOW.y - 56, BOW.x - 12, BOW.y - 56, BOW.x - 34, BOW.y - 92);
+    g.fillStyle(0x166534).fillTriangle(
+      BOW.x - 48,
+      BOW.y - 56,
+      BOW.x - 12,
+      BOW.y - 56,
+      BOW.x - 34,
+      BOW.y - 92,
+    );
     // Bow: an arc facing the aim, the string pulled back with the finger.
     const c = Math.cos(ang);
     const s = Math.sin(ang);
@@ -111,8 +162,12 @@ export class ArqueiroScene extends MiniScene {
     }
     g.strokePath();
     const nock = { x: BOW.x - c * (draw * 70), y: BOW.y - s * (draw * 70) };
-    g.lineStyle(2, 0xf8fafc).lineBetween(tip1.x, tip1.y, nock.x, nock.y).lineBetween(nock.x, nock.y, tip2.x, tip2.y);
-    g.lineStyle(4, 0xf1c27d).lineBetween(BOW.x - 30, BOW.y - 20, nock.x, nock.y).lineBetween(BOW.x - 30, BOW.y - 20, BOW.x, BOW.y);
+    g.lineStyle(2, 0xf8fafc)
+      .lineBetween(tip1.x, tip1.y, nock.x, nock.y)
+      .lineBetween(nock.x, nock.y, tip2.x, tip2.y);
+    g.lineStyle(4, 0xf1c27d)
+      .lineBetween(BOW.x - 30, BOW.y - 20, nock.x, nock.y)
+      .lineBetween(BOW.x - 30, BOW.y - 20, BOW.x, BOW.y);
     if (!this.sim.arrow && !this.sim.over) this.drawArrow(g, nock.x + c * 95, nock.y + s * 95, ang);
   }
 
@@ -120,15 +175,44 @@ export class ArqueiroScene extends MiniScene {
     const c = Math.cos(ang);
     const s = Math.sin(ang);
     g.lineStyle(5, 0x78350f).lineBetween(x - c * 90, y - s * 90, x, y);
-    g.fillStyle(0x64748b).fillTriangle(x + c * 14, y + s * 14, x - s * 7, y + c * 7, x + s * 7, y - c * 7);
-    g.fillStyle(0xef4444).fillTriangle(x - c * 90, y - s * 90, x - c * 72 - s * 10, y - s * 72 + c * 10, x - c * 72, y - s * 72);
-    g.fillStyle(0xef4444).fillTriangle(x - c * 90, y - s * 90, x - c * 72 + s * 10, y - s * 72 - c * 10, x - c * 72, y - s * 72);
+    g.fillStyle(0x64748b).fillTriangle(
+      x + c * 14,
+      y + s * 14,
+      x - s * 7,
+      y + c * 7,
+      x + s * 7,
+      y - c * 7,
+    );
+    g.fillStyle(0xef4444).fillTriangle(
+      x - c * 90,
+      y - s * 90,
+      x - c * 72 - s * 10,
+      y - s * 72 + c * 10,
+      x - c * 72,
+      y - s * 72,
+    );
+    g.fillStyle(0xef4444).fillTriangle(
+      x - c * 90,
+      y - s * 90,
+      x - c * 72 + s * 10,
+      y - s * 72 - c * 10,
+      x - c * 72,
+      y - s * 72,
+    );
   }
 
-  private drawBoard(g: Phaser.GameObjects.Graphics, t: Target, time: number, dx: number, stuck: Array<{ dy: number; ang: number }>): void {
+  private drawBoard(
+    g: Phaser.GameObjects.Graphics,
+    t: Target,
+    time: number,
+    dx: number,
+    stuck: Array<{ dy: number; ang: number }>,
+  ): void {
     const x = t.x + dx;
     const y = targetY(t, time);
-    g.lineStyle(10, 0x78350f).lineBetween(x + 6, y + t.r * 0.6, x + 50, GROUND_Y - 40).lineBetween(x + 6, y + t.r * 0.6, x - 30, GROUND_Y - 40);
+    g.lineStyle(10, 0x78350f)
+      .lineBetween(x + 6, y + t.r * 0.6, x + 50, GROUND_Y - 40)
+      .lineBetween(x + 6, y + t.r * 0.6, x - 30, GROUND_Y - 40);
     // Rings seen edge-on: colour bands from the edge to the centre.
     for (let i = RINGS.length - 1; i >= 0; i--) {
       const h = RINGS[i]!.upTo * t.r;
@@ -142,12 +226,14 @@ export class ArqueiroScene extends MiniScene {
     const g = this.windG.clear();
     const w = this.sim.target.wind;
     const n = Math.round(Math.abs(w) / 60);
-    this.windText.setText(n === 0 ? 'Sem vento' : `Vento ${w > 0 ? '→' : '←'} ${'●'.repeat(Math.min(5, n))}`);
+    this.windText.setText(
+      n === 0 ? 'Sem vento' : `Vento ${w > 0 ? '→' : '←'} ${'●'.repeat(Math.min(5, n))}`,
+    );
     // Little streaks drifting with the wind.
     if (n === 0) return;
     const t = this.time.now / 1000;
     for (let i = 0; i < 10; i++) {
-      const x = ((i * 97 + t * w * 0.8) % 760 + 760) % 760 - 20;
+      const x = ((((i * 97 + t * w * 0.8) % 760) + 760) % 760) - 20;
       const y = 300 + ((i * 131) % 600);
       g.lineStyle(2, 0xffffff, 0.6).lineBetween(x, y, x + Math.sign(w) * 28, y);
     }
@@ -167,7 +253,13 @@ export class ArqueiroScene extends MiniScene {
     const tg = this.targetG.clear();
     if (this.leaving) {
       this.leaving.k += dt * 2.2;
-      this.drawBoard(tg, this.leaving.t, this.leaving.time, this.leaving.k * this.leaving.k * 500, this.leaving.stuck);
+      this.drawBoard(
+        tg,
+        this.leaving.t,
+        this.leaving.time,
+        this.leaving.k * this.leaving.k * 500,
+        this.leaving.stuck,
+      );
       if (this.leaving.k > 1.2) this.leaving = null;
     }
     const enter = this.leaving ? 400 * (1 - Math.min(1, this.leaving.k)) : 0;
@@ -181,7 +273,13 @@ export class ArqueiroScene extends MiniScene {
       this.drawArrow(ag, a.x, a.y, Math.atan2(a.vy, a.vx));
     }
     this.livesText.setText(heartsLabel(this.sim.lives, LIVES));
-    this.multText.setText(this.sim.multiplier > 1 ? `x${this.sim.multiplier.toFixed(1).replace('.0', '')} 🔥` : this.sim.streak ? `Sequência ${this.sim.streak}` : '');
+    this.multText.setText(
+      this.sim.multiplier > 1
+        ? `x${this.sim.multiplier.toFixed(1).replace('.0', '')} 🔥`
+        : this.sim.streak
+          ? `Sequência ${this.sim.streak}`
+          : '',
+    );
   }
 
   /** The first stretch of the flight, as dots (wind included): the rest you have to judge. */
@@ -214,7 +312,12 @@ export class ArqueiroScene extends MiniScene {
           flash(this, 0xfde047, 0.18, 200);
         } else this.pop(x - 30, y - 120, e.name, '#0f172a', 28);
         // The board with its arrow slides away; a new one comes in.
-        this.leaving = { t: prev, time: prevTime, k: 0, stuck: [...this.stuck, { dy: e.dy, ang: 0.2 }] };
+        this.leaving = {
+          t: prev,
+          time: prevTime,
+          k: 0,
+          stuck: [...this.stuck, { dy: e.dy, ang: 0.2 }],
+        };
         this.stuck = [];
         this.setScore(this.sim.score);
       } else if (e.type === 'miss') {
