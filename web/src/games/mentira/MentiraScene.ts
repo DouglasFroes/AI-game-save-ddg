@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
+import { PuzzleScene } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { consistent, describe, generate, NAMES, type Puzzle } from './core';
@@ -26,17 +26,6 @@ export class MentiraScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Mentira, 'mentira', [0x9f1239, 0x2a0a14]);
-  }
-
-  protected override rules(): RuleCard {
-    return {
-      goal: 'Descobrir quem fala a verdade e quem mente.',
-      steps: [
-        'Sinceros sempre dizem a verdade; mentirosos sempre mentem.',
-        'Toque em cada pessoa para marcar Sincero ou Mentiroso.',
-        'Quando todos estiverem marcados, toque em Verificar. Errar custa uma vida.',
-      ],
-    };
   }
 
   create(): void {

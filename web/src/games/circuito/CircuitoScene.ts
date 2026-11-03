@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
+import { PuzzleScene } from '@/platform/ui/puzzleGame';
 import { addText } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { evaluate, generate, lamp, type Puzzle } from './core';
@@ -20,17 +20,6 @@ export class CircuitoScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Circuito, 'circuito', [0x1e3a8a, 0x020617]);
-  }
-
-  protected override rules(): RuleCard {
-    return {
-      goal: 'Acender a lâmpada de cima.',
-      steps: [
-        'Toque nas chaves de baixo para ligar ou desligar.',
-        'A corrente passa pelas portas lógicas: E (AND) precisa de todas ligadas, OU (OR) de alguma, NÃO (NOT) inverte.',
-        'XOR liga se só uma entrada estiver ligada; NAND e NOR são o contrário de AND e OR.',
-      ],
-    };
   }
 
   create(): void {

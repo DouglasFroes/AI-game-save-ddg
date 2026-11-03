@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
+import { PuzzleScene } from '@/platform/ui/puzzleGame';
 import { Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { flip, isSorted, newGame, sizeFor, solve } from './core';
@@ -23,17 +23,6 @@ export class PanquecasScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Panquecas, 'panquecas', [0xb45309, 0x431407]);
-  }
-
-  protected override rules(): RuleCard {
-    return {
-      goal: 'Ordenar a pilha: maior embaixo, menor em cima.',
-      steps: [
-        'Toque numa panqueca: ela e todas as que estão acima dela viram de cabeça para baixo.',
-        'Planeje os giros para levar a maior para o fundo e depois as próximas.',
-        'Menos giros dão mais pontos.',
-      ],
-    };
   }
 
   create(): void {

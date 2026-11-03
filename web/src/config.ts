@@ -74,6 +74,7 @@ export const SceneKeys = {
   Leaderboard: 'Leaderboard',
   Hall: 'Hall',
   GameOver: 'GameOver',
+  HowTo: 'HowTo',
   DogLevels: 'DogLevels',
   DogGame: 'DogGame',
   DogResult: 'DogResult',

@@ -36,6 +36,7 @@ import {
 } from '@/platform/ui/hubTheme';
 import { openAccount } from '@/platform/ui/accountDialog';
 import { drawIcon } from '@/platform/ui/icons';
+import { launchHowTo } from '@/platform/scenes/HowToScene';
 import { getServices } from '@/services';
 
 export interface HallData {
@@ -810,7 +811,10 @@ export class HallScene extends Phaser.Scene {
     getServices(this).recents.push(def.id);
     loadGame(this.game, def).then(
       () => {
-        if (this.sys.isActive()) this.scene.start(def.entryScene);
+        if (this.sys.isActive()) {
+          this.scene.start(def.entryScene);
+          launchHowTo(this, def.id);
+        }
       },
       () => {
         this.launching = false;

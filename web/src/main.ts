@@ -3,6 +3,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from '@/config';
 import { fullscreenOnFirstTap } from '@/platform/fullscreen';
 import { BootScene } from '@/platform/scenes/BootScene';
 import { GameOverScene } from '@/platform/scenes/GameOverScene';
+import { HowToScene } from '@/platform/scenes/HowToScene';
 import { HallScene } from '@/platform/scenes/HallScene';
 import { HubScene } from '@/platform/scenes/HubScene';
 import { LeaderboardScene } from '@/platform/scenes/LeaderboardScene';
@@ -37,7 +38,7 @@ const game = new Phaser.Game({
   // Texture smoothing stays on; only the canvas MSAA (costly on weak GPUs) goes in lite mode.
   render: { antialias: true, antialiasGL: !isLite() },
   // Each game's scenes are added on demand by platform/gameLoader.ts.
-  scene: [BootScene, HubScene, LeaderboardScene, GameOverScene, HallScene],
+  scene: [BootScene, HubScene, LeaderboardScene, GameOverScene, HallScene, HowToScene],
 });
 
 provideServices(game, services);

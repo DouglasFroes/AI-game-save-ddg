@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
+import { PuzzleScene } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { apply, generate, type Puzzle } from './core';
@@ -28,18 +28,6 @@ export class JarrosScene extends PuzzleScene {
   private x(i: number): number {
     const n = this.pz.caps.length;
     return n === 2 ? 220 + i * 280 : 120 + i * 240;
-  }
-
-  protected override rules(): RuleCard {
-    return {
-      goal: 'Deixar exatamente a quantidade pedida num jarro.',
-      steps: [
-        'Os jarros não têm marcas: só dá para saber quando estão cheios ou vazios.',
-        'Toque num jarro e depois em Encher ou Esvaziar.',
-        'Ou toque num jarro e depois em outro para despejar: a água passa até encher o outro ou esvaziar o primeiro.',
-        'Misture os jarros até sobrar a quantidade pedida em cima da tela.',
-      ],
-    };
   }
 
   create(): void {

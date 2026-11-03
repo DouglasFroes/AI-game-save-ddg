@@ -39,6 +39,7 @@ import { openNotifications } from '@/platform/ui/notificationsOverlay';
 import { formatNumber } from '@/platform/ranking';
 import type { Overtake } from '@/platform/rankWatch';
 import { drawIcon, type IconKind } from '@/platform/ui/icons';
+import { launchHowTo } from '@/platform/scenes/HowToScene';
 import { openAccount } from '@/platform/ui/accountDialog';
 import { isChatOpen, openChat } from '@/platform/chat/overlay';
 import { snippet } from '@/platform/chat/core';
@@ -2155,7 +2156,10 @@ export class HubScene extends Phaser.Scene {
     getServices(this).recents.push(game.id);
     loadGame(this.game, game).then(
       () => {
-        if (this.sys.isActive()) this.scene.start(game.entryScene);
+        if (this.sys.isActive()) {
+          this.scene.start(game.entryScene);
+          launchHowTo(this, game.id);
+        }
       },
       (err: unknown) => {
         console.warn(`Falha ao carregar ${game.id}`, err);

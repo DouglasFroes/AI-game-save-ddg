@@ -513,11 +513,7 @@ class ChatOverlay {
     const s = h('div', 'fxc-start');
     s.append(
       h('span', 'big', emoji),
-      h(
-        'b',
-        '',
-        this.room === GENERAL_ROOM ? 'Bem-vindo ao chat do Fliper!' : `Sala de ${name}`,
-      ),
+      h('b', '', this.room === GENERAL_ROOM ? 'Bem-vindo ao chat do Fliper!' : `Sala de ${name}`),
       h(
         'span',
         '',

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
+import { PuzzleScene } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { conflicts, generate, isSolved, type Puzzle } from './core';
@@ -22,18 +22,6 @@ export class RainhasScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Rainhas, 'rainhas', [0x7e22ce, 0x1e1b4b]);
-  }
-
-  protected override rules(): RuleCard {
-    return {
-      goal: 'Pôr 1 rainha em cada linha, coluna e cor.',
-      steps: [
-        'Toque numa casa para colocar ou tirar uma rainha 👑.',
-        'Cada linha, cada coluna e cada região colorida precisa ter exatamente 1 rainha.',
-        'Duas rainhas não podem se encostar, nem na diagonal.',
-        'Dica: comece pelas cores com poucas casas.',
-      ],
-    };
   }
 
   create(): void {

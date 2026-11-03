@@ -35,6 +35,7 @@ import {
 } from '@/platform/ui/hubTheme';
 import { drawIcon, type IconKind } from '@/platform/ui/icons';
 import { openAccount } from '@/platform/ui/accountDialog';
+import { launchHowTo } from '@/platform/scenes/HowToScene';
 import { getServices } from '@/services';
 
 export interface LeaderboardData {
@@ -1037,7 +1038,10 @@ export class LeaderboardScene extends Phaser.Scene {
     services.recents.push(this.def.id);
     loadGame(this.game, this.def).then(
       () => {
-        if (this.sys.isActive()) this.scene.start(this.def.entryScene);
+        if (this.sys.isActive()) {
+          this.scene.start(this.def.entryScene);
+          launchHowTo(this, this.def.id);
+        }
       },
       () => {
         this.launching = false;

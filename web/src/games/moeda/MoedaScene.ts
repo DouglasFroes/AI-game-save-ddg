@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
+import { PuzzleScene } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { coinsFor, validWeighing, weigh, weighsFor } from './core';
@@ -27,17 +27,6 @@ export class MoedaScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Moeda, 'moeda', [0xa16207, 0x2a1a05]);
-  }
-
-  protected override rules(): RuleCard {
-    return {
-      goal: 'Descobrir qual moeda é a mais pesada.',
-      steps: [
-        'Toque nas moedas para mandá-las para a esquerda ou a direita da balança, ou deixá-las de fora.',
-        'Os dois lados precisam ter o mesmo número de moedas; toque em Pesar.',
-        'Você tem poucas pesagens. Quando souber, toque em Dar palpite e na moeda; errar custa uma vida.',
-      ],
-    };
   }
 
   create(): void {
