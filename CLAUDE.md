@@ -10,7 +10,7 @@ Liga Pontos, Pescaria, Pouso Lunar, Defesa Antimísseis, Moto de Luz, Sinuca, Ma
 Apaga Luzes, Quebra-Cabeça Deslizante, Senha das Cores, Caça-Palavras, Anagrama, Binário, Soma Dez, Caça ao
 Tesouro, Labirinto no Escuro, Círculos do Ritmo, Paraquedas, Chuva de Letras, Cubo Saltitante, Pássaro das
 Colinas, Canhão, Equilíbrio, Desarme a Bomba, Controle de Tráfego, Torre de Controle, Lanchonete, Defesa da
-Torre, Mina de Ouro, Pôquer, Dardos, Futebol de Botão, Salto de Esqui, Corrida de 100 m, Mancala, Hex, Trilha, Pontinhos, Resta Um, Raposa e Gansos, Velha Suprema, Captura, Muralha, Lança Facas, Buraco Negro, Estilingue, Pêndulo, Ninja, Sumô, Esquiva, Escudo, Pular Corda, Fábrica de Biscoitos, Fazendinha, Bolsa, Reino, Cidade, Aquário, Poções, Usina, Bichinho), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
+Torre, Mina de Ouro, Pôquer, Dardos, Futebol de Botão, Salto de Esqui, Corrida de 100 m, Mancala, Hex, Trilha, Pontinhos, Resta Um, Raposa e Gansos, Velha Suprema, Captura, Muralha, Lança Facas, Buraco Negro, Estilingue, Pêndulo, Ninja, Sumô, Esquiva, Escudo, Pular Corda, Fábrica de Biscoitos, Fazendinha, Bolsa, Reino, Cidade, Aquário, Poções, Usina, Bichinho, Empurra Caixas, Torre de Hanói, Fluxo, Pontes, Rainhas, Sapos, Balança, Travessia do Rio, Passeio do Cavalo), each with its own ranking. Vite + TypeScript (strict) + Phaser 3
 (+ Three.js, only in Grau 3D). Backend: Rust (Axum + SQLx) + PostgreSQL, served from one Docker image
 (Dokploy). Node 22.13+.
 
@@ -83,3 +83,10 @@ Fábrica de Biscoitos, Fazendinha, Bolsa, Reino, Cidade, Aquário, Poções, Usi
 management sims (`MiniScene` + pure `core.ts` with a `step(dt)` and a `botAct`/`botChoose`/`bestPlacement`
 policy). `web/tests/sim9.test.ts` proves each one is playable: the policy keeps going or scores well, an idle
 player doesn't.
+
+## Logic puzzle batch
+
+Empurra Caixas, Torre de Hanói, Fluxo, Pontes, Rainhas, Sapos, Balança, Travessia do Rio and Passeio do Cavalo
+extend `PuzzleScene` (`web/src/platform/ui/puzzleGame.ts`): an endless series of levels against one shared
+clock, where each solved level scores and adds time. Each has a pure `core.ts` with a level `generate(level, rng)`
+that builds solvable levels by construction; `web/tests/puzzle9.test.ts` solves them to prove it.

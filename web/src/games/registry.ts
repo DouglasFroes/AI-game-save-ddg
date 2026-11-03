@@ -169,7 +169,16 @@ export type GameId =
   | 'aquario'
   | 'pocoes'
   | 'usina'
-  | 'bichinho';
+  | 'bichinho'
+  | 'caixas'
+  | 'hanoi'
+  | 'fluxo'
+  | 'pontes'
+  | 'rainhas'
+  | 'sapos'
+  | 'balanca'
+  | 'rio'
+  | 'cavalo';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -2765,6 +2774,150 @@ export const GAMES: readonly GameDefinition[] = [
       { key: 'seconds', label: 'Segundos', x: 620 },
     ],
     personalBest: storedBest('bichinho'),
+  },
+  {
+    id: 'caixas',
+    title: 'Empurra Caixas',
+    tagline: 'Empurre as caixas até os alvos',
+    icon: 'caixas-icon',
+    emoji: '📦',
+    color: 0xb45309,
+    shade: 0x1c1917,
+    entryScene: SceneKeys.Caixas,
+    load: () => import('./caixas/CaixasScene').then((m) => [m.CaixasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('caixas'),
+  },
+  {
+    id: 'hanoi',
+    title: 'Torre de Hanói',
+    tagline: 'Leve a torre inteira para a outra ponta',
+    icon: 'hanoi-icon',
+    emoji: '🗼',
+    color: 0x0891b2,
+    shade: 0x082f49,
+    entryScene: SceneKeys.Hanoi,
+    load: () => import('./hanoi/HanoiScene').then((m) => [m.HanoiScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('hanoi'),
+  },
+  {
+    id: 'fluxo',
+    title: 'Fluxo',
+    tagline: 'Ligue as cores e preencha o tabuleiro',
+    icon: 'fluxo-icon',
+    emoji: '🌈',
+    color: 0x2563eb,
+    shade: 0x0f172a,
+    entryScene: SceneKeys.Fluxo,
+    load: () => import('./fluxo/FluxoScene').then((m) => [m.FluxoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('fluxo'),
+  },
+  {
+    id: 'pontes',
+    title: 'Pontes',
+    tagline: 'Ligue as ilhas com o número certo de pontes',
+    icon: 'pontes-icon',
+    emoji: '🏝️',
+    color: 0x0d9488,
+    shade: 0x042f2e,
+    entryScene: SceneKeys.Pontes,
+    load: () => import('./pontes/PontesScene').then((m) => [m.PontesScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('pontes'),
+  },
+  {
+    id: 'rainhas',
+    title: 'Rainhas',
+    tagline: 'Uma rainha por linha, coluna e cor',
+    icon: 'rainhas-icon',
+    emoji: '👸',
+    color: 0x9333ea,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Rainhas,
+    load: () => import('./rainhas/RainhasScene').then((m) => [m.RainhasScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('rainhas'),
+  },
+  {
+    id: 'sapos',
+    title: 'Sapos',
+    tagline: 'Troque os sapos de lado pulando a lagoa',
+    icon: 'sapos-icon',
+    emoji: '🐸',
+    color: 0x16a34a,
+    shade: 0x052e16,
+    entryScene: SceneKeys.Sapos,
+    load: () => import('./sapos/SaposScene').then((m) => [m.SaposScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('sapos'),
+  },
+  {
+    id: 'balanca',
+    title: 'Balança',
+    tagline: 'Divida os pesos para equilibrar os pratos',
+    icon: 'balanca-icon',
+    emoji: '⚖️',
+    color: 0xd97706,
+    shade: 0x451a03,
+    entryScene: SceneKeys.Balanca,
+    load: () => import('./balanca/BalancaScene').then((m) => [m.BalancaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('balanca'),
+  },
+  {
+    id: 'rio',
+    title: 'Travessia do Rio',
+    tagline: 'Atravesse sem ninguém virar almoço',
+    icon: 'rio-icon',
+    emoji: '🛶',
+    color: 0x0284c7,
+    shade: 0x082f49,
+    entryScene: SceneKeys.Rio,
+    load: () => import('./rio/RioScene').then((m) => [m.RioScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('rio'),
+  },
+  {
+    id: 'cavalo',
+    title: 'Passeio do Cavalo',
+    tagline: 'Passe por todas as casas uma só vez',
+    icon: 'cavalo-icon',
+    emoji: '♞',
+    color: 0x6366f1,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Cavalo,
+    load: () => import('./cavalo/CavaloScene').then((m) => [m.CavaloScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'levels', label: 'Fases', x: 620 },
+    ],
+    personalBest: storedBest('cavalo'),
   },
 ];
 
