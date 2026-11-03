@@ -26,11 +26,15 @@ function readPixel(game: Phaser.Game, x: number, y: number): Promise<string | nu
 }
 
 function paint(top: string | null, bottom: string | null): void {
-  const roots = [document.documentElement, document.body];
+  // The bottom colour is a plain background-colour, which paints the whole screen (a gradient
+  // only covers the html box, and iOS shows white past it). A thin strip of the top colour sits
+  // behind the status bar.
   const background = top
-    ? `linear-gradient(to bottom, ${top} 0 50%, ${bottom ?? top} 50% 100%)`
+    ? `linear-gradient(${top}, ${top}) top left / 100% max(env(safe-area-inset-top), 1px) no-repeat, ${bottom ?? top}`
     : '';
-  for (const el of roots) el.style.background = background;
+  document.documentElement.style.background = background;
+  // index.html paints the body navy; it must not cover the colour set on html.
+  document.body.style.background = top ? 'transparent' : '';
   // The browser's own bars (Android Chrome) follow the top colour.
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (meta && top) meta.content = top;
