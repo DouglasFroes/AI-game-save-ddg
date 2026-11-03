@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { canJump, generate, isSolved, isStuck, jumps, type Walk } from './core';
@@ -23,6 +23,18 @@ export class CavaloScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Cavalo, 'cavalo', [0x4338ca, 0x1e1b4b]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Passar por todas as casas, uma única vez.',
+      steps: [
+        'O cavalo ♞ anda em L: 2 casas numa direção e 1 para o lado.',
+        'Toque numa casa destacada para mover o cavalo até ela.',
+        'Casas já visitadas não podem ser usadas de novo.',
+        'Termina quando todas as casas forem visitadas.',
+      ],
+    };
   }
 
   create(): void {

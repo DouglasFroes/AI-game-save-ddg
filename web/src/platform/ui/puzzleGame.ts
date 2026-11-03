@@ -1,7 +1,7 @@
 import { GAME_WIDTH } from '@/config';
 import { banner } from '@/platform/ui/juice';
 import { heartsLabel, MiniScene } from '@/platform/ui/miniGame';
-import { addText } from '@/platform/ui/widgets';
+import { addText, Button, iconButton } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 
 /** Seconds on the clock at the start of a run, the most it can hold, and what a solved level adds. */
@@ -11,6 +11,15 @@ export const TIME_BONUS = 15;
 /** Wrong guesses a run can survive, and the clock each one burns on top of the life. */
 export const START_LIVES = 3;
 export const MISTAKE_TIME = 10;
+
+/** A "how to play" card: a goal sentence and a few numbered steps. */
+export interface RuleCard {
+  goal: string;
+  steps: string[];
+}
+
+/** Games whose rules card was already shown this session (it opens by itself only once). */
+const seenRules = new Set<string>();
 
 /**
  * Shell of the logic puzzles: an endless series of levels against one shared clock. Every solved
@@ -26,7 +35,15 @@ export abstract class PuzzleScene extends MiniScene {
   protected locked = false;
   protected statusText!: Phaser.GameObjects.Text;
 
+  private ruleObjects: Phaser.GameObjects.GameObject[] = [];
+  private helpOpen = false;
+
   protected abstract startLevel(): void;
+
+  /** The rules shown on a card the first time, and again from the ? button. */
+  protected rules(): RuleCard | undefined {
+    return undefined;
+  }
 
   /** Extra text shown after the level and the clock (a move counter, say). */
   protected hud(): string {
@@ -40,6 +57,8 @@ export abstract class PuzzleScene extends MiniScene {
     this.timeLeft = START_TIME;
     this.lives = START_LIVES;
     this.locked = false;
+    this.helpOpen = false;
+    this.ruleObjects = [];
     this.frame('0');
     this.statusText = addText(this, GAME_WIDTH / 2, 172, '', 30, {
       color: statusColor,
@@ -48,6 +67,65 @@ export abstract class PuzzleScene extends MiniScene {
     }).setDepth(50);
     this.startLevel();
     this.refreshStatus();
+    const card = this.rules();
+    if (card) {
+      iconButton(this, 170, 60, '?', () => this.showRules()).setDepth(50);
+      if (!seenRules.has(this.gameId)) this.showRules();
+    }
+  }
+
+  /** Opens the rules card; the clock waits and the board ignores taps until it is closed. */
+  protected showRules(): void {
+    const card = this.rules();
+    if (!card || this.helpOpen || this.ended || this.locked) return;
+    seenRules.add(this.gameId);
+    this.helpOpen = true;
+    this.locked = true;
+    const o = this.ruleObjects;
+    const shade = this.add
+      .rectangle(GAME_WIDTH / 2, 640, GAME_WIDTH, 1280, 0x000000, 0.78)
+      .setDepth(90)
+      .setInteractive();
+    const panel = this.add.graphics().setDepth(91);
+    panel.fillStyle(0x0f172a, 1).fillRoundedRect(50, 230, 620, 760, 32);
+    panel.lineStyle(6, 0xfde047, 1).strokeRoundedRect(50, 230, 620, 760, 32);
+    const title = addText(this, GAME_WIDTH / 2, 290, 'Como jogar', 52, {
+      color: '#fde047',
+      stroke: '#000000',
+      strokeThickness: 8,
+    }).setDepth(92);
+    const goal = addText(this, GAME_WIDTH / 2, 400, `🎯 ${card.goal}`, 34, {
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 6,
+      wrapWidth: 540,
+    }).setDepth(92);
+    const steps = addText(
+      this,
+      90,
+      470,
+      card.steps.map((t, i) => `${i + 1}. ${t}`).join('\n\n'),
+      30,
+      { color: '#e2e8f0', stroke: '#000000', strokeThickness: 5, wrapWidth: 540 },
+    )
+      .setOrigin(0, 0)
+      .setAlign('left')
+      .setDepth(92);
+    const ok = new Button(this, GAME_WIDTH / 2, 920, 'Entendi!', () => this.hideRules(), {
+      width: 320,
+      height: 90,
+      fontSize: 40,
+      color: 0x22c55e,
+      shade: 0x15803d,
+    }).setDepth(93);
+    o.push(shade, panel, title, goal, steps, ok);
+  }
+
+  private hideRules(): void {
+    for (const obj of this.ruleObjects) obj.destroy();
+    this.ruleObjects = [];
+    this.helpOpen = false;
+    this.locked = false;
   }
 
   protected refreshStatus(): void {

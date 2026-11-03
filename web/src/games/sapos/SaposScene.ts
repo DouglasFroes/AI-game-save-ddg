@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { frogsFor, GREEN, isSolved, isStuck, move, newGame, par, type Pad } from './core';
@@ -21,6 +21,18 @@ export class SaposScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Sapos, 'sapos', [0x15803d, 0x052e16]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Trocar de lugar os sapos verdes e os vermelhos.',
+      steps: [
+        'Os verdes começam à esquerda e os vermelhos à direita; no meio há uma vitória-régia vazia.',
+        'Toque num sapo para ele andar: ele pula para a vitória-régia vazia ao lado ou por cima de 1 sapo.',
+        'Sapos só andam para a frente: verdes para a direita, vermelhos para a esquerda.',
+        'No fim, os verdes ficam à direita e os vermelhos à esquerda.',
+      ],
+    };
   }
 
   create(): void {

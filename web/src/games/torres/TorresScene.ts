@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene } from '@/platform/ui/puzzleGame';
+import { PuzzleScene, type RuleCard } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { badClues, duplicates, generate, isSolved, newGrid, type Grid, type Puzzle } from './core';
@@ -22,6 +22,18 @@ export class TorresScene extends PuzzleScene {
 
   constructor() {
     super(SceneKeys.Torres, 'torres', [0x475569, 0x0f172a]);
+  }
+
+  protected override rules(): RuleCard {
+    return {
+      goal: 'Preencher a grade com prédios de alturas diferentes.',
+      steps: [
+        'Toque numa casa para trocar o número: é a altura do prédio (1 é o mais baixo).',
+        'Nenhum número pode repetir na mesma linha ou coluna.',
+        'O número fora da grade diz quantos prédios você vê olhando daquele lado: um prédio alto esconde os menores atrás dele.',
+        'Números errados ficam em vermelho.',
+      ],
+    };
   }
 
   create(): void {
