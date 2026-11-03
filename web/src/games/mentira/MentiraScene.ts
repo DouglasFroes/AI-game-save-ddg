@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import { hint } from '@/platform/ui/juice';
-import { PuzzleScene, TIME_BONUS } from '@/platform/ui/puzzleGame';
+import { PuzzleScene } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 import { consistent, describe, generate, NAMES, type Puzzle } from './core';
@@ -105,10 +105,8 @@ export class MentiraScene extends PuzzleScene {
       this.solved('DESCOBRIU!');
       return;
     }
-    sfx.play('hit');
-    this.cameras.main.shake(160, 0.006);
-    this.timeLeft = Math.max(1, this.timeLeft - TIME_BONUS / 3);
-    this.msg.setText('Tem algo errado… (-10 s)');
+    if (this.mistake('Errado!')) return;
+    this.msg.setText('Tem algo errado… (-1 vida)');
   }
 
   override update(t: number, dt: number): void {

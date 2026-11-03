@@ -119,10 +119,8 @@ export class MoedaScene extends PuzzleScene {
       this.solved('ACHOU A FALSA!', Math.max(0, this.max - this.used) * 40);
       return;
     }
-    sfx.play('hit');
-    this.cameras.main.shake(160, 0.006);
-    this.timeLeft = Math.max(1, this.timeLeft - 15);
-    this.log.setText('Essa não era! (-15 s) Novas moedas.');
+    if (this.mistake('Essa não era!')) return;
+    this.log.setText('Essa não era! (-1 vida) Novas moedas.');
     const msg = this.log.text;
     this.startLevel();
     this.log.setText(msg);

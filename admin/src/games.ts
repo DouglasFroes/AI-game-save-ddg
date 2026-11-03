@@ -206,7 +206,7 @@ export const GAMES_CATALOG: readonly GameMeta[] = [
   { id: 'suprema', title: 'Velha Suprema', emoji: '❌', color: '#6366f1', category: 'mesa' },
   { id: 'captura', title: 'Captura', emoji: '🔴', color: '#6b7280', category: 'mesa' },
   { id: 'muralha', title: 'Muralha', emoji: '🧱', color: '#14b8a6', category: 'mesa' },
-  { id: 'facas', title: 'Lança Facas', emoji: '🔪', color: '#ea580c', category: 'reflexo' },
+  { id: 'gravidade', title: 'Gravidade', emoji: '🔄', color: '#7c3aed', category: 'reflexo' },
   { id: 'buraco', title: 'Buraco Negro', emoji: '🕳️', color: '#7c3aed', category: 'acao' },
   { id: 'estilingue', title: 'Estilingue', emoji: '🐷', color: '#16a34a', category: 'acao' },
   { id: 'pendulo', title: 'Pêndulo', emoji: '🕸️', color: '#f97316', category: 'reflexo' },

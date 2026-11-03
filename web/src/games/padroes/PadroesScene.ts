@@ -1,12 +1,9 @@
 import { GAME_WIDTH, SceneKeys } from '@/config';
 import { PuzzleScene } from '@/platform/ui/puzzleGame';
 import { addText, Button } from '@/platform/ui/widgets';
-import { getServices } from '@/services';
 import { generate, type Question } from './core';
 
-const PENALTY = 8;
-
-/** "Padrões": find the number that continues the series. A wrong pick costs time. */
+/** "Padrões": find the number that continues the series. A wrong pick costs a life and locks that option. */
 export class PadroesScene extends PuzzleScene {
   private q!: Question;
   private g!: Phaser.GameObjects.Graphics;
@@ -71,7 +68,10 @@ export class PadroesScene extends PuzzleScene {
   }
 
   private refreshOptions(): void {
-    this.q.options.forEach((o, i) => this.buttons[i]!.label.setText(String(o)));
+    this.q.options.forEach((o, i) => {
+      this.buttons[i]!.label.setText(String(o));
+      this.buttons[i]!.setEnabled(true).setAlpha(1);
+    });
   }
 
   private pick(i: number): void {
@@ -81,10 +81,9 @@ export class PadroesScene extends PuzzleScene {
       this.solved('CERTO!');
       return;
     }
-    getServices(this).sfx.play('hit');
-    this.cameras.main.shake(140, 0.006);
-    this.timeLeft = Math.max(1, this.timeLeft - PENALTY);
-    this.msg.setText(`Não é esse! (-${PENALTY} s)`);
+    this.buttons[i]!.setEnabled(false).setAlpha(0.35);
+    if (this.mistake('Não é esse!')) return;
+    this.msg.setText('Não é esse! Pense melhor…');
   }
 
   override update(t: number, dt: number): void {

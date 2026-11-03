@@ -19,13 +19,13 @@ export const LADDER = [
 ] as const;
 export const QUESTION_COUNT = LADDER.length;
 export const SKIPS = 3;
-export const ANSWER_TIME = 40;
+export const ANSWER_TIME = 30;
 
 export const MILLION = 1_000_000;
-export const MIN_TIME = 12;
+export const MIN_TIME = 10;
 
 /** Seconds per answer on a lap (0 = the first): 40, 34, 28, … down to 12. */
-export const timeFor = (lap: number): number => Math.max(MIN_TIME, ANSWER_TIME - 6 * lap);
+export const timeFor = (lap: number): number => Math.max(MIN_TIME, ANSWER_TIME - 5 * lap);
 
 /**
  * Difficulty of each step: easy for the first four (up to R$ 4 mil), medium up to R$ 40 mil, hard up

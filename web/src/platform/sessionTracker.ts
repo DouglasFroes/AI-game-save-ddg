@@ -150,7 +150,7 @@ export const SCENE_TO_GAME: Readonly<Record<string, GameId>> = {
   [SceneKeys.Suprema]: 'suprema',
   [SceneKeys.Captura]: 'captura',
   [SceneKeys.Muralha]: 'muralha',
-  [SceneKeys.Facas]: 'facas',
+  [SceneKeys.Gravidade]: 'gravidade',
   [SceneKeys.Buraco]: 'buraco',
   [SceneKeys.Estilingue]: 'estilingue',
   [SceneKeys.Pendulo]: 'pendulo',

@@ -159,7 +159,7 @@ export const GAME_CATEGORY: Readonly<Record<GameId, CategoryId>> = {
   suprema: 'mesa',
   captura: 'mesa',
   muralha: 'mesa',
-  facas: 'reflexo',
+  gravidade: 'reflexo',
   buraco: 'acao',
   estilingue: 'acao',
   pendulo: 'reflexo',

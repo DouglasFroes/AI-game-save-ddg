@@ -1,13 +1,16 @@
 import { GAME_WIDTH } from '@/config';
 import { banner } from '@/platform/ui/juice';
-import { MiniScene } from '@/platform/ui/miniGame';
+import { heartsLabel, MiniScene } from '@/platform/ui/miniGame';
 import { addText } from '@/platform/ui/widgets';
 import { getServices } from '@/services';
 
 /** Seconds on the clock at the start of a run, the most it can hold, and what a solved level adds. */
-export const START_TIME = 150;
-export const MAX_TIME = 200;
-export const TIME_BONUS = 30;
+export const START_TIME = 75;
+export const MAX_TIME = 90;
+export const TIME_BONUS = 15;
+/** Wrong guesses a run can survive, and the clock each one burns on top of the life. */
+export const START_LIVES = 3;
+export const MISTAKE_TIME = 10;
 
 /**
  * Shell of the logic puzzles: an endless series of levels against one shared clock. Every solved
@@ -18,6 +21,7 @@ export abstract class PuzzleScene extends MiniScene {
   protected level = 1;
   protected points = 0;
   protected timeLeft = START_TIME;
+  protected lives = START_LIVES;
   /** True between a solved level and the next one: input is ignored and the clock waits. */
   protected locked = false;
   protected statusText!: Phaser.GameObjects.Text;
@@ -34,6 +38,7 @@ export abstract class PuzzleScene extends MiniScene {
     this.level = 1;
     this.points = 0;
     this.timeLeft = START_TIME;
+    this.lives = START_LIVES;
     this.locked = false;
     this.frame('0');
     this.statusText = addText(this, GAME_WIDTH / 2, 172, '', 30, {
@@ -48,8 +53,32 @@ export abstract class PuzzleScene extends MiniScene {
   protected refreshStatus(): void {
     const extra = this.hud();
     this.statusText.setText(
-      `Fase ${this.level} · ⏱ ${Math.max(0, Math.ceil(this.timeLeft))}s${extra ? ` · ${extra}` : ''}`,
+      `Fase ${this.level} · ⏱ ${Math.max(0, Math.ceil(this.timeLeft))}s · ${heartsLabel(this.lives, START_LIVES)}${extra ? ` · ${extra}` : ''}`,
     );
+  }
+
+  /**
+   * A wrong guess: costs a life and some clock. Returns true when that was the last life (the run
+   * is over), so callers can skip any follow-up.
+   */
+  protected mistake(message: string): boolean {
+    if (this.ended) return true;
+    this.lives--;
+    this.timeLeft = Math.max(0, this.timeLeft - MISTAKE_TIME);
+    getServices(this).sfx.play('hit');
+    this.cameras.main.shake(160, 0.006);
+    this.refreshStatus();
+    if (this.lives <= 0) {
+      this.finish(
+        'Acabaram as vidas!',
+        [`Fases resolvidas: ${this.level - 1}`],
+        { score: this.points, details: { levels: this.level - 1 } },
+        500,
+      );
+      return true;
+    }
+    this.pop(GAME_WIDTH / 2, 260, `${message} (-${MISTAKE_TIME}s)`, '#fca5a5', 40);
+    return false;
   }
 
   /** The level is solved: score, banner, a little more time, then the next level. */

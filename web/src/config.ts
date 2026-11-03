@@ -219,7 +219,7 @@ export const SceneKeys = {
   Suprema: 'Suprema',
   Captura: 'Captura',
   Muralha: 'Muralha',
-  Facas: 'Facas',
+  Gravidade: 'Gravidade',
   Buraco: 'Buraco',
   Estilingue: 'Estilingue',
   Pendulo: 'Pendulo',

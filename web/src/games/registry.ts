@@ -152,7 +152,7 @@ export type GameId =
   | 'suprema'
   | 'captura'
   | 'muralha'
-  | 'facas'
+  | 'gravidade'
   | 'buraco'
   | 'estilingue'
   | 'pendulo'
@@ -2504,20 +2504,19 @@ export const GAMES: readonly GameDefinition[] = [
     personalBest: storedBest('muralha'),
   },
   {
-    id: 'facas',
-    title: 'Lança Facas',
-    tagline: 'Fixe as facas sem bater nas outras',
-    icon: 'facas-icon',
-    emoji: '🔪',
-    color: 0xea580c,
-    shade: 0x7c2d12,
-    entryScene: SceneKeys.Facas,
-    load: () => import('./facas/FacasScene').then((m) => [m.FacasScene]),
+    id: 'gravidade',
+    title: 'Gravidade',
+    tagline: 'Inverta a gravidade e fuja dos espinhos',
+    icon: 'gravidade-icon',
+    emoji: '🔄',
+    color: 0x7c3aed,
+    shade: 0x4c1d95,
+    entryScene: SceneKeys.Gravidade,
+    load: () => import('./gravidade/GravidadeScene').then((m) => [m.GravidadeScene]),
     columns: [
-      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
-      { key: 'stage', label: 'Fase', x: 620 },
+      { key: 'score', label: 'Espinhos', x: 450, format: formatNumber },
     ],
-    personalBest: storedBest('facas'),
+    personalBest: storedBest('gravidade'),
   },
   {
     id: 'buraco',

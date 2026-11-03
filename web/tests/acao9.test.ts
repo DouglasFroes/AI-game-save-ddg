@@ -4,7 +4,7 @@ import * as corda from '@/games/corda/core';
 import * as escudo from '@/games/escudo/core';
 import * as esquiva from '@/games/esquiva/core';
 import * as estilingue from '@/games/estilingue/core';
-import * as facas from '@/games/facas/core';
+import * as gravidade from '@/games/gravidade/core';
 import * as ninja from '@/games/ninja/core';
 import * as pendulo from '@/games/pendulo/core';
 import * as sumo from '@/games/sumo/core';
@@ -21,37 +21,24 @@ function seeded(seed: number): () => number {
 }
 const DT = 1 / 60;
 
-describe('lança facas', () => {
-  it('kills when two knives land together, and a clear moves to the next stage', () => {
-    const s = new facas.KnifeSim(seeded(1));
-    expect(s.throwKnife()).toBe('stuck');
-    expect(s.throwKnife()).toBe('dead');
-    expect(s.alive).toBe(false);
-    const t = new facas.KnifeSim(seeded(2));
-    let last = 'stuck';
-    for (let i = 0; i < 20 && t.stage === 1; i++) {
-      for (let k = 0; k < 600 && !t.isFree(); k++) t.step(DT);
-      last = t.throwKnife();
+describe('gravidade', () => {
+  it('an idle runner dies on the first spike on its wall', () => {
+    for (let seed = 1; seed <= 3; seed++) {
+      const s = new gravidade.GravitySim(seeded(seed));
+      for (let i = 0; i < 60 * 30 && s.alive; i++) s.step(DT);
+      expect(s.alive).toBe(false);
     }
-    expect(last).toBe('clear');
-    expect(t.stage).toBe(2);
-    expect(t.stuck.length).toBe(1);
   });
 
-  it('a patient player keeps clearing stages', () => {
-    for (let seed = 1; seed <= 3; seed++) {
-      const s = new facas.KnifeSim(seeded(seed));
-      let cooldown = 0;
-      for (let i = 0; i < 60 * 90 && s.alive; i++) {
+  it('a bot that flips in time keeps going', () => {
+    for (let seed = 1; seed <= 4; seed++) {
+      const s = new gravidade.GravitySim(seeded(seed));
+      for (let i = 0; i < 60 * 60 && s.alive; i++) {
+        s.botAct();
         s.step(DT);
-        cooldown -= DT;
-        if (cooldown <= 0 && s.isFree()) {
-          s.throwKnife();
-          cooldown = 0.15;
-        }
       }
       expect(s.alive).toBe(true);
-      expect(s.stage).toBeGreaterThanOrEqual(4);
+      expect(s.score).toBeGreaterThan(15);
     }
   });
 });

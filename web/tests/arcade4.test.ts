@@ -157,7 +157,7 @@ describe('jogo do milhão: níveis e desempate', () => {
 
   it('laps get harder and faster, down to a floor', () => {
     expect([0, 1, 2, 3].map((l) => tierOf(0, l))).toEqual([1, 2, 3, 3]);
-    expect([0, 1, 2, 9].map(timeFor)).toEqual([40, 34, 28, 12]);
+    expect([0, 1, 2, 9].map(timeFor)).toEqual([30, 25, 20, 10]);
   });
 
   it('counts helps (skips included) and total answering time', () => {
