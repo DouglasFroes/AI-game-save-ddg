@@ -160,7 +160,16 @@ export type GameId =
   | 'sumo'
   | 'esquiva'
   | 'escudo'
-  | 'corda';
+  | 'corda'
+  | 'fabrica'
+  | 'fazendinha'
+  | 'bolsa'
+  | 'reino'
+  | 'cidade'
+  | 'aquario'
+  | 'pocoes'
+  | 'usina'
+  | 'bichinho';
 
 export type SceneClass = new () => Phaser.Scene;
 
@@ -2617,6 +2626,145 @@ export const GAMES: readonly GameDefinition[] = [
     load: () => import('./corda/CordaScene').then((m) => [m.CordaScene]),
     columns: [{ key: 'score', label: 'Pontos', x: 450, format: formatNumber }],
     personalBest: storedBest('corda'),
+  },
+  {
+    id: 'fabrica',
+    title: 'Fábrica de Biscoitos',
+    tagline: 'Toque, melhore e asse mais rápido',
+    icon: 'fabrica-icon',
+    emoji: '🍪',
+    color: 0xd97706,
+    shade: 0x451a03,
+    entryScene: SceneKeys.Fabrica,
+    load: () => import('./fabrica/FabricaScene').then((m) => [m.FabricaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'clicks', label: 'Toques', x: 565 },
+      { key: 'cps', label: 'Por s', x: 665 },
+    ],
+    personalBest: storedBest('fabrica'),
+  },
+  {
+    id: 'fazendinha',
+    title: 'Fazendinha',
+    tagline: 'Plante, colha e venda em 2 minutos',
+    icon: 'fazendinha-icon',
+    emoji: '🌽',
+    color: 0x65a30d,
+    shade: 0x1a2e05,
+    entryScene: SceneKeys.Fazendinha,
+    load: () => import('./fazendinha/FazendinhaScene').then((m) => [m.FazendinhaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'harvested', label: 'Colheitas', x: 620 },
+    ],
+    personalBest: storedBest('fazendinha'),
+  },
+  {
+    id: 'bolsa',
+    title: 'Bolsa',
+    tagline: 'Leia a notícia e lucre antes do mercado',
+    icon: 'bolsa-icon',
+    emoji: '📈',
+    color: 0x0d9488,
+    shade: 0x042f2e,
+    entryScene: SceneKeys.Bolsa,
+    load: () => import('./bolsa/BolsaScene').then((m) => [m.BolsaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'profit', label: 'Lucro', x: 620 },
+    ],
+    personalBest: storedBest('bolsa'),
+  },
+  {
+    id: 'reino',
+    title: 'Reino',
+    tagline: 'Decida bem e reine por mais tempo',
+    icon: 'reino-icon',
+    emoji: '👑',
+    color: 0x7c3aed,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Reino,
+    load: () => import('./reino/ReinoScene').then((m) => [m.ReinoScene]),
+    columns: [{ key: 'score', label: 'Pontos', x: 450, format: formatNumber }],
+    personalBest: storedBest('reino'),
+  },
+  {
+    id: 'cidade',
+    title: 'Cidade',
+    tagline: 'Posicione prédios e some pontos com os vizinhos',
+    icon: 'cidade-icon',
+    emoji: '🏙️',
+    color: 0x0284c7,
+    shade: 0x14532d,
+    entryScene: SceneKeys.Cidade,
+    load: () => import('./cidade/CidadeScene').then((m) => [m.CidadeScene]),
+    columns: [{ key: 'score', label: 'Pontos', x: 450, format: formatNumber }],
+    personalBest: storedBest('cidade'),
+  },
+  {
+    id: 'aquario',
+    title: 'Aquário',
+    tagline: 'Alimente, cresça e venda os peixes',
+    icon: 'aquario-icon',
+    emoji: '🐠',
+    color: 0x06b6d4,
+    shade: 0x082f49,
+    entryScene: SceneKeys.Aquario,
+    load: () => import('./aquario/AquarioScene').then((m) => [m.AquarioScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'sold', label: 'Vendidos', x: 620 },
+    ],
+    personalBest: storedBest('aquario'),
+  },
+  {
+    id: 'pocoes',
+    title: 'Poções',
+    tagline: 'Misture cores e atenda os clientes',
+    icon: 'pocoes-icon',
+    emoji: '🧪',
+    color: 0x9333ea,
+    shade: 0x1e1b4b,
+    entryScene: SceneKeys.Pocoes,
+    load: () => import('./pocoes/PocoesScene').then((m) => [m.PocoesScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'served', label: 'Servidas', x: 620 },
+    ],
+    personalBest: storedBest('pocoes'),
+  },
+  {
+    id: 'usina',
+    title: 'Usina',
+    tagline: 'Esquente, gere energia e evite a explosão',
+    icon: 'usina-icon',
+    emoji: '⚡',
+    color: 0xea580c,
+    shade: 0x1c1917,
+    entryScene: SceneKeys.Usina,
+    load: () => import('./usina/UsinaScene').then((m) => [m.UsinaScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'seconds', label: 'Segundos', x: 620 },
+    ],
+    personalBest: storedBest('usina'),
+  },
+  {
+    id: 'bichinho',
+    title: 'Bichinho',
+    tagline: 'Cuide do seu pet pelo máximo de tempo',
+    icon: 'bichinho-icon',
+    emoji: '🐶',
+    color: 0xdb2777,
+    shade: 0x4a044e,
+    entryScene: SceneKeys.Bichinho,
+    load: () => import('./bichinho/BichinhoScene').then((m) => [m.BichinhoScene]),
+    columns: [
+      { key: 'score', label: 'Pontos', x: 450, format: formatNumber },
+      { key: 'seconds', label: 'Segundos', x: 620 },
+    ],
+    personalBest: storedBest('bichinho'),
   },
 ];
 
