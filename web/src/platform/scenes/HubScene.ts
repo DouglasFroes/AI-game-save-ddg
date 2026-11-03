@@ -504,6 +504,9 @@ export class HubScene extends Phaser.Scene {
   ): void {
     const down = opts.down ?? 0.94;
     let spring: Phaser.Tweens.Tween | undefined;
+    // A tap needs its own press: Phaser also fires `pointerup` for a finger that went down on a DOM
+    // overlay (the chat's close button sits over the avatar) and lifted over this button.
+    let armed = false;
     c.setSize(w, h).setInteractive({ useHandCursor: true });
     const reset = () => {
       if (c.scale === 1) return;
@@ -516,16 +519,23 @@ export class HubScene extends Phaser.Scene {
       });
     };
     c.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      armed = true;
       if (opts.inList && !this.isTap(p)) return;
       spring?.stop();
       c.setScale(down);
     });
-    c.on('pointerout', reset);
+    c.on('pointerout', () => {
+      armed = false;
+      reset();
+    });
     c.on('pointermove', () => {
       if (opts.inList && this.dragged) reset();
     });
     c.on('pointerup', (p: Phaser.Input.Pointer) => {
       reset();
+      const wasArmed = armed;
+      armed = false;
+      if (!wasArmed || isChatOpen()) return;
       if (opts.inList && !this.isTap(p)) return;
       const { sfx } = getServices(this);
       sfx.play('click');
