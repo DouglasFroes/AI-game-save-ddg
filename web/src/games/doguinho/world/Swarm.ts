@@ -9,7 +9,11 @@ interface Bee {
   readonly phase: number;
   readonly freq: number;
   /** Which way the bee prefers to go around obstacles. */
-  readonly side: 1 | -1;
+  side: 1 | -1;
+  /** Spread of the attack: far away, each bee aims a little off the dog so the swarm surrounds it. */
+  readonly flank: number;
+  /** Direction (rad) picked by the last look-around; reused between the staggered checks. */
+  heading: number;
   blocked: boolean;
 }
 
@@ -34,16 +38,23 @@ export class Swarm {
   private elapsed = 0;
   private stepCount = 0;
   private mode: 'chase' | 'flee' = 'chase';
+  private readonly tuning: BeeTuning;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly opts: SwarmOptions,
   ) {
+    // Bees are a bit quicker to react and leave the hive sooner than the level data says.
+    this.tuning = {
+      speed: opts.tuning.speed * 1.12,
+      agility: Math.max(0.14, opts.tuning.agility * 1.4),
+      interval: opts.tuning.interval * 0.8,
+    };
     this.queue = opts.hives
       .flatMap((hive, h) =>
         Array.from({ length: hive.bees }, (_, i) => ({
           hive,
-          at: i * opts.tuning.interval + h * 90,
+          at: i * this.tuning.interval + h * 90,
         })),
       )
       .sort((a, b) => a.at - b.at);
@@ -101,39 +112,57 @@ export class Swarm {
       phase: Math.random() * Math.PI * 2,
       freq: 0.004 + Math.random() * 0.004,
       side: Math.random() < 0.5 ? 1 : -1,
+      flank: (Math.random() - 0.5) * 1.3,
+      heading: 0,
       blocked: false,
     });
   }
 
-  private steerToTarget(): void {
-    const { speed, agility } = this.opts.tuning;
-    const target = this.opts.target();
+  /** The direction toward `target` that is not blocked by the ink: straight, or the way around it. */
+  private lookAround(bee: Bee, pos: Vec, target: Vec, direct: number): number {
     const obstacles = this.opts.obstacles();
+    if (!obstacles.length) {
+      bee.blocked = false;
+      return direct;
+    }
     const M = this.scene.matter;
+    bee.blocked = M.query.ray(obstacles, pos, target, 8).length > 0;
+    if (!bee.blocked) return direct;
+    // Look for the smallest turn that leaves open air ahead, trying the bee's current side first.
+    // Sticking to a side keeps it from jittering back and forth along the wall.
+    for (const turn of [0.5, 1, 1.5, 2, 2.6]) {
+      for (const sign of [bee.side, -bee.side as 1 | -1]) {
+        const a = direct + sign * turn;
+        const end = { x: pos.x + Math.cos(a) * 190, y: pos.y + Math.sin(a) * 190 };
+        if (M.query.ray(obstacles, pos, end, 12).length === 0) {
+          bee.side = sign;
+          return a;
+        }
+      }
+    }
+    return direct + bee.side * Math.PI * 0.6;
+  }
+
+  private steerToTarget(): void {
+    const { speed, agility } = this.tuning;
+    const target = this.opts.target();
 
     this.bees.forEach((bee, i) => {
       const body = bee.sprite.body as MatterJS.BodyType;
       const pos = body.position;
-      let dx = target.x - pos.x;
-      let dy = target.y - pos.y;
-      const d = Math.hypot(dx, dy) || 1;
-      dx /= d;
-      dy /= d;
+      const dist = Math.hypot(target.x - pos.x, target.y - pos.y) || 1;
+      let direct = Math.atan2(target.y - pos.y, target.x - pos.x);
+      // Far from the dog, come in from an angle; close in, go straight for it.
+      direct += bee.flank * Math.min(1, Math.max(0, (dist - 140) / 320));
 
-      // Line-of-sight check is expensive: stagger it across steps.
-      if ((this.stepCount + i) % 6 === 0) {
-        bee.blocked = obstacles.length > 0 && M.query.ray(obstacles, pos, target, 8).length > 0;
-      }
+      // Ray casts are costly: look around only every few steps, staggered across the bees.
+      if ((this.stepCount + i) % 5 === 0) bee.heading = this.lookAround(bee, pos, target, direct);
+      else if (!bee.blocked) bee.heading = direct;
 
-      const tx = -dy * bee.side;
-      const ty = dx * bee.side;
-      const wobble = Math.sin(this.elapsed * bee.freq + bee.phase) * 0.45;
-      const slide = bee.blocked ? 0.9 : 0;
-      let ax = dx + tx * (wobble + slide);
-      let ay = dy + ty * (wobble + slide);
-      const n = Math.hypot(ax, ay) || 1;
-      ax = (ax / n) * speed;
-      ay = (ay / n) * speed;
+      const wobble = bee.blocked ? 0 : Math.sin(this.elapsed * bee.freq + bee.phase) * 0.22;
+      const a = bee.heading + wobble;
+      const ax = Math.cos(a) * speed;
+      const ay = Math.sin(a) * speed;
 
       const v = body.velocity;
       bee.sprite.setVelocity(v.x + (ax - v.x) * agility, v.y + (ay - v.y) * agility);
